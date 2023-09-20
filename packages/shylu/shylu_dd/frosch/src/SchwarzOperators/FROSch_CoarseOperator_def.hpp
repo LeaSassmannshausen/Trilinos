@@ -254,6 +254,8 @@ namespace FROSch {
     int CoarseOperator<SC,LO,GO,NO>::setUpCoarseOperator()
     {
         FROSCH_DETAILTIMER_START_LEVELID(setUpCoarseOperatorTime,"CoarseOperator::setUpCoarseOperator");
+        RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
+
         if (!Phi_.is_null()) {
             // Build CoarseMatrix_
             XMatrixPtr k0 = buildCoarseMatrix();
@@ -282,7 +284,7 @@ namespace FROSch {
                     }
                 }
                 k0 = tmpCoarseMatrix;
-
+	
             } else if (!DistributionList_->get("Type","linear").compare("ZoltanDual")) {
                 //ZoltanDual
                 CoarseSolveExporters_[0] = Xpetra::ExportFactory<LO,GO,NO>::Build(k0->getMap(),GatheringMaps_[0]);
@@ -540,22 +542,37 @@ namespace FROSch {
                     << endl;
                 }
                 FROSCH_DETAILTIMER_STOP(printStatisticsTime);
-
+		//		cout << " REUSE COARSE MATRIX SYMBOLIC FACTORIZATION CHECK -- " << endl;
+		//		RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
+		int numCoarseSolveEntries=0;
                 bool reuseCoarseMatrixSymbolicFactorization = this->ParameterList_->get("Reuse: Coarse Matrix Symbolic Factorization",true);
                 if (!this->IsComputed_) {
                     reuseCoarseMatrixSymbolicFactorization = false;
-                }
-                if (!reuseCoarseMatrixSymbolicFactorization) {
+                    //cout << "---  isComputed = false; --- " << endl;
+		}
+		else{
+		  numCoarseSolveEntries = CoarseSolver_->getCoarseMatrixNumEntries() ;
+		}  
+		bool k0EntryChange = false;
+		if(numCoarseSolveEntries > 0 && numCoarseSolveEntries != globalVec[1])
+		  k0EntryChange=true;
+		
+                if (!reuseCoarseMatrixSymbolicFactorization || k0EntryChange ) {
+	
                     if (this->IsComputed_ && this->Verbose_) cout << "FROSch::CoarseOperator : Recomputing the Symbolic Factorization of the coarse matrix" << endl;
+	            
                     CoarseSolver_ = SolverFactory<SC,LO,GO,NO>::Build(CoarseMatrix_,
                                                                       sublist(this->ParameterList_,"CoarseSolver"),
                                                                       string("CoarseSolver (Level ") + to_string(this->LevelID_) + string(")"));
+		  
                     CoarseSolver_->initialize();
                 } else {
                     FROSCH_ASSERT(!CoarseSolver_.is_null(),"FROSch::CoarseOperator: CoarseSolver_.is_null()");
+
                     CoarseSolver_->updateMatrix(CoarseMatrix_.getConst(),true);
                 }
-                CoarseSolver_->compute();
+               	
+		CoarseSolver_->compute();
             }
         } else {
             FROSCH_WARNING("FROSch::CoarseOperator",this->Verbose_,"No coarse basis has been set up. Neglecting CoarseOperator.");
@@ -566,9 +583,12 @@ namespace FROSch {
     template<class SC,class LO,class GO,class NO>
     typename CoarseOperator<SC,LO,GO,NO>::XMatrixPtr CoarseOperator<SC,LO,GO,NO>::buildCoarseMatrix()
     {
+
+        RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
+
         FROSCH_DETAILTIMER_START_LEVELID(buildCoarseMatrixTime,"CoarseOperator::buildCoarseMatrix");
         XMatrixPtr k0;
-        if (this->ParameterList_->get("Use Triple MatrixMultiply",false)) {
+         if (this->ParameterList_->get("Use Triple MatrixMultiply",false)) {
             k0 = MatrixFactory<SC,LO,GO,NO>::Build(CoarseSpace_->getBasisMapUnique(),as<LO>(0));
             TripleMatrixMultiply<SC,LO,GO,NO>::MultiplyRAP(*Phi_,true,*this->K_,false,*Phi_,false,*k0);
         } else {
@@ -576,7 +596,14 @@ namespace FROSch {
             XMatrixPtr tmp = MatrixMatrix<SC,LO,GO,NO>::Multiply(*this->K_,false,*Phi_,false,*fancy);
             k0 = MatrixMatrix<SC,LO,GO,NO>::Multiply(*Phi_,true,*tmp,false,*fancy); //k0->describe(*fancy,VERB_EXTREME);
         }
-        return k0;
+	Xpetra::IO< SC,LO,GO,NO > xpetraWriter;
+	if(this->ParameterList_->get("Write Coarse Matrix",false))
+	  xpetraWriter.Write("coarseMatrix",(*k0));
+	//xpetraWriter.Write("systemMatrix",(*this->K_));
+        if(this->ParameterList_->get("Write Phi",false))
+	  xpetraWriter.Write("phi",(*this->Phi_));
+
+	return k0;
     }
 
     template<class SC,class LO,class GO,class NO>

@@ -133,6 +133,7 @@ namespace FROSch {
                               const XMultiVector & B,
                               XMultiVector& R) const;
 
+      int getCoarseMatrixNumEntries() const {return K_->getGlobalNumEntries();};
     protected:
 
         //! Constructor

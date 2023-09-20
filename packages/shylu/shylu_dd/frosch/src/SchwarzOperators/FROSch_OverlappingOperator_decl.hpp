@@ -106,7 +106,7 @@ namespace FROSch {
 
         virtual int initializeOverlappingOperator();
 
-        virtual int initializeSubdomainSolver(ConstXMatrixPtr localMat);
+       // virtual int initializeSubdomainSolver(ConstXMatrixPtr localMat);
 
         virtual int computeOverlappingOperator();
 

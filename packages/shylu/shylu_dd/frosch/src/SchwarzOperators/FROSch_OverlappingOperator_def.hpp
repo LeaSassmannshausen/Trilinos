@@ -205,7 +205,7 @@ namespace FROSch {
         return 0; // RETURN VALUE
     }
 
-    template <class SC,class LO,class GO,class NO>
+    /*template <class SC,class LO,class GO,class NO>
     int OverlappingOperator<SC,LO,GO,NO>::initializeSubdomainSolver(ConstXMatrixPtr localMat)
     {
         FROSCH_DETAILTIMER_START_LEVELID(initializeSubdomainSolverTime,"OverlappingOperator::initializeSubdomainSolver");
@@ -214,7 +214,7 @@ namespace FROSch {
                                                              string("Solver (Level ") + to_string(this->LevelID_) + string(")"));
         SubdomainSolver_->initialize();
         return 0; // RETURN VALUE
-    }
+    }*/
 
     template <class SC,class LO,class GO,class NO>
     int OverlappingOperator<SC,LO,GO,NO>::computeOverlappingOperator()
@@ -223,7 +223,26 @@ namespace FROSch {
 
         updateLocalOverlappingMatrices();
         bool reuseSymbolicFactorization = this->ParameterList_->get("Reuse: Symbolic Factorization",true);
-        if (!reuseSymbolicFactorization || SubdomainSolver_.is_null()) {
+        
+        if (!this->IsComputed_) {
+            reuseSymbolicFactorization = false;
+        }
+
+        if (!reuseSymbolicFactorization) {
+            if (this->IsComputed_ && this->Verbose_) cout << "FROSch::OverlappingOperator : Recomputing the Symbolic Factorization" << endl;
+            SubdomainSolver_ = SolverFactory<SC,LO,GO,NO>::Build(OverlappingMatrix_,
+                                                                 sublist(this->ParameterList_,"Solver"),
+                                                                 string("Solver (Level ") + to_string(this->LevelID_) + string(")"));
+            SubdomainSolver_->initialize();
+        } 
+        else {
+            FROSCH_ASSERT(!SubdomainSolver_.is_null(),"FROSch::OverlappingOperator: SubdomainSolver_.is_null()");
+            SubdomainSolver_->updateMatrix(OverlappingMatrix_,true);
+        }
+        
+        this->IsComputed_ = true;
+        return SubdomainSolver_->compute();
+        /*if (!reuseSymbolicFactorization || SubdomainSolver_.is_null()) {
             // initializeSubdomainSolver is called during symbolic only if reuseSymbolicFactorization=true
             // so if reuseSymbolicFactorization=false, we always call initializeSubdomainSolver 
             if (this->IsComputed_ && this->Verbose_) cout << "FROSch::OverlappingOperator : Recomputing the Symbolic Factorization" << endl;
@@ -234,7 +253,7 @@ namespace FROSch {
             SubdomainSolver_->updateMatrix(this->OverlappingMatrix_,true);
         }
         this->IsComputed_ = true;
-        return SubdomainSolver_->compute();
+        return SubdomainSolver_->compute();*/
     }
 }
 
