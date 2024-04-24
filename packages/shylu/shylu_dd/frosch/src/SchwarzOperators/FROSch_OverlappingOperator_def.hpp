@@ -64,6 +64,11 @@ namespace FROSch {
         } else if (!this->ParameterList_->get("Combine Values in Overlap","Restricted").compare("Restricted")) {
             Combine_ = Restricted;
         }
+
+        if (this->ParameterList_->get("Use Pressure Correction",false)) {
+            aOverlap_ = ExtractPtrFromParameterList<XMultiVector >(*this->ParameterList_,"Projection");    
+        }
+
     }
 
     template <class SC,class LO,class GO,class NO>
@@ -124,8 +129,47 @@ namespace FROSch {
             XOverlap_->doImport(*XTmp_,*Scatter_,INSERT);
             XOverlap_->replaceMap(OverlappingMatrix_->getRangeMap());
         }
+        // Here, we apply the subdomain solve, where we compute for OverlappingMatrix/XOverlap = YOverlap
         SubdomainSolver_->apply(*XOverlap_,*YOverlap_,mode,ScalarTraits<SC>::one(),ScalarTraits<SC>::zero());
         YOverlap_->replaceMap(OverlappingMap_);
+
+        // Reading aTmp from paramterfile
+        if (!aOverlap_.is_null()){
+            RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
+            XMultiVectorPtr a = MultiVectorFactory<SC,LO,GO,NO>::Build(OverlappingMatrix_->getDomainMap(),x.getNumVectors());
+            // Distribute it with overlap based on overlapping matrix
+            a->doImport(*aOverlap_,*Scatter_,INSERT);
+            a->replaceMap(OverlappingMatrix_->getRangeMap());
+            // Define constant MVs for dot operations
+            XMultiVectorConstPtr yOverlapConst = YOverlap_;
+            XMultiVectorConstPtr aConst = a;
+            // compute a*y 
+            Teuchos::Array<SC> sumA(1);
+            a->dot(*yOverlapConst,sumA);
+            // compute (a^T*a)^-1
+            Teuchos::Array<SC> sumB(1);
+            a->dot(*aConst,sumB);
+            double aint = 1./sumB[0];
+            SC scaling = aint*sumA[0]; // scaling for a vector : I * y - scaling * a , with scaling = (a^T*a)^-1 * a * y 
+            //cout << " SumA " << sumA[0] << " sumB " << sumB[0] << " aInt " << aint << " scaling " << scaling << endl;
+            //YOverlap_->describe(*fancy,VERB_EXTREME);
+            YOverlap_->update(-scaling,*aConst,1);
+            //YOverlap_->describe(*fancy,VERB_EXTREME);
+
+            // Sanity Check
+            Teuchos::Array<SC> ortho(1);
+            YOverlap_->dot(*aConst,ortho);
+            if(abs(ortho[0]) > 1.e-13 )
+                cout << " ########### ORTHO CHECK  " << ortho[0] << " ############ " << endl;
+        }
+        //YOverlapTmp = MultiVectorFactory<SC,LO,GO,NO>::Build(OverlappingMatrix_->getDomainMap(),x.getNumVectors());
+        //YOverlapTmp->doImport(*YOverlap_,*Scatter_,INSERT);
+        // Teuchos::Array<SC> sumA(1); aTmp->norm1(aTmp); double ainf = 1./sumA[0];
+        // Teuchos::Array<SC> sumY(1); yOverlap->norm1(sumY); SC scaling = aint*sumY[0];
+        // YOverlap_->update(-scaling,*aTmp,1);
+
+        // We would define a Multivector a with all zeros for velocity and all ones for pressure
+       
 
         XTmp_->putScalar(ScalarTraits<SC>::zero());
         ConstXMapPtr yMap = y.getMap();

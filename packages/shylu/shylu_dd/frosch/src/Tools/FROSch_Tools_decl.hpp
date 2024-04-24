@@ -59,10 +59,10 @@
 #include <Xpetra_ExportFactory.hpp>
 
 #ifdef HAVE_SHYLU_DDFROSCH_ZOLTAN2
-#include <Zoltan2_MatrixAdapter.hpp>
 #include <Zoltan2_XpetraCrsMatrixAdapter.hpp>
 #include <Zoltan2_PartitioningProblem.hpp>
 #include <Zoltan2_XpetraCrsGraphAdapter.hpp>
+#include <Zoltan2_MatrixAdapter.hpp>
 #endif
 
 

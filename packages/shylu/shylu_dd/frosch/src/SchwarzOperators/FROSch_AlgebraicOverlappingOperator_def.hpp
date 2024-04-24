@@ -111,6 +111,12 @@ namespace FROSch {
 
         if (repeatedMap.is_null()) repeatedMap = this->K_->getRangeMap();
         this->buildOverlappingMatrices(overlap,repeatedMap);
+
+        /*bool usePressureProjection = this->ParameterList_->get("Use Pressure Projection", false);
+        if (this->ExtractLocalSubdomainMatrix_Symbolic_Done_ && reuseSymbolicFactorization) {
+            this->buildOveralappingProjection(overlap,repeatedMap);
+        }*/
+
         this->initializeOverlappingOperator();
         this->updateLocalOverlappingMatrices_Symbolic();
         bool reuseSymbolicFactorization = this->ParameterList_->get("Reuse: Symbolic Factorization",true);
@@ -118,7 +124,7 @@ namespace FROSch {
             // if reuseSymbolicFactorization=false, we call initializeSubdomainSolver is called during compute
             this->initializeSubdomainSolver(this->localSubdomainMatrix_);
         }
-
+        
         this->IsInitialized_ = true;
         this->IsComputed_ = false;
         return 0; // RETURN VALUE!!!

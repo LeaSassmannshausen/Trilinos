@@ -66,6 +66,7 @@ namespace FROSch {
         using ConstXMatrixPtr                   = typename SchwarzPreconditioner<SC,LO,GO,NO>::ConstXMatrixPtr;
 
         using XMultiVector                      = typename SchwarzPreconditioner<SC,LO,GO,NO>::XMultiVector;
+        using XMultiVectorPtr                      = typename SchwarzPreconditioner<SC,LO,GO,NO>::XMultiVectorPtr;
 
         using ParameterListPtr                  = typename SchwarzPreconditioner<SC,LO,GO,NO>::ParameterListPtr;
 
