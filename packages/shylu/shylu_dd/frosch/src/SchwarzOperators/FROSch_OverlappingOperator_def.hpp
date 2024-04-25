@@ -136,7 +136,7 @@ namespace FROSch {
         // Reading aTmp from paramterfile
         if (!aOverlap_.is_null()){
             RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
-            XMultiVectorPtr a = MultiVectorFactory<SC,LO,GO,NO>::Build(OverlappingMatrix_->getDomainMap(),YOverlap_.getNumVectors());
+            XMultiVectorPtr a = MultiVectorFactory<SC,LO,GO,NO>::Build(OverlappingMatrix_->getDomainMap(),x.getNumVectors());
             // Distribute it with overlap based on overlapping matrix
             a->doImport(*aOverlap_,*Scatter_,INSERT);
             a->replaceMap(OverlappingMap_);
@@ -162,11 +162,11 @@ namespace FROSch {
             SC scaling = aint*sumAY; // scaling for a vector : I * y - scaling * a , with scaling = (a^T*a)^-1 * a * y 
             //cout << " Processor " << YOverlap_->getMap()->getComm()->getRank() << " SumAA " << sumAA << " sumAY " << sumAY << " aInt " << aint << " scaling " << scaling << endl;
             //YOverlap_->describe(*fancy,VERB_EXTREME);
+            XMultiVectorConstPtr aConst = a;    
             YOverlap_->update(-scaling,*aConst,1);
             //YOverlap_->describe(*fancy,VERB_EXTREME);
 
             // Sanity Check
-            XMultiVectorConstPtr aConst = a;    
             Teuchos::Array<SC> ortho(1);
             YOverlap_->dot(*aConst,ortho);
             if(abs(ortho[0]) > 1.e-13 )
