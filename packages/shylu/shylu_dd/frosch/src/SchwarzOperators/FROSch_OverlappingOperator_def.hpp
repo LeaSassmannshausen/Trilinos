@@ -145,7 +145,7 @@ namespace FROSch {
             // Define constant MVs for dot operations
             //XMultiVectorConstPtr yOverlapConst = YOverlap_;
             // compute a*y 
-            //cout << " Num Vectors in y " << YOverlap_->getNumVectors() << endl;
+            //cout << " Num Vectors in y " << YOverlap_->getNumVectors() << " Num vectors in a " << a->getNumVectors() << " Num vectors in x " << x.getNumVectors() << endl;
             double sumAY = 0.;
             for(int i=0; i< a->getDataNonConst(0).size(); i++)
                 sumAY += a->getDataNonConst(0)[i] * YOverlap_->getDataNonConst(0)[i];
@@ -169,8 +169,8 @@ namespace FROSch {
             // Sanity Check
             Teuchos::Array<SC> ortho(1);
             YOverlap_->dot(*aConst,ortho);
-            if(abs(ortho[0]) > 1.e-13 )
-                cout << " ########### ORTHO CHECK on proc " << YOverlap_->getMap()->getComm()->getRank() << "= "  << ortho[0] << " ############ " << endl;
+            //if(abs(ortho[0]) >= 1.e-12 )
+            //    cout << " ########### ORTHO CHECK on proc " << YOverlap_->getMap()->getComm()->getRank() << "= "  << ortho[0] << " ############ " << endl;
         }
         //YOverlapTmp = MultiVectorFactory<SC,LO,GO,NO>::Build(OverlappingMatrix_->getDomainMap(),x.getNumVectors());
         //YOverlapTmp->doImport(*YOverlap_,*Scatter_,INSERT);
