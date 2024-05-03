@@ -150,6 +150,7 @@ namespace FROSch {
             }
             applyPhiT(*XTmp_,*XCoarseSolve_);
             applyCoarseSolve(*XCoarseSolve_,*YCoarseSolve_,mode);
+            // If we wanted to use the projection here again we would apply a to phiT and then to the solution after apply coarse solve
             applyPhi(*YCoarseSolve_,*XTmp_);
             if (!usePreconditionerOnly && mode != NO_TRANS) {
                 this->K_->apply(*XTmp_,*XTmp_,mode,ScalarTraits<SC>::one(),ScalarTraits<SC>::zero());

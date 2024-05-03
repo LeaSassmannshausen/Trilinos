@@ -66,7 +66,12 @@ namespace FROSch {
         }
 
         if (this->ParameterList_->get("Use Pressure Correction",false)) {
-            aOverlap_ = ExtractPtrFromParameterList<XMultiVector >(*this->ParameterList_,"Projection");    
+            FROSCH_NOTIFICATION("FROSch::Overlapping Operator",(this->Verbose_) && this->ParameterList_->get("Use Local Pressure Correction",false),"Use local projections to correct pressure.");
+            FROSCH_NOTIFICATION("FROSch::Overlapping Operator",(this->Verbose_) && this->ParameterList_->get("Use Global Pressure Correction",false),"Use global projection to correct pressure.");
+
+            //FROSCH_NOTIFICATION("FROSch::Overlapping Operator",(this->Verbose_),"Use pressure projection to correct pressure:: Local Pressure Correction");<<<<<<<<<<<<s
+
+            aProjection_ = ExtractPtrFromParameterList<XMultiVector >(*this->ParameterList_,"Projection");    
         }
 
     }
@@ -133,12 +138,16 @@ namespace FROSch {
         SubdomainSolver_->apply(*XOverlap_,*YOverlap_,mode,ScalarTraits<SC>::one(),ScalarTraits<SC>::zero());
         YOverlap_->replaceMap(OverlappingMap_);
 
+
+        // Is it necessary to apply the projection here locally or can we apply it a the end to the global solution. Probably this will be done in the sum operator
+        // Does restricted Schwarz any influence on the pressure
         // Reading aTmp from paramterfile
-        if (!aOverlap_.is_null()){
+        if (!aProjection_.is_null() && (this->ParameterList_->get("Use Local Pressure Correction",false) == true)){
+
             RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
             XMultiVectorPtr a = MultiVectorFactory<SC,LO,GO,NO>::Build(OverlappingMatrix_->getDomainMap(),x.getNumVectors());
             // Distribute it with overlap based on overlapping matrix
-            a->doImport(*aOverlap_,*Scatter_,INSERT);
+            a->doImport(*aProjection_,*Scatter_,INSERT);
             a->replaceMap(OverlappingMap_);
             //a->describe(*fancy,VERB_EXTREME);
             //YOverlap_->describe(*fancy,VERB_EXTREME);
@@ -243,6 +252,39 @@ namespace FROSch {
 
         if (!usePreconditionerOnly && mode != NO_TRANS) {
             this->K_->apply(*XTmp_,*XTmp_,mode,ScalarTraits<SC>::one(),ScalarTraits<SC>::zero());
+        }
+        // We could use the global approach of the projection and apply it here! Should have same convergence and same number of iterations
+        if (!aProjection_.is_null() && (this->ParameterList_->get("Use Global Pressure Correction",false) == true)){
+
+            RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
+            //XMultiVectorPtr aGlobal = MultiVectorFactory<SC,LO,GO,NO>::Build(x.getMap(),x.getNumVectors());
+            // Distribute it with overlap based on overlapping matrix
+            //aGlobal->doImport(*aProjection_,*Scatter_,INSERT);
+            //a->replaceMap(OverlappingMap_);
+            //a->describe(*fancy,VERB_EXTREME);
+            //YOverlap_->describe(*fancy,VERB_EXTREME);
+            // Define constant MVs for dot operations
+            XMultiVectorConstPtr XTmpConst = XTmp_;
+            XMultiVectorConstPtr aConst = aProjection_;    
+
+            // compute a*y 
+            Teuchos::Array<SC> sumAY(1);
+            aProjection_->dot(*XTmpConst,sumAY);
+            // compute (a^T*a)^-1
+            Teuchos::Array<SC> sumAA(1);
+            aProjection_->dot(*aConst,sumAA);
+            double aint = 1./sumAA[0];
+            SC scaling = aint*sumAY[0]; // scaling for a vector : I * y - scaling * a , with scaling = (a^T*a)^-1 * a * y 
+            //cout << " Processor " << YOverlap_->getMap()->getComm()->getRank() << " SumAA " << sumAA << " sumAY " << sumAY << " aInt " << aint << " scaling " << scaling << endl;
+            //YOverlap_->describe(*fancy,VERB_EXTREME);
+            XTmp_->update(-scaling,*aConst,1);
+            //YOverlap_->describe(*fancy,VERB_EXTREME);
+
+            // Sanity Check
+            Teuchos::Array<SC> ortho(1);
+            XTmp_->dot(*aConst,ortho);
+            if(abs(ortho[0]) >= 1.e-12 )
+                cout << " ########### ORTHO CHECK on proc " << YOverlap_->getMap()->getComm()->getRank() << "= "  << ortho[0] << " ############ " << endl;
         }
         y.update(alpha,*XTmp_,beta);
     }

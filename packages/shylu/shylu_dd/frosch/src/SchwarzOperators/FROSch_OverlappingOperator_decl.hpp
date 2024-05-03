@@ -124,7 +124,7 @@ namespace FROSch {
         mutable XMultiVectorPtr XOverlap_;
         mutable XMultiVectorPtr XOverlapTmp_;
         mutable XMultiVectorPtr YOverlap_;
-        mutable XMultiVectorPtr aOverlap_;
+        mutable XMultiVectorPtr aProjection_;
 
         XImportPtr Scatter_;
 
