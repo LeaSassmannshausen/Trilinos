@@ -65,14 +65,14 @@ namespace FROSch {
             Combine_ = Restricted;
         }
 
-        if (this->ParameterList_->get("Use Pressure Correction",false)) {
+       /* if (this->ParameterList_->get("Use Pressure Correction",false)) {
             FROSCH_NOTIFICATION("FROSch::Overlapping Operator",(this->Verbose_) && this->ParameterList_->get("Use Local Pressure Correction",false),"Use local projections to correct pressure.");
             FROSCH_NOTIFICATION("FROSch::Overlapping Operator",(this->Verbose_) && this->ParameterList_->get("Use Global Pressure Correction",false),"Use global projection to correct pressure.");
 
             //FROSCH_NOTIFICATION("FROSch::Overlapping Operator",(this->Verbose_),"Use pressure projection to correct pressure:: Local Pressure Correction");<<<<<<<<<<<<s
 
-            aProjection_ = ExtractPtrFromParameterList<XMultiVector >(*this->ParameterList_,"Projection");    
-        }
+            this->this->aProjection_ = ExtractPtrFromParameterList<XMultiVector >(*this->ParameterList_,"Projection");    
+        }*/
 
     }
 
@@ -142,12 +142,12 @@ namespace FROSch {
         // Is it necessary to apply the projection here locally or can we apply it a the end to the global solution. Probably this will be done in the sum operator
         // Does restricted Schwarz any influence on the pressure
         // Reading aTmp from paramterfile
-        if (!aProjection_.is_null() && (this->ParameterList_->get("Use Local Pressure Correction",false) == true)){
+        if (!this->aProjection_.is_null() && (this->ParameterList_->get("Use Local Pressure Correction",false) == true)){
 
             RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
             XMultiVectorPtr a = MultiVectorFactory<SC,LO,GO,NO>::Build(OverlappingMatrix_->getDomainMap(),x.getNumVectors());
             // Distribute it with overlap based on overlapping matrix
-            a->doImport(*aProjection_,*Scatter_,INSERT);
+            a->doImport(*this->aProjection_,*Scatter_,INSERT);
             a->replaceMap(OverlappingMap_);
             //a->describe(*fancy,VERB_EXTREME);
             //YOverlap_->describe(*fancy,VERB_EXTREME);
@@ -172,9 +172,10 @@ namespace FROSch {
             //cout << " Processor " << YOverlap_->getMap()->getComm()->getRank() << " SumAA " << sumAA << " sumAY " << sumAY << " aInt " << aint << " scaling " << scaling << endl;
             //YOverlap_->describe(*fancy,VERB_EXTREME);
             XMultiVectorConstPtr aConst = a;    
-            YOverlap_->update(-scaling,*aConst,1);
+            //YOverlap_->update(-scaling,*aConst,1);
             //YOverlap_->describe(*fancy,VERB_EXTREME);
-
+            for(int i=0; i< a->getDataNonConst(0).size(); i++)
+                YOverlap_->getDataNonConst(0)[i] -= scaling*  a->getDataNonConst(0)[i];
             // Sanity Check
             Teuchos::Array<SC> ortho(1);
             YOverlap_->dot(*aConst,ortho);
@@ -254,25 +255,25 @@ namespace FROSch {
             this->K_->apply(*XTmp_,*XTmp_,mode,ScalarTraits<SC>::one(),ScalarTraits<SC>::zero());
         }
         // We could use the global approach of the projection and apply it here! Should have same convergence and same number of iterations
-        if (!aProjection_.is_null() && (this->ParameterList_->get("Use Global Pressure Correction",false) == true)){
+        if (!this->aProjection_.is_null() && (this->ParameterList_->get("Use Global Pressure Correction",false) == true)){
 
             RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
             //XMultiVectorPtr aGlobal = MultiVectorFactory<SC,LO,GO,NO>::Build(x.getMap(),x.getNumVectors());
             // Distribute it with overlap based on overlapping matrix
-            //aGlobal->doImport(*aProjection_,*Scatter_,INSERT);
+            //aGlobal->doImport(*this->aProjection_,*Scatter_,INSERT);
             //a->replaceMap(OverlappingMap_);
             //a->describe(*fancy,VERB_EXTREME);
             //YOverlap_->describe(*fancy,VERB_EXTREME);
             // Define constant MVs for dot operations
             XMultiVectorConstPtr XTmpConst = XTmp_;
-            XMultiVectorConstPtr aConst = aProjection_;    
+            XMultiVectorConstPtr aConst = this->aProjection_;    
 
             // compute a*y 
             Teuchos::Array<SC> sumAY(1);
-            aProjection_->dot(*XTmpConst,sumAY);
+            this->aProjection_->dot(*XTmpConst,sumAY);
             // compute (a^T*a)^-1
             Teuchos::Array<SC> sumAA(1);
-            aProjection_->dot(*aConst,sumAA);
+            this->aProjection_->dot(*aConst,sumAA);
             double aint = 1./sumAA[0];
             SC scaling = aint*sumAY[0]; // scaling for a vector : I * y - scaling * a , with scaling = (a^T*a)^-1 * a * y 
             //cout << " Processor " << YOverlap_->getMap()->getComm()->getRank() << " SumAA " << sumAA << " sumAY " << sumAY << " aInt " << aint << " scaling " << scaling << endl;
@@ -305,7 +306,7 @@ namespace FROSch {
         return 0; // RETURN VALUE
     }
 
-    template <class SC,class LO,class GO,class NO>
+    /*template <class SC,class LO,class GO,class NO>
     int OverlappingOperator<SC,LO,GO,NO>::initializeSubdomainSolver(ConstXMatrixPtr localMat)
     {
         FROSCH_DETAILTIMER_START_LEVELID(initializeSubdomainSolverTime,"OverlappingOperator::initializeSubdomainSolver");
@@ -314,12 +315,12 @@ namespace FROSch {
                                                              string("Solver (Level ") + to_string(this->LevelID_) + string(")"));
         SubdomainSolver_->initialize();
         return 0; // RETURN VALUE
-    }
+    }*/
 
     template <class SC,class LO,class GO,class NO>
     int OverlappingOperator<SC,LO,GO,NO>::computeOverlappingOperator()
     {
-        FROSCH_DETAILTIMER_START_LEVELID(computeOverlappingOperatorTime,"OverlappingOperator::computeOverlappingOperator");
+        /*FROSCH_DETAILTIMER_START_LEVELID(computeOverlappingOperatorTime,"OverlappingOperator::computeOverlappingOperator");
 
         updateLocalOverlappingMatrices();
         bool reuseSymbolicFactorization = this->ParameterList_->get("Reuse: Symbolic Factorization",true);
@@ -334,7 +335,39 @@ namespace FROSch {
             SubdomainSolver_->updateMatrix(this->OverlappingMatrix_,true);
         }
         this->IsComputed_ = true;
+        return SubdomainSolver_->compute();*/
+
+     FROSCH_DETAILTIMER_START_LEVELID(computeOverlappingOperatorTime,"OverlappingOperator::comput\
+eOverlappingOperator");
+
+        updateLocalOverlappingMatrices();
+        bool reuseSymbolicFactorization = this->ParameterList_->get("Reuse: Symbolic Factorization",\
+true);
+
+        if (!this->IsComputed_) {
+            reuseSymbolicFactorization = false;
+        }
+
+        if (!reuseSymbolicFactorization) {
+            if (this->IsComputed_ && this->Verbose_) cout << "FROSch::OverlappingOperator : Recomput\
+ing the Symbolic Factorization" << endl;
+            SubdomainSolver_ = SolverFactory<SC,LO,GO,NO>::Build(OverlappingMatrix_,
+                                                                 sublist(this->ParameterList_,"Solve\
+r"),
+                                                                 string("Solver (Level ") + to_strin\
+g(this->LevelID_) + string(")"));
+            SubdomainSolver_->initialize();
+        }
+        else {
+            FROSCH_ASSERT(!SubdomainSolver_.is_null(),"FROSch::OverlappingOperator: SubdomainSolver_\
+.is_null()");
+            SubdomainSolver_->updateMatrix(OverlappingMatrix_,true);
+        }
+
+        this->IsComputed_ = true;
         return SubdomainSolver_->compute();
+
+
     }
 }
 
