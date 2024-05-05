@@ -155,7 +155,13 @@ namespace FROSch {
                 i++;
             }
             y.update(ScalarTraits<SC>::one(),x,ScalarTraits<SC>::zero());
-        }
+
+	}
+	/*this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();*/
+
     }
 
     template<class SC,class LO,class GO,class NO>
@@ -182,6 +188,11 @@ namespace FROSch {
             XCoarse_ = XCoarseSolveTmp_;
         }
         y = *XCoarseSolveTmp_;
+	/*this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();*/
+
     }
 
     template<class SC,class LO,class GO,class NO>
@@ -201,6 +212,12 @@ namespace FROSch {
         }
         YTmp_->replaceMap(GatheringMaps_[GatheringMaps_.size()-1]);
         y = *YTmp_;
+
+	/*this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();*/
+
     }
 
     template<class SC,class LO,class GO,class NO>
@@ -242,6 +259,11 @@ namespace FROSch {
 #endif
             Phi_->apply(*YCoarse_,y,NO_TRANS);
         }
+	/*this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();*/
+
     }
 
     template<class SC,class LO,class GO,class NO>

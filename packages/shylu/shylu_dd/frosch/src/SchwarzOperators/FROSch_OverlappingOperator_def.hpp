@@ -72,7 +72,7 @@ namespace FROSch {
         SubdomainSolver_.reset();
     }
 
-    // Y = alpha * A^mode * X + beta * Y
+ // Y = alpha * A^mode * X + beta * Y                                                                                                                                                                                            
     template <class SC,class LO,class GO,class NO>
     void OverlappingOperator<SC,LO,GO,NO>::apply(const XMultiVector &x,
                                                  XMultiVector &y,
@@ -81,21 +81,38 @@ namespace FROSch {
                                                  SC alpha,
                                                  SC beta) const
     {
+
+
         FROSCH_TIMER_START_LEVELID(applyTime,"OverlappingOperator::apply");
+
         FROSCH_ASSERT(this->IsComputed_,"FROSch::OverlappingOperator: OverlappingOperator has to be computed before calling apply()");
-        if (XTmp_.is_null()) XTmp_ = MultiVectorFactory<SC,LO,GO,NO>::Build(x.getMap(),x.getNumVectors());
-        *XTmp_ = x;
-        if (!usePreconditionerOnly && mode == NO_TRANS) {
+
+
+        {
+          FROSCH_TIMER_START_LEVELID(applyTime,"Beginning of Apply 1" );
+
+          if (XTmp_.is_null()) XTmp_ = MultiVectorFactory<SC,LO,GO,NO>::Build(x.getMap(),x.getNumVectors());
+          *XTmp_ = x;
+          if (!usePreconditionerOnly && mode == NO_TRANS) {
             this->K_->apply(x,*XTmp_,mode,ScalarTraits<SC>::one(),ScalarTraits<SC>::zero());
-        }
-        // AH 11/28/2018: For Epetra, XOverlap_ will only have a view to the values of XOverlapTmp_. Therefore, xOverlapTmp should not be deleted before XOverlap_ is used.
-        if (YOverlap_.is_null()) {
+          }
+          // AH 11/28/2018: For Epetra, XOverlap_ will only have a view to the values of XOverlapTmp_. Therefore, xOverlapTmp should not be deleted before XOverlap_ is used.                                                       
+          if (YOverlap_.is_null()) {
             YOverlap_ = MultiVectorFactory<SC,LO,GO,NO>::Build(OverlappingMatrix_->getDomainMap(),x.getNumVectors());
         } else {
             YOverlap_->replaceMap(OverlappingMatrix_->getDomainMap());
+          }
+        // END TIMER                                                                                                                                                                                                                
+        //this->MpiComm_->barrier();
+        //this->MpiComm_->barrier();
+        //this->MpiComm_->barrier();
+        //this->MpiComm_->barrier();
         }
-        // AH 11/28/2018: replaceMap does not update the GlobalNumRows. Therefore, we have to create a new MultiVector on the serial Communicator. In Epetra, we can prevent to copy the MultiVector.
-        if (XTmp_->getMap()->lib() == UseEpetra) {
+        {
+        FROSCH_TIMER_START_LEVELID(applyTime,"Beginning of Apply 2" );
+
+          // AH 11/28/2018: replaceMap does not update the GlobalNumRows. Therefore, we have to create a new MultiVector on the serial Communicator. In Epetra, we can prevent to copy the MultiVector.                             
+          if (XTmp_->getMap()->lib() == UseEpetra) {
 #ifdef HAVE_SHYLU_DDFROSCH_EPETRA
             if (XOverlapTmp_.is_null()) XOverlapTmp_ = MultiVectorFactory<SC,LO,GO,NO>::Build(OverlappingMap_,x.getNumVectors());
             XOverlapTmp_->doImport(*XTmp_,*Scatter_,INSERT);
@@ -111,39 +128,83 @@ namespace FROSch {
 #else
             FROSCH_ASSERT(false,"HAVE_XPETRA_EPETRA not defined.");
 #endif
-        } else {
+          } else {
             if (XOverlap_.is_null()) {
-                XOverlap_ = MultiVectorFactory<SC,LO,GO,NO>::Build(OverlappingMap_,x.getNumVectors());
+              XOverlap_ = MultiVectorFactory<SC,LO,GO,NO>::Build(OverlappingMap_,x.getNumVectors());
             } else {
                 XOverlap_->replaceMap(OverlappingMap_);
             }
             XOverlap_->doImport(*XTmp_,*Scatter_,INSERT);
             XOverlap_->replaceMap(OverlappingMatrix_->getRangeMap());
-        }
-        SubdomainSolver_->apply(*XOverlap_,*YOverlap_,mode,ScalarTraits<SC>::one(),ScalarTraits<SC>::zero());
-        YOverlap_->replaceMap(OverlappingMap_);
+          }
 
-        XTmp_->putScalar(ScalarTraits<SC>::zero());
-        ConstXMapPtr yMap = y.getMap();
-        ConstXMapPtr yOverlapMap = YOverlap_->getMap();
-        if (Combine_ == Restricted) {
-#if defined(HAVE_XPETRA_TPETRA)
+         // END TIMER                                                                                                                                                                                                               
+        // This one is timed                                                                                                                                                                                                        
+        //this->MpiComm_->barrier();
+        //this->MpiComm_->barrier();
+        //this->MpiComm_->barrier();
+        //this->MpiComm_->barrier();
+        }
+     {
+          FROSCH_TIMER_START_LEVELID(applyTime,"Call to subdomain solver apply");
+
+          SubdomainSolver_->apply(*XOverlap_,*YOverlap_,mode,ScalarTraits<SC>::one(),ScalarTraits<SC>::zero());
+
+          {
+            FROSCH_TIMER_START_LEVELID(applyTime,"Collecting rest of time in barriers()");
+            //this->MpiComm_->barrier();
+            //this->MpiComm_->barrier();
+            //this->MpiComm_->barrier();
+            //this->MpiComm_->barrier();
+          }
+        }// End TIMER                                                                                                                                                                 
+        {
+          FROSCH_TIMER_START_LEVELID(applyTime,"raplaceMap");
+
+          YOverlap_->replaceMap(OverlappingMap_);
+
+          XTmp_->putScalar(ScalarTraits<SC>::zero());
+         // END TIMER                                                                                                                                                                 
+
+	  //this->MpiComm_->barrier();
+	  //this->MpiComm_->barrier();
+	  //this->MpiComm_->barrier();
+	  //this->MpiComm_->barrier();
+        }
+        ConstXMapPtr yMap;
+          ConstXMapPtr yOverlapMap;
+        {
+          FROSCH_TIMER_START_LEVELID(applyTime,"getMap()");
+           yMap = y.getMap();
+           yOverlapMap = YOverlap_->getMap();
+
+        // END TIMER                                                                                                                                                                  
+        /*this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();*/
+        }
+        {
+          FROSCH_TIMER_START_LEVELID(applyTime,"Combine Overlap mode=restricted");
+
+    if (Combine_ == Restricted) {
+#if defined(HAVE_XPETRA_KOKKOS_REFACTOR) && defined(HAVE_XPETRA_TPETRA)
             if (XTmp_->getMap()->lib() == UseTpetra) {
                 auto yLocalMap = yMap->getLocalMap();
                 auto yLocalOverlapMap = yOverlapMap->getLocalMap();
-                // run local restriction on execution space defined by local-map
+                // run local restriction on execution space defined by local-map                                                                                                      
                 using XMap            = typename SchwarzOperator<SC,LO,GO,NO>::XMap;
                 using execution_space = typename XMap::local_map_type::execution_space;
                 Kokkos::RangePolicy<execution_space> policy (0, yMap->getLocalNumElements());
 
                 using xTMVector    = Xpetra::TpetraMultiVector<SC,LO,GO,NO>;
-                // Xpetra wrapper for Tpetra MV
+                // Xpetra wrapper for Tpetra MV                                                                                                                                       
                 auto yXTpetraMVector = rcp_dynamic_cast<const xTMVector>(YOverlap_, true);
                 auto xXTpetraMVector = rcp_dynamic_cast<      xTMVector>(XTmp_, true);
-                // Tpetra MV
+                // Tpetra MV                                                                                                                                                          
                 auto yTpetraMVector = yXTpetraMVector->getTpetra_MultiVector();
                 auto xTpetraMVector = xXTpetraMVector->getTpetra_MultiVector();
-                // View
+                // View                                                                                                                                                               
                 auto yView = yTpetraMVector->getLocalViewDevice(Tpetra::Access::ReadOnly);
                 auto xView = xTpetraMVector->getLocalViewDevice(Tpetra::Access::ReadWrite);
                 for (UN j=0; j<y.getNumVectors(); j++) {
@@ -170,23 +231,62 @@ namespace FROSch {
                     }
                 }
             }
-        } else {
+        }
+        else {
             XTmp_->doExport(*YOverlap_,*Scatter_,ADD);
         }
-        if (Combine_ == Averaging) {
+    /*this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();*/
+
+        }// END TIMER
+	{
+          FROSCH_TIMER_START_LEVELID(applyTime,"Combine Overlap mode=Averaging");
+
+
+          if (Combine_ == Averaging) {
             ConstSCVecPtr scaling = Multiplicity_->getData(0);
             for (UN j=0; j<XTmp_->getNumVectors(); j++) {
-                SCVecPtr values = XTmp_->getDataNonConst(j);
-                for (UN i=0; i<values.size(); i++) {
-                    values[i] = values[i] / scaling[i];
-                }
+              SCVecPtr values = XTmp_->getDataNonConst(j);
+              for (UN i=0; i<values.size(); i++) {
+                values[i] = values[i] / scaling[i];
+              }
             }
-        }
+          }
+	  /*          this->MpiComm_->barrier();
+          this->MpiComm_->barrier();
+          this->MpiComm_->barrier();
+          this->MpiComm_->barrier();*/
 
-        if (!usePreconditionerOnly && mode != NO_TRANS) {
+        }// END TIMER                                                                                                                                                                 
+
+        { FROSCH_TIMER_START_LEVELID(applyTime,"if(!usePreconditionerOnly && mode != NO_TRANS) K_->apply()");
+          if (!usePreconditionerOnly && mode != NO_TRANS) {
             this->K_->apply(*XTmp_,*XTmp_,mode,ScalarTraits<SC>::one(),ScalarTraits<SC>::zero());
-        }
+          }
+	  /*this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();*/
+
+        } // END TIMER                                                                                                                                                                
+
+        {
+          FROSCH_TIMER_START_LEVELID(applyTime,"y.update()");
         y.update(alpha,*XTmp_,beta);
+
+        /*this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();*/
+
+        } // END TIMER                                                                                                                                                                
+	/* this->MpiComm_->barrier();
+              this->MpiComm_->barrier();
+              this->MpiComm_->barrier();
+              this->MpiComm_->barrier();*/
+
     }
 
     template <class SC,class LO,class GO,class NO>

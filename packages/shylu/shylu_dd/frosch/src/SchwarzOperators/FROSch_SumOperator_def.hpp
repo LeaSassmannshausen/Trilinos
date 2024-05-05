@@ -116,21 +116,35 @@ namespace FROSch {
                                          SC alpha,
                                          SC beta) const
     {
-        FROSCH_TIMER_START_LEVELID(applyTime,"SumOperator::apply");
-        if (OperatorVector_.size()>0) {
-            if (XTmp_.is_null()) XTmp_ = MultiVectorFactory<SC,LO,GO,NO>::Build(x.getMap(),x.getNumVectors());
-            *XTmp_ = x; // Das brauche ich für den Fall das x=y
-            UN itmp = 0;
-            for (UN i=0; i<OperatorVector_.size(); i++) {
-                if (EnableOperators_[i]) {
-                    OperatorVector_[i]->apply(*XTmp_,y,usePreconditionerOnly,mode,alpha,beta);
-                    if (itmp==0) beta = ScalarTraits<SC>::one();
-                    itmp++;
-                }
-            }
-        } else {
-            y.update(alpha,x,beta);
-        }
+      FROSCH_TIMER_START_LEVELID(applyTime,"SumOperator::apply");
+      if (OperatorVector_.size()>0) {
+	if (XTmp_.is_null()) XTmp_ = MultiVectorFactory<SC,LO,GO,NO>::Build(x.getMap(),x.getNumVectors());
+	*XTmp_ = x; // Das brauche ich für den Fall das x=y                                                                                                                       
+	UN itmp = 0;
+	{
+	  FROSCH_TIMER_START_LEVELID(applyTime,"Apply Loop 1");
+	  
+	  for (UN i=0; i<OperatorVector_.size(); i++) {
+	    if (EnableOperators_[i]) {
+	      FROSCH_TIMER_START_LEVELID(applyTime,"Apply Loop 2");
+	      
+	      OperatorVector_[i]->apply(*XTmp_,y,usePreconditionerOnly,mode,alpha,beta);
+	      if (itmp==0) beta = ScalarTraits<SC>::one();
+	      itmp++;
+	      
+	    }
+	  }
+	}
+      } else {
+	y.update(alpha,x,beta);
+      }
+      
+
+      /*this->MpiComm_->barrier();
+      this->MpiComm_->barrier();
+      this->MpiComm_->barrier();
+      this->MpiComm_->barrier();*/
+      
     }
 
     template <class SC,class LO,class GO,class NO>
