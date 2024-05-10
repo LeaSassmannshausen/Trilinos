@@ -60,10 +60,11 @@ namespace FROSch {
     {
         FROSCH_DETAILTIMER_START_LEVELID(coarseOperatorTime,"CoarseOperator::CoarseOperator");
 
-         if (this->ParameterList_->get("Use Coarse Pressure Correction",false)) {
-            FROSCH_NOTIFICATION("FROSch::Coarse Operator",(this->Verbose_) && this->ParameterList_->get("Use Coarse Pressure Correction",false),"Use coarse projections to correct pressure.");
+         if (parameterList->get("Use Coarse Pressure Correction",false)) {
             
-            this->aProjection_ = ExtractPtrFromParameterList<XMultiVector >(*this->ParameterList_,"Projection");    
+            FROSCH_NOTIFICATION("FROSch::Coarse Operator",(this->Verbose_) && parameterList->get("Use Coarse Pressure Correction",false),"Use coarse projections to correct pressure.");
+            
+            this->aProjection_ = ExtractPtrFromParameterList<XMultiVector >(*parameterList,"Projection");    
 
          }
     }
