@@ -65,14 +65,12 @@ namespace FROSch {
             Combine_ = Restricted;
         }
 
-       /* if (this->ParameterList_->get("Use Pressure Correction",false)) {
+       if (this->ParameterList_->get("Use Pressure Correction",false)) {
             FROSCH_NOTIFICATION("FROSch::Overlapping Operator",(this->Verbose_) && this->ParameterList_->get("Use Local Pressure Correction",false),"Use local projections to correct pressure.");
             FROSCH_NOTIFICATION("FROSch::Overlapping Operator",(this->Verbose_) && this->ParameterList_->get("Use Global Pressure Correction",false),"Use global projection to correct pressure.");
 
-            //FROSCH_NOTIFICATION("FROSch::Overlapping Operator",(this->Verbose_),"Use pressure projection to correct pressure:: Local Pressure Correction");<<<<<<<<<<<<s
-
-            this->this->aProjection_ = ExtractPtrFromParameterList<XMultiVector >(*this->ParameterList_,"Projection");    
-        }*/
+            this->aProjection_ = ExtractPtrFromParameterList<XMultiVector >(*this->ParameterList_,"Projection");    
+        }
 
     }
 

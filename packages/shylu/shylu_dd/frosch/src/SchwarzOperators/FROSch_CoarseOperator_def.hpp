@@ -59,6 +59,13 @@ namespace FROSch {
     DistributionList_ (sublist(parameterList,"Distribution"))
     {
         FROSCH_DETAILTIMER_START_LEVELID(coarseOperatorTime,"CoarseOperator::CoarseOperator");
+
+         if (this->ParameterList_->get("Use Coarse Pressure Correction",false)) {
+            FROSCH_NOTIFICATION("FROSch::Coarse Operator",(this->Verbose_) && this->ParameterList_->get("Use Coarse Pressure Correction",false),"Use coarse projections to correct pressure.");
+            
+            this->aProjection_ = ExtractPtrFromParameterList<XMultiVector >(*this->ParameterList_,"Projection");    
+
+         }
     }
 
     template<class SC,class LO,class GO,class NO>
@@ -132,6 +139,8 @@ namespace FROSch {
     {
         FROSCH_TIMER_START_LEVELID(applyTime,"CoarseOperator::apply");
         static int i = 0;
+        RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
+
         if (!Phi_.is_null() && this->IsComputed_) {
             if (XTmp_.is_null() || XTmp_->getNumVectors() != x.getNumVectors()) {
                 XTmp_ = MultiVectorFactory<SC,LO,GO,NO>::Build(x.getMap(),x.getNumVectors());
@@ -149,8 +158,52 @@ namespace FROSch {
                 YCoarseSolve_ = MultiVectorFactory<SC,LO,GO,NO>::Build(GatheringMaps_[GatheringMaps_.size()-1],y.getNumVectors());
             }
             applyPhiT(*XTmp_,*XCoarseSolve_);
+
             applyCoarseSolve(*XCoarseSolve_,*YCoarseSolve_,mode);
             // If we wanted to use the projection here again we would apply a to phiT and then to the solution after apply coarse solve
+            
+            // We would add a to the paramterlist again and read it here in the coarse operator again. Then we would apply a to phiT
+            // XMultiVectorPtr aCoarseSolve = MultiVectorFactory<SC,LO,GO,NO>::Build(GatheringMaps_[GatheringMaps_.size()-1],x.getNumVectors());
+            // applyPhiT(*a,*aCoarseSolve_);
+
+            if (!this->aProjection_.is_null() && (this->ParameterList_->get("Use Coarse Pressure Correction",false) == true)){
+
+                XMultiVectorPtr aCoarseSolve = MultiVectorFactory<SC,LO,GO,NO>::Build(GatheringMaps_[GatheringMaps_.size()-1],x.getNumVectors());
+                //this->aProjection_->describe(*fancy,VERB_EXTREME);
+                applyPhiT(*this->aProjection_,*aCoarseSolve); // bringing it to a coarse level
+                //aCoarseSolve->describe(*fancy,VERB_EXTREME);
+                // Distribute it with overlap based on overlapping matrix
+                //YOverlap_->describe(*fancy,VERB_EXTREME);
+                // Define constant MVs for dot operations
+                XMultiVectorConstPtr XTmpConst = YCoarseSolve_;
+                XMultiVectorConstPtr aConst = aCoarseSolve;    
+
+                // compute a*y 
+                Teuchos::Array<SC> sumAY(1);
+                aCoarseSolve->dot(*XTmpConst,sumAY);
+                // compute (a^T*a)^-1
+                Teuchos::Array<SC> sumAA(1);
+                aCoarseSolve->dot(*aConst,sumAA);
+                double aint = 1./sumAA[0];
+                SC scaling = aint*sumAY[0]; // scaling for a vector : I * y - scaling * a , with scaling = (a^T*a)^-1 * a * y 
+                //cout << " Processor " << XCoarseSolve_->getMap()->getComm()->getRank() << " SumAA " << sumAA << " sumAY " << sumAY << " aInt " << aint << " scaling " << scaling << endl;
+                //YOverlap_->describe(*fancy,VERB_EXTREME);
+                
+                YCoarseSolve_->update(-scaling,*aConst,1);
+                //cout << " Update XCoarseSolve_ " << endl;
+                //YCoarseSolve_->describe(*fancy,VERB_EXTREME);
+                //YOverlap_->describe(*fancy,VERB_EXTREME);
+
+                // Sanity Check
+                Teuchos::Array<SC> ortho(1);
+                YCoarseSolve_->dot(*aConst,ortho);
+                if(abs(ortho[0]) >= 1.e-12 )
+                    cout << " ########### ORTHO CHECK on proc " << YCoarseSolve_->getMap()->getComm()->getRank() << "= "  << ortho[0] << " ############ " << endl;
+
+                //cout << " Done .. " << endl;
+             
+            }
+            
             applyPhi(*YCoarseSolve_,*XTmp_);
             if (!usePreconditionerOnly && mode != NO_TRANS) {
                 this->K_->apply(*XTmp_,*XTmp_,mode,ScalarTraits<SC>::one(),ScalarTraits<SC>::zero());

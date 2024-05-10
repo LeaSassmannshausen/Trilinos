@@ -98,6 +98,8 @@ namespace FROSch {
         using ConstXMultiVectorPtr          = typename SchwarzOperator<SC,LO,GO,NO>::ConstXMultiVectorPtr;
         using ConstXMultiVectorPtrVecPtr    = typename SchwarzOperator<SC,LO,GO,NO>::ConstXMultiVectorPtrVecPtr;
 
+        using XMultiVectorConstPtr  = const XMultiVectorPtr;
+
         using XImport                       = typename SchwarzOperator<SC,LO,GO,NO>::XImport;
         using XImportPtr                    = typename SchwarzOperator<SC,LO,GO,NO>::XImportPtr;
         using XImportPtrVecPtr              = typename SchwarzOperator<SC,LO,GO,NO>::XImportPtrVecPtr;
@@ -215,6 +217,9 @@ namespace FROSch {
         mutable XMultiVectorPtr YCoarse_;
         mutable XMultiVectorPtr YCoarseSolve_;
         mutable XMultiVectorPtr YCoarseSolveTmp_;
+
+        mutable XMultiVectorPtr aProjection_;
+
 
         ConstXMapPtrVecPtr GatheringMaps_ = ConstXMapPtrVecPtr(0);
         XMapPtrVecPtr MLGatheringMaps_ = XMapPtrVecPtr(0); // AH: Could this be const as well?
