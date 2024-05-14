@@ -172,8 +172,7 @@ namespace FROSch {
                 //this->aProjection_->describe(*fancy,VERB_EXTREME);
                 applyPhiT(*this->aProjection_,*aCoarseSolve); // bringing it to a coarse level
                 double numRows = aCoarseSolve->getGlobalLength();
-                double dofs  = parameterList->get("Dimension",3)
-
+                double dofs  = this->ParameterList_->get("Dimension",3);
 
                 double numVelocityDofs = (numRows) / (dofs+1) * dofs;
 
@@ -210,7 +209,7 @@ namespace FROSch {
                 // Sanity Check
                 Teuchos::Array<SC> ortho(1);
                 YCoarseSolve_->dot(*aConst,ortho);
-                if(abs(ortho[0]) >= 1.e-12 )
+                if(abs(ortho[0]) > 1.e-12 )
                     cout << " ########### ORTHO CHECK on proc " << XTmp_->getMap()->getComm()->getRank() << "= "  << ortho[0] << " ############ " << endl;
 
                 //cout << " Done .. " << endl;
