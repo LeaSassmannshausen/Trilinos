@@ -166,13 +166,25 @@ namespace FROSch {
             // We would add a to the paramterlist again and read it here in the coarse operator again. Then we would apply a to phiT
             // XMultiVectorPtr aCoarseSolve = MultiVectorFactory<SC,LO,GO,NO>::Build(GatheringMaps_[GatheringMaps_.size()-1],x.getNumVectors());
             // applyPhiT(*a,*aCoarseSolve_);
-
             if (!this->aProjection_.is_null() && (this->ParameterList_->get("Use Coarse Pressure Correction",false) == true)){
 
                 XMultiVectorPtr aCoarseSolve = MultiVectorFactory<SC,LO,GO,NO>::Build(GatheringMaps_[GatheringMaps_.size()-1],x.getNumVectors());
                 //this->aProjection_->describe(*fancy,VERB_EXTREME);
                 applyPhiT(*this->aProjection_,*aCoarseSolve); // bringing it to a coarse level
+                double numRows = aCoarseSolve->getGlobalLength();
+                double dofs  = parameterList->get("Dimension",3)
+
+
+                double numVelocityDofs = (numRows) / (dofs+1) * dofs;
+
+                //cout << " numRows = " << numRows << " dofs " << dofs << " Velocity Dofs " << numVelocityDofs << endl;
+
+                for(int i=0; i< aCoarseSolve->getDataNonConst(0).size(); i++)
+                    if(aCoarseSolve->getMap()->getGlobalElement(i) < numVelocityDofs)
+                        aCoarseSolve->getDataNonConst(0)[i]=0.;                // In the velocity case the coarse matrix has
+                
                 //aCoarseSolve->describe(*fancy,VERB_EXTREME);
+
                 // Distribute it with overlap based on overlapping matrix
                 //YOverlap_->describe(*fancy,VERB_EXTREME);
                 // Define constant MVs for dot operations
@@ -199,16 +211,17 @@ namespace FROSch {
                 Teuchos::Array<SC> ortho(1);
                 YCoarseSolve_->dot(*aConst,ortho);
                 if(abs(ortho[0]) >= 1.e-12 )
-                    cout << " ########### ORTHO CHECK on proc " << YCoarseSolve_->getMap()->getComm()->getRank() << "= "  << ortho[0] << " ############ " << endl;
+                    cout << " ########### ORTHO CHECK on proc " << XTmp_->getMap()->getComm()->getRank() << "= "  << ortho[0] << " ############ " << endl;
 
                 //cout << " Done .. " << endl;
-             
+            
             }
             
             applyPhi(*YCoarseSolve_,*XTmp_);
             if (!usePreconditionerOnly && mode != NO_TRANS) {
                 this->K_->apply(*XTmp_,*XTmp_,mode,ScalarTraits<SC>::one(),ScalarTraits<SC>::zero());
             }
+
             y.update(alpha,*XTmp_,beta);
         } else {
             if (i==0) {

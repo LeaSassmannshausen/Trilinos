@@ -1550,7 +1550,7 @@ namespace FROSch {
         } else if (nullSpaceType == NullSpaceType::Elasticity) {
             FROSCH_ASSERT(!nodeList.is_null(),"nodeList.is_null()==true. Cannot build the null space for linear elasticity.");
             FROSCH_ASSERT(nodeList->getNumVectors()==dimension,"nodeList->getNumVectors()!=dimension.");
-            FROSCH_ASSERT(dofsPerNode==dimension,"dofsPerNode==dimension.");
+            FROSCH_ASSERT(dofsPerNode==dimension,"dofsPerNode!=dimension.");
 
             if (dimension==2) {
                 nullSpaceBasis = MultiVectorFactory<SC,LO,GO,NO>::Build(repeatedMap,3);
