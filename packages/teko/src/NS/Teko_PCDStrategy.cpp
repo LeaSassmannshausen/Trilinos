@@ -197,12 +197,13 @@ void PCDStrategy::initializeState(const Teko::BlockedLinearOp & A,BlockPrecondit
       LinearOp invL = invLaplace;
  
       LinearOp invS;
-      if(schurCompOrdering_==false)
-         invS = multiply(iQp,pcd,invL);
+      if (schurCompOrdering_ == false)
+	invS =multiply(iQp, pcd, invL);
       else
-         invS = multiply(invL,pcd,iQp);
+	invS =multiply(invL, pcd, iQp);
 
-      state.addLinearOp("invS",invS);
+      state.addLinearOp("invS", invS);
+    
    }
 
    // build inverse F

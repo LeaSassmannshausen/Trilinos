@@ -64,6 +64,14 @@ namespace FROSch {
         } else if (!this->ParameterList_->get("Combine Values in Overlap","Restricted").compare("Restricted")) {
             Combine_ = Restricted;
         }
+	if (this->ParameterList_->get("Use Pressure Correction",false)) {
+            FROSCH_NOTIFICATION("FROSch::Overlapping Operator",(this->Verbose_) && this->ParameterList_->get("Use Local Pressure Correction",false),"Use local projections to correct pressure.");
+            FROSCH_NOTIFICATION("FROSch::Overlapping Operator",(this->Verbose_) && this->ParameterList_->get("Use Global Pressure Correction",false),"Use global projection to correct pressure.");
+
+            //FROSCH_NOTIFICATION("FROSch::Overlapping Operator",(this->Verbose_),"Use pressure projection to correct pressure:: Local Pressure Correction");<<<<<<<<<<<<s
+
+            this->aProjection_ = ExtractPtrFromParameterList<XMultiVector >(*this->ParameterList_,"Projection");    
+        }
     }
 
     template <class SC,class LO,class GO,class NO>
@@ -163,6 +171,51 @@ namespace FROSch {
 
           YOverlap_->replaceMap(OverlappingMap_);
 
+
+	    // Is it necessary to apply the projection here locally or can we apply it a the end to the global solution. Probably this will be done in the sum operator
+        // Does restricted Schwarz any influence on the pressure
+        // Reading aTmp from paramterfile
+	//  std::cout << " Use local pressure correction " << this->ParameterList_->get("Use Local Pressure Correction",false) << " a projection is null: " << this->aProjection_.is_null() << std::endl; 
+        if (!this->aProjection_.is_null() && (this->ParameterList_->get("Use Local Pressure Correction",false) == true)){
+
+            RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
+            XMultiVectorPtr a = MultiVectorFactory<SC,LO,GO,NO>::Build(OverlappingMatrix_->getDomainMap(),x.getNumVectors());
+            // Distribute it with overlap based on overlapping matrix
+            a->doImport(*this->aProjection_,*Scatter_,INSERT);
+            a->replaceMap(OverlappingMap_);
+	    // a->describe(*fancy,VERB_EXTREME);
+            //YOverlap_->describe(*fancy,VERB_EXTREME);
+            // Define constant MVs for dot operations
+            //XMultiVectorConstPtr yOverlapConst = YOverlap_;
+            // compute a*y 
+            //cout << " Num Vectors in y " << YOverlap_->getNumVectors() << " Num vectors in a " << a->getNumVectors() << " Num vectors in x " << x.getNumVectors() << endl;
+            double sumAY = 0.;
+            for(int i=0; i< a->getDataNonConst(0).size(); i++)
+                sumAY += a->getDataNonConst(0)[i] * YOverlap_->getDataNonConst(0)[i];
+
+            double sumAA = 0.;
+            for(int i=0; i< a->getDataNonConst(0).size(); i++)
+                sumAA += a->getDataNonConst(0)[i] * a->getDataNonConst(0)[i];
+            //Teuchos::Array<SC> sumA(1);
+            //a->dot(*yOverlapConst,sumA);
+            // compute (a^T*a)^-1
+            //Teuchos::Array<SC> sumB(1);
+            //a->dot(*aConst,sumB);
+            double aint = 1./sumAA;
+            SC scaling = aint*sumAY; // scaling for a vector : I * y - scaling * a , with scaling = (a^T*a)^-1 * a * y 
+            //cout << " Processor " << YOverlap_->getMap()->getComm()->getRank() << " SumAA " << sumAA << " sumAY " << sumAY << " aInt " << aint << " scaling " << scaling << endl;
+            //YOverlap_->describe(*fancy,VERB_EXTREME);
+            XMultiVectorConstPtr aConst = a;    
+            //YOverlap_->update(-scaling,*aConst,1);
+            //YOverlap_->describe(*fancy,VERB_EXTREME);
+            for(int i=0; i< a->getDataNonConst(0).size(); i++)
+                YOverlap_->getDataNonConst(0)[i] -= scaling*  a->getDataNonConst(0)[i];
+            // Sanity Check
+            Teuchos::Array<SC> ortho(1);
+            YOverlap_->dot(*aConst,ortho);
+            //if(abs(ortho[0]) >= 1.e-12 )
+            //    cout << " ########### ORTHO CHECK on proc " << YOverlap_->getMap()->getComm()->getRank() << "= "  << ortho[0] << " ############ " << endl;
+          }
           XTmp_->putScalar(ScalarTraits<SC>::zero());
          // END TIMER                                                                                                                                                                 
 
@@ -272,6 +325,41 @@ namespace FROSch {
 
         } // END TIMER                                                                                                                                                                
 
+	// We could use the global approach of the projection and apply it here! Should have same convergence and same number of iterations
+        if (!this->aProjection_.is_null() && (this->ParameterList_->get("Use Global Pressure Correction",false) == true)){
+
+            RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
+            //XMultiVectorPtr aGlobal = MultiVectorFactory<SC,LO,GO,NO>::Build(x.getMap(),x.getNumVectors());
+            // Distribute it with overlap based on overlapping matrix
+            //aGlobal->doImport(*this->aProjection_,*Scatter_,INSERT);
+            //a->replaceMap(OverlappingMap_);
+            //a->describe(*fancy,VERB_EXTREME);
+            //YOverlap_->describe(*fancy,VERB_EXTREME);
+            // Define constant MVs for dot operations
+            XMultiVectorConstPtr XTmpConst = XTmp_;
+            XMultiVectorConstPtr aConst = this->aProjection_;    
+
+            // compute a*y 
+            Teuchos::Array<SC> sumAY(1);
+            this->aProjection_->dot(*XTmpConst,sumAY);
+            // compute (a^T*a)^-1
+            Teuchos::Array<SC> sumAA(1);
+            this->aProjection_->dot(*aConst,sumAA);
+            double aint = 1./sumAA[0];
+            SC scaling = aint*sumAY[0]; // scaling for a vector : I * y - scaling * a , with scaling = (a^T*a)^-1 * a * y 
+            //cout << " Processor " << YOverlap_->getMap()->getComm()->getRank() << " SumAA " << sumAA << " sumAY " << sumAY << " aInt " << aint << " scaling " << scaling << endl;
+            //YOverlap_->describe(*fancy,VERB_EXTREME);
+            XTmp_->update(-scaling,*aConst,1);
+            //YOverlap_->describe(*fancy,VERB_EXTREME);
+
+            // Sanity Check
+            Teuchos::Array<SC> ortho(1);
+            XTmp_->dot(*aConst,ortho);
+            if(abs(ortho[0]) >= 1.e-12 )
+                cout << " ########### ORTHO CHECK on proc " << YOverlap_->getMap()->getComm()->getRank() << "= "  << ortho[0] << " ############ " << endl;
+        }
+
+	
         {
           FROSCH_TIMER_START_LEVELID(applyTime,"y.update()");
         y.update(alpha,*XTmp_,beta);

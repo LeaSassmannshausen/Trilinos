@@ -68,7 +68,9 @@ namespace FROSch {
 
         using XMultiVector          = typename SchwarzOperator<SC,LO,GO,NO>::XMultiVector;
         using XMultiVectorPtr       = typename SchwarzOperator<SC,LO,GO,NO>::XMultiVectorPtr;
+        using XMultiVectorConstPtr  = const XMultiVectorPtr;
 
+      
         using XImportPtr            = typename SchwarzOperator<SC,LO,GO,NO>::XImportPtr;
         using XExportPtr            = typename SchwarzOperator<SC,LO,GO,NO>::XExportPtr;
 
@@ -122,7 +124,9 @@ namespace FROSch {
         mutable XMultiVectorPtr XOverlap_;
         mutable XMultiVectorPtr XOverlapTmp_;
         mutable XMultiVectorPtr YOverlap_;
+        mutable XMultiVectorPtr aProjection_;
 
+      
         XImportPtr Scatter_;
 
         SolverPtr SubdomainSolver_;
