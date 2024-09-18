@@ -189,15 +189,21 @@ void PCDStrategy::initializeState(const Teko::BlockedLinearOp& A,
 
     // build Schur-complement
     // LinearOp pcd = getRequestHandler()->request<Teko::LinearOp>(pcdStr);
-    LinearOp pcd = getRequestHandler()->request<Teko::LinearOp>(RequestMesg(pcdParams_));
+    // std::cout << " Teko initializeState:: Extracting PCD operator " << std::endl;
+
+    // Teuchos::RCP<Teuchos::FancyOStream> fancy = fancyOStream(Teuchos::rcpFromRef(std::cout));
+    // pcd->describe(*fancy,Teuchos::VERB_EXTREME);
+
+    LinearOp pcd = invLib_.getRequestHandler()->request<Teko::LinearOp>(RequestMesg(pcdParams_));
+    
     TEUCHOS_ASSERT(pcd != Teuchos::null);
     LinearOp invL = invLaplace;
 
     LinearOp invS;
     if (schurCompOrdering_ == false)
-      invS = multiply(iQp, pcd, invL);
+      invS = add(C, scale(1.0, multiply(iQp, pcd, invL)));//multiply(iQp, pcd, invL);
     else
-      invS = multiply(invL, pcd, iQp);
+      invS = add(C, scale(1.0, multiply(iQp, pcd, invL))); // multiply(invL, pcd, iQp);
 
     state.addLinearOp("invS", invS);
   }
@@ -298,8 +304,8 @@ void PCDStrategy::initializeFromParameterList(const Teuchos::ParameterList& pl,
   pl.print(DEBUG_STREAM);
   Teko_DEBUG_MSG_END()
 
-      // build velocity inverse factory
-      invFactoryF_ = invLib.getInverseFactory(invFStr);
+  // build velocity inverse factory
+  invFactoryF_ = invLib.getInverseFactory(invFStr);
 
   if (invFStr == invSStr)
     invFactoryS_ = invFactoryF_;
@@ -308,6 +314,9 @@ void PCDStrategy::initializeFromParameterList(const Teuchos::ParameterList& pl,
 
   lapParams_->set("Name", getPressureLaplaceString());
   pcdParams_->set("Name", getPCDString());
+
+  // Safe inverse Library
+  invLib_ = invLib;
 
   // setup a request for required operators
   getRequestHandler()->preRequest<Teko::LinearOp>(getPressureMassString());

@@ -92,7 +92,7 @@
 #endif
 
 // #define Teko_DEBUG_OFF
-#define Teko_DEBUG_INT 5
+#define Teko_DEBUG_INT 10
 
 namespace Teko {
 

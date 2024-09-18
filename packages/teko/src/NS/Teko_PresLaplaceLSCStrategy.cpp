@@ -176,6 +176,7 @@ void PresLaplaceLSCStrategy::initializeState(const BlockedLinearOp& A,
   Teko_DEBUG_SCOPE("PresLaplaceLSCStrategy::initializeState", 10);
 
   std::string velMassStr = getVelocityMassString();
+  std::cout << " STRING OF REQUEST HANDLER OBJECT MASS MATRIX " << velMassStr << std::endl;
 
   const LinearOp F  = getBlock(0, 0, A);
   const LinearOp Bt = getBlock(0, 1, A);
@@ -188,7 +189,7 @@ void PresLaplaceLSCStrategy::initializeState(const BlockedLinearOp& A,
   bool isStabilized = (not isZeroOp(C));
 
   // grab operators from state object
-  LinearOp massMatrix = state->getLinearOp(velMassStr);
+  LinearOp massMatrix = massMatrix_; //state->getLinearOp(velMassStr);
 
   // The logic follows like this
   //    if there is no mass matrix available --> build from F
@@ -253,9 +254,9 @@ void PresLaplaceLSCStrategy::computeInverses(const BlockedLinearOp& A,
   Teko_DEBUG_EXPR(Teuchos::Time invTimer(""));
 
   std::string presLapStr = getPressureLaplaceString();
-
+  std::cout << " STRING OF REQUEST HANDLER OBJECT " << presLapStr << std::endl;
   const LinearOp F       = getBlock(0, 0, A);
-  const LinearOp presLap = state->getLinearOp(presLapStr);
+  const LinearOp presLap = laplaceMatrix_; //state->getLinearOp(presLapStr);
 
   /////////////////////////////////////////////////////////
 
@@ -330,14 +331,28 @@ void PresLaplaceLSCStrategy::initializeFromParameterList(const Teuchos::Paramete
   pl.print(DEBUG_STREAM);
   Teko_DEBUG_MSG_END()
 
-      // build velocity inverse factory
-      invFactoryV_ = invLib.getInverseFactory(invVStr);
+  // build velocity inverse factory
+  invFactoryV_ = invLib.getInverseFactory(invVStr);
   invFactoryP_     = invFactoryV_;  // by default these are the same
   if (invVStr != invPStr)           // if different, build pressure inverse factory
     invFactoryP_ = invLib.getInverseFactory(invPStr);
 
   // set other parameters
   setUseFullLDU(useLDU);
+
+    Teuchos::RCP<Teko::RequestHandler> rh = getRequestHandler();
+
+  if (useMass_) {
+    rh->preRequest<Teko::LinearOp>(Teko::RequestMesg("Velocity Mass Matrix"));
+    Teko::LinearOp mass = rh->request<Teko::LinearOp>(Teko::RequestMesg("Velocity Mass Matrix"));
+    setMassMatrix(mass);
+  }
+  rh->preRequest<Teko::LinearOp>(Teko::RequestMesg("Pressure Laplace Operator"));
+  Teko::LinearOp laplace = rh->request<Teko::LinearOp>(Teko::RequestMesg("Pressure Laplace Operator"));
+  setLaplaceMatrix(laplace);
+
+
+
 }
 
 //! For assiting in construction of the preconditioner

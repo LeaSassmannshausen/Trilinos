@@ -109,14 +109,19 @@ LU2x2InverseOp::LU2x2InverseOp(const BlockedLinearOp& A, const LinearOp& hatInvA
 
 void LU2x2InverseOp::implicitApply(const BlockedMultiVector& x, BlockedMultiVector& y,
                                    const double alpha, const double beta) const {
+
+  //std::cout << " LU2x2InverseOp::implicitApply " << std::endl;
+  Teuchos::RCP<FancyOStream> fancy = fancyOStream(Teuchos::rcpFromRef(std::cout));
+  //describe(*fancy,Teuchos::VERB_EXTREME);
   // get src blocks
   MultiVector f = getBlock(0, x);  // f
   MultiVector g = getBlock(1, x);  // g
 
   // get extra storage
-  MultiVector ps = deepcopy(g);  // this is need b/c of p = -inv(S)*p
+  MultiVector ps = deepcopy(g);  // this is need b/c of p = -inv(S)*g
+  MultiVector us = deepcopy(f);  // this is need b/c of f = f -inv(S)BT*p
 
-  // get destination blocks
+ // get destination blocks
   MultiVector u = getBlock(0, y);  // u (u^)
   MultiVector p = getBlock(1, y);  // p (p^)
 
@@ -139,10 +144,16 @@ void LU2x2InverseOp::implicitApply(const BlockedMultiVector& x, BlockedMultiVect
   LinearOp invA00_A01 = Thyra::multiply(tildeInvA00_, A01_);
 
   // compute actual product
-  applyOp(hatInvA00_, f, uc);              // u   = inv(A_00) * f
-  applyOp(A10_, uc, ps, -1.0, 1.0);        // ps += -A_10*u
-  applyOp(invS_, ps, pc, -1.0);            // p   = -inv(S)*ps
-  applyOp(invA00_A01, pc, uc, -1.0, 1.0);  // u  += -inv(A_00)*A_01*p
+  // applyOp(hatInvA00_, f, uc);              // u   = inv(A_00) * f
+  // applyOp(A10_, uc, ps, -1.0, 1.0);        // ps += -A_10*u
+  // applyOp(invS_, ps, pc, -1.0);            // p   = -inv(S)*ps
+  // applyOp(invA00_A01, pc, uc, -1.0, 1.0);  // u  += -inv(A_00)*A_01*p
+
+  // applyOp(hatInvA00_, f, uc);              // u   = inv(A_00) * f
+  // applyOp(A10_, uc, ps, -1.0, 1.0);        // ps += -A_10*u
+  applyOp(invS_, ps, pc, -1.0);            // p   = -inv(S)*g ; ps = g
+  applyOp(A01_, pc, us, -1.0, 1.0);  // f  = f-inv(A_00)*A_01*p
+  applyOp(hatInvA00_, us, uc, 1.0);  // u  = inv(A_00)*\tilde{f}
 
   // scale result by alpha
   if (beta != 0) {

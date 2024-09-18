@@ -74,6 +74,7 @@ void BlockImplicitLinearOp::applyImpl(const Thyra::EOpTransp M_trans,
                                       const Thyra::MultiVectorBase<double>& x,
                                       const Teuchos::Ptr<Thyra::MultiVectorBase<double> >& y,
                                       const double alpha, const double beta) const {
+
   // cast source vector
   RCP<const ProductMultiVectorBase<double> > src =
       rcp_dynamic_cast<const ProductMultiVectorBase<double> >(rcpFromRef(x));

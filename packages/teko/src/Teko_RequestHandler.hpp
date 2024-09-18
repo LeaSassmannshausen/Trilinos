@@ -76,6 +76,20 @@ class RequestHandler {
    */
   void addRequestCallback(const Teuchos::RCP<RequestCallbackBase> &callback);
 
+  /** Update a call back object to handle requests
+   *
+   * \param[in] callback Ref-count-pointer to a call back object.
+   */
+  void updateRequestCallback(const Teuchos::RCP<RequestCallbackBase> &callback, const int i) const{
+    callbacks_[i] = callback;
+    // std::cout << " CALL BACK:: set request HANDLER ++++++++++++++++++++ "<< std::endl;
+    // Teuchos::RCP<Teuchos::FancyOStream> fancy = fancyOStream(Teuchos::rcpFromRef(std::cout));
+
+    // LinearOp pcd = request<Teko::LinearOp>(RequestMesg("PCD Operator"));
+    // pcd->describe(*fancy,Teuchos::VERB_EXTREME);
+  };
+
+
   /** Get the data for a particular request.
    *
    * \param[in] rm The message describing the request.

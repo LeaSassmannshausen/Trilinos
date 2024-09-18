@@ -48,6 +48,8 @@
 #define __Teko_PCDStrategy_hpp__
 
 #include "Teko_LU2x2Strategy.hpp"
+#include "Teko_Utilities.hpp"
+#include "Teuchos_FancyOStream.hpp"
 
 // Teuchos includes
 #include "Teuchos_Time.hpp"
@@ -164,6 +166,9 @@ class PCDStrategy : public LU2x2Strategy {
   Teuchos::RCP<InverseFactory> invFactoryS_;
 
   DiagonalType massInverseType_;
+
+  // Inverse Library
+  InverseLibrary invLib_;
 
   //! Passed to application for construction of laplace operator
   Teuchos::RCP<Teuchos::ParameterList> lapParams_;

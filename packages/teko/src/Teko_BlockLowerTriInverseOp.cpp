@@ -85,6 +85,7 @@ BlockLowerTriInverseOp::BlockLowerTriInverseOp(BlockedLinearOp& L,
  */
 void BlockLowerTriInverseOp::implicitApply(const BlockedMultiVector& src, BlockedMultiVector& dst,
                                            const double alpha, const double beta) const {
+ 
   int blocks = blockCount(src);
 
   TEUCHOS_ASSERT(blocks == blockRowCount(L_));

@@ -266,6 +266,9 @@ void InvLSCStrategy::initializeState(const BlockedLinearOp& A, LSCPrecondState* 
     Teko_DEBUG_MSG(
         "LSC::initializeState Build Scaling <mass> type \"" << getDiagonalName(scaleType_) << "\"",
         1);
+    //  Teuchos::RCP<Teuchos::FancyOStream> fancy = fancyOStream(Teuchos::rcpFromRef(std::cout));
+    //   massMatrix_->describe(*fancy,Teuchos::VERB_EXTREME);
+
     state->invMass_ = getInvDiagonalOp(massMatrix_, scaleType_);
   }
   // else "invMass_" should be set and there is no reason to rebuild it

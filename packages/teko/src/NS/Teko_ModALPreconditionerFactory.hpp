@@ -109,6 +109,7 @@ class ModALPrecondState : public BlockPreconditionerState {
 
 class ModALPreconditionerFactory : public BlockPreconditionerFactory {
  public:
+  //! Default constructor
   ModALPreconditionerFactory();
 
   ModALPreconditionerFactory(const Teuchos::RCP<InverseFactory>& factory);

@@ -64,6 +64,7 @@
 #include "Teko_ProbingPreconditionerFactory.hpp"
 #endif
 #include "Teko_IdentityPreconditionerFactory.hpp"
+#include "NS/Teko_ModALPreconditionerFactory.hpp"
 #include "NS/Teko_LSCPreconditionerFactory.hpp"
 #include "NS/Teko_SIMPLEPreconditionerFactory.hpp"
 #include "NS/Teko_TimingsSIMPLEPreconditionerFactory.hpp"
@@ -268,6 +269,7 @@ void PreconditionerFactory::addPreconditionerFactory(const std::string &name,
 void PreconditionerFactory::initializePrecFactoryBuilder() {
   RCP<Cloneable> clone;
 
+
   // add various preconditioners to factory
   clone = rcp(new AutoClone<LU2x2PreconditionerFactory>());
   precFactoryBuilder_.addClone("Block LU2x2", clone);
@@ -292,6 +294,13 @@ void PreconditionerFactory::initializePrecFactoryBuilder() {
 
   clone = rcp(new AutoClone<NS::TimingsSIMPLEPreconditionerFactory>());
   precFactoryBuilder_.addClone("NS SIMPLE-Timed", clone);
+
+  // ---------
+  // Augmented lagrange
+  clone = rcp(new AutoClone<NS::ModALPreconditionerFactory>());
+  precFactoryBuilder_.addClone("Modified AL", clone);
+  // ---------
+
 
   clone = rcp(new AutoClone<IterativePreconditionerFactory>());
   precFactoryBuilder_.addClone("Iterative Preconditioner", clone);

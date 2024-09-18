@@ -171,7 +171,7 @@ namespace FROSch {
                 XMultiVectorPtr aCoarseSolve = MultiVectorFactory<SC,LO,GO,NO>::Build(GatheringMaps_[GatheringMaps_.size()-1],x.getNumVectors());
                 //this->aProjection_->describe(*fancy,VERB_EXTREME);
                 applyPhiT(*this->aProjection_,*aCoarseSolve); // bringing it to a coarse level
-                double numRows = aCoarseSolve->getGlobalLength();
+                /*double numRows = aCoarseSolve->getGlobalLength();
                 double dofs  = this->ParameterList_->get("Dimension",3);
 
                 double numVelocityDofs = (numRows) / (dofs+1) * dofs;
@@ -181,7 +181,7 @@ namespace FROSch {
                 for(int i=0; i< aCoarseSolve->getDataNonConst(0).size(); i++)
                     if(aCoarseSolve->getMap()->getGlobalElement(i) < numVelocityDofs)
                         aCoarseSolve->getDataNonConst(0)[i]=0.;                // In the velocity case the coarse matrix has
-                
+                */
                 //aCoarseSolve->describe(*fancy,VERB_EXTREME);
 
                 // Distribute it with overlap based on overlapping matrix
@@ -217,6 +217,16 @@ namespace FROSch {
             }
             
             applyPhi(*YCoarseSolve_,*XTmp_);
+            if (!this->aProjection_.is_null() && (this->ParameterList_->get("Use Coarse Pressure Correction",false) == true)){
+                XMultiVectorConstPtr aConst = this->aProjection_;    
+                Teuchos::Array<SC> ortho(1);
+                XTmp_->dot(*aConst,ortho);
+                if(abs(ortho[0]) > 1.e-12 ){
+                    if(XTmp_->getMap()->getComm()->getRank() == 0)
+                        cout << " ########### ORTHO CHECK after Coarse Solve " << XTmp_->getMap()->getComm()->getRank() << "= "  << ortho[0] << " ############ " << endl;            
+                }
+            }
+
             if (!usePreconditionerOnly && mode != NO_TRANS) {
                 this->K_->apply(*XTmp_,*XTmp_,mode,ScalarTraits<SC>::one(),ScalarTraits<SC>::zero());
             }

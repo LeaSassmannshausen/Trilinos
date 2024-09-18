@@ -65,6 +65,7 @@ DiagonalPreconditionerOp::DiagonalPreconditionerOp(
 
 void DiagonalPreconditionerOp::implicitApply(const MultiVector& x, MultiVector& y,
                                              const double alpha, const double beta) const {
+  
   // Get the Multivectors into Epetra land
   // NTS: Thyra inexplicably wants maps, even when they are completely unecessary.
   const Epetra_Map& rangemap_  = BDP_->OperatorRangeMap();

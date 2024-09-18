@@ -185,11 +185,13 @@ void StratimikosFactory::initializePrec_Thyra(
 
     // build preconditioner factory
     invFactory_ = invLib_->getInverseFactory(paramList_->get<std::string>("Inverse Type"));
-
     timer.stop();
     if (mediumVerbosity)
       Teuchos::OSTab(out).o() << "> Creation time = " << timer.totalElapsedTime() << " sec\n";
   }
+  // NEW REMOVE
+  // invLib_->setRequestHandler(reqHandler_);
+  // invFactory_ = invLib_->getInverseFactory(paramList_->get<std::string>("Inverse Type"));
 
   if (mediumVerbosity) *out << "\nComputing the preconditioner ...\n";
 

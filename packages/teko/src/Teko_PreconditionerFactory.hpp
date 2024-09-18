@@ -220,7 +220,8 @@ class PreconditionerFactory : public virtual Thyra::PreconditionerFactoryBase<do
   //@}
 
   //! Set the request handler with pointers to the appropriate callbacks
-  void setRequestHandler(const Teuchos::RCP<RequestHandler> &rh) { callbackHandler_ = rh; }
+  void setRequestHandler(const Teuchos::RCP<RequestHandler> &rh) { 
+    callbackHandler_ = rh; }
 
   //! Get the request handler with pointers to the appropriate callbacks
   Teuchos::RCP<RequestHandler> getRequestHandler() const { return callbackHandler_; }

@@ -116,6 +116,10 @@ class StratimikosFactory : public Thyra::PreconditionerFactoryBase<double> {
    */
   Teuchos::RCP<Teko::RequestHandler> getRequestHandler() const { return reqHandler_; }
 
+  Teuchos::RCP<Teko::InverseLibrary> getInverseLibrary() const { return invLib_; }
+
+  Teuchos::RCP<Teko::InverseFactory> getInverseFactory() const { return invFactory_; }
+
   //! Get the decomposition vector in use by this factory
   const std::vector<int> &getDecomposition() const { return decomp_; }
 

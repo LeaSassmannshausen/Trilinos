@@ -28,6 +28,10 @@ namespace NS {
 ModALPrecondState::ModALPrecondState()
     : pressureMassMatrix_(Teuchos::null), invPressureMassMatrix_(Teuchos::null) {}
 
+
+ModALPreconditionerFactory::ModALPreconditionerFactory()
+    : isSymmetric_(true) {}
+
 ModALPreconditionerFactory::ModALPreconditionerFactory(const Teuchos::RCP<InverseFactory>& factory)
     : invOpsStrategy_(Teuchos::rcp(new InvModALStrategy(factory))), isSymmetric_(true) {}
 

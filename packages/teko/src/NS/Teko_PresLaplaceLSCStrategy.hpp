@@ -145,6 +145,14 @@ class PresLaplaceLSCStrategy : public LSCStrategy {
    */
   virtual LinearOp getInvMass(const BlockedLinearOp &A, BlockPreconditionerState &state) const;
 
+
+  //! set the mass matrix to use in computing the scaling
+  virtual void setMassMatrix(const LinearOp &mass) { massMatrix_ = mass; }
+
+  //! set the mass matrix to use in computing the scaling
+  virtual void setLaplaceMatrix(const LinearOp &laplace) { laplaceMatrix_ = laplace; }
+
+
   /** Get the \f$H\f$ scaling matrix.
    *
    * \param[in] A The linear operator to be preconditioned by LSC.
@@ -209,6 +217,10 @@ class PresLaplaceLSCStrategy : public LSCStrategy {
   bool isSymmetric_;
   int eigSolveParam_;
   bool useFullLDU_;
+
+  LinearOp massMatrix_;
+  LinearOp laplaceMatrix_;
+  LinearOp userPresStabMat_;
 
   // scaling operator parameters
   bool useMass_;

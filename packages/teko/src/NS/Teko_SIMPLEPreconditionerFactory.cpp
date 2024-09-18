@@ -69,7 +69,7 @@ SIMPLEPreconditionerFactory ::SIMPLEPreconditionerFactory(const RCP<InverseFacto
       invPrsFactory_(inverse),
       alpha_(alpha),
       fInverseType_(Diagonal),
-      useMass_(false) {}
+      useMass_(false) {std::cout << " SIMPLEPreconditionerFactory:: inverse "<< std::endl; }
 
 SIMPLEPreconditionerFactory ::SIMPLEPreconditionerFactory(const RCP<InverseFactory>& invVFact,
                                                           const RCP<InverseFactory>& invPFact,
@@ -78,10 +78,10 @@ SIMPLEPreconditionerFactory ::SIMPLEPreconditionerFactory(const RCP<InverseFacto
       invPrsFactory_(invPFact),
       alpha_(alpha),
       fInverseType_(Diagonal),
-      useMass_(false) {}
+      useMass_(false) {std::cout << " SIMPLEPreconditionerFactory:: inverse V, P  "<< std::endl;}
 
 SIMPLEPreconditionerFactory::SIMPLEPreconditionerFactory()
-    : alpha_(1.0), fInverseType_(Diagonal), useMass_(false) {}
+    : alpha_(1.0), fInverseType_(Diagonal), useMass_(false) {std::cout << " SIMPLEPreconditionerFactory:: empty "<< std::endl;}
 
 // Use the factory to build the preconditioner (this is where the work goes)
 LinearOp SIMPLEPreconditionerFactory ::buildPreconditionerOperator(

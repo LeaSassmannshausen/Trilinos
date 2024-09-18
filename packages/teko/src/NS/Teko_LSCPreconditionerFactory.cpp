@@ -95,6 +95,7 @@ LSCPreconditionerFactory::LSCPreconditionerFactory() : isSymmetric_(true) {}
 // initialize a newly created preconditioner object
 LinearOp LSCPreconditionerFactory::buildPreconditionerOperator(
     BlockedLinearOp& blockOp, BlockPreconditionerState& state) const {
+
   Teko_DEBUG_SCOPE("LSCPreconditionerFactory::buildPreconditionerOperator", 10);
   Teko_DEBUG_EXPR(Teuchos::Time timer(""));
   Teko_DEBUG_EXPR(Teuchos::Time totalTimer(""));
