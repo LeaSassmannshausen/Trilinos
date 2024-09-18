@@ -1,5 +1,5 @@
 /*
- * Copyright(C) 1999-2020, 2022 National Technology & Engineering Solutions
+ * Copyright(C) 1999-2020, 2022, 2023 National Technology & Engineering Solutions
  * of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
  * NTESS, the U.S. Government retains certain rights in this software.
  *
@@ -12,7 +12,19 @@
 #include <stdio.h>  // for printf, NULL, fprintf, etc
 #include <string.h> // for strcmp, strlen
 
-static int read_intTF(), read_long(), read_double(), read_string();
+static int read_intTF(char *ptr, /* pointer to string to parse */
+                      int  *val  /* value returned */
+);
+
+static int read_double(char   *ptr, /* pointer to string to parse */
+                       double *val  /* value returned */
+);
+static int read_long(char *ptr, /* pointer to string to parse */
+                     long *val  /* value returned */
+);
+static int read_string(char *ptr, /* pointer to string to parse */
+                       char *val  /* value returned */
+);
 
 int    SIMULATOR         = 0;     /* Run simulator? In what mode? */
 int    SIMULATION_ITNS   = 1;     /* # iterations simulator is to imitate. */
@@ -179,58 +191,57 @@ void read_params(FILE *pfile /* file with new user parameters */
       &LANCZOS_TIME,  &TIME_KERNELS,      &HEAVY_MATCH,      &EXPERT,        &OUT_ASSIGN_INV,
       &IN_ASSIGN_INV, &VERTEX_SEPARATOR,  &VERTEX_COVER,     &FLATTEN,       &CONNECTED_DOMAINS};
 
-  static char *ipnames[] = { /* names of integer parameters */
-                             "ECHO",
-                             "NSQRTS",
-                             "ARCHITECTURE",
-                             "LANCZOS_SO_INTERVAL",
-                             "LANCZOS_MAXITNS",
-                             "MAPPING_TYPE",
-                             "COARSE_NLEVEL_RQI",
-                             "KL_METRIC",
-                             "KL_NTRIES_BAD",
-                             "KL_BAD_MOVES",
-                             "COARSE_NLEVEL_KL",
-                             "NPERTURB",
-                             "OPT3D_NTRIES",
-                             "DEBUG_CONNECTED",
-                             "DEBUG_PERTURB",
-                             "DEBUG_ASSIGN",
-                             "DEBUG_INERTIAL",
-                             "DEBUG_OPTIMIZE",
-                             "DEBUG_BPMATCH",
-                             "DEBUG_COARSEN",
-                             "DEBUG_EVECS",
-                             "DEBUG_KL",
-                             "DEBUG_MEMORY",
-                             "DEBUG_INPUT",
-                             "DEBUG_PARAMS",
-                             "DEBUG_TRACE",
-                             "WARNING_EVECS",
-                             "OUTPUT_TIME",
-                             "OUTPUT_METRICS",
-                             "SIMULATION_ITNS",
-                             "DEBUG_SIMULATOR",
-                             "LANCZOS_CONVERGENCE_MODE",
-                             "RQI_CONVERGENCE_MODE",
-                             "REFINE_PARTITION",
-                             "INTERNAL_VERTICES",
-                             "LANCZOS_TYPE",
-                             "MATCH_TYPE",
-                             "DEBUG_INTERNAL",
-                             "DEBUG_REFINE_PART",
-                             "DEBUG_REFINE_MAP",
-                             "DEBUG_MACH_PARAMS",
-                             "DEBUG_COVER",
-                             "LANCZOS_SO_PRECISION",
-                             "COARSE_KLV",
-                             "COARSE_BPM",
-                             "KL_MAX_PASS",
+  static char *ipnames[] = {/* names of integer parameters */
+                            "ECHO",
+                            "NSQRTS",
+                            "ARCHITECTURE",
+                            "LANCZOS_SO_INTERVAL",
+                            "LANCZOS_MAXITNS",
+                            "MAPPING_TYPE",
+                            "COARSE_NLEVEL_RQI",
+                            "KL_METRIC",
+                            "KL_NTRIES_BAD",
+                            "KL_BAD_MOVES",
+                            "COARSE_NLEVEL_KL",
+                            "NPERTURB",
+                            "OPT3D_NTRIES",
+                            "DEBUG_CONNECTED",
+                            "DEBUG_PERTURB",
+                            "DEBUG_ASSIGN",
+                            "DEBUG_INERTIAL",
+                            "DEBUG_OPTIMIZE",
+                            "DEBUG_BPMATCH",
+                            "DEBUG_COARSEN",
+                            "DEBUG_EVECS",
+                            "DEBUG_KL",
+                            "DEBUG_MEMORY",
+                            "DEBUG_INPUT",
+                            "DEBUG_PARAMS",
+                            "DEBUG_TRACE",
+                            "WARNING_EVECS",
+                            "OUTPUT_TIME",
+                            "OUTPUT_METRICS",
+                            "SIMULATION_ITNS",
+                            "DEBUG_SIMULATOR",
+                            "LANCZOS_CONVERGENCE_MODE",
+                            "RQI_CONVERGENCE_MODE",
+                            "REFINE_PARTITION",
+                            "INTERNAL_VERTICES",
+                            "LANCZOS_TYPE",
+                            "MATCH_TYPE",
+                            "DEBUG_INTERNAL",
+                            "DEBUG_REFINE_PART",
+                            "DEBUG_REFINE_MAP",
+                            "DEBUG_MACH_PARAMS",
+                            "DEBUG_COVER",
+                            "LANCZOS_SO_PRECISION",
+                            "COARSE_KLV",
+                            "COARSE_BPM",
+                            "KL_MAX_PASS",
 #if 0
     , "PROJECTION_AXIS",
 #endif
-                             NULL
-  };
+                            NULL};
 
   static int *iparams[] = {/* pointers to integer parameters */
                            &ECHO,

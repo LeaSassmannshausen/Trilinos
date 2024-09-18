@@ -22,10 +22,10 @@ ADD_SUBDIRECTORIES(
   ImportExport
   ImportExport2
   inout
-  KokkosIntegration
   Map
   MatrixMatrix
   Merge
+  MPIAdvance
   MultiVector
   Node
   Operator
@@ -37,7 +37,6 @@ ADD_SUBDIRECTORIES(
   Tsqr
   )
 
-ASSERT_DEFINED(${PACKAGE_NAME}_ENABLE_Epetra)
-IF (${PACKAGE_NAME}_ENABLE_Epetra)
+IF (Tpetra_ENABLE_DEPRECATED_CODE AND ${PACKAGE_NAME}_ENABLE_Epetra)
   ADD_SUBDIRECTORY(EpetraRowMatrix)
 ENDIF()

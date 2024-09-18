@@ -1,44 +1,11 @@
-
-//@HEADER
-// ************************************************************************
+// @HEADER
+// *****************************************************************************
+//               ShyLU: Scalable Hybrid LU Preconditioner and Solver
 //
-//               ShyLU: Hybrid preconditioner package
-//                 Copyright 2012 Sandia Corporation
-//
-// Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-// the U.S. Government retains certain rights in this software.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Michael A. Heroux (maherou@sandia.gov)
-//
-// ************************************************************************
-//@HEADER
+// Copyright 2011 NTESS and the ShyLU contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
+// @HEADER
 
 /** \file shylu_factor.cpp
 
@@ -131,10 +98,10 @@ int create_matrices
     // Find the required no of diagonals
     /*int Sdiag = (int) SNumGlobalCols * Sdiagfactor;
     //std::cout << "No of diagonals in Sbar =" << Sdiag << std::endl;
-    Sdiag = MIN(Sdiag, SNumGlobalCols-1);*/
+    Sdiag = SHYLU_CORE_MIN(Sdiag, SNumGlobalCols-1);*/
     int Sdiag = (int) Snr * Sdiagfactor;
-    Sdiag = MIN(Sdiag, Snr-1);
-    Sdiag = MAX(Sdiag, 0);
+    Sdiag = SHYLU_CORE_MIN(Sdiag, Snr-1);
+    Sdiag = SHYLU_CORE_MAX(Sdiag, 0);
     //std::cout << "No of diagonals in Sbar =" << Sdiag << std::endl;
     //assert (Sdiag <= SNumGlobalCols-1);
     if (Snr != 0) assert (Sdiag <= Snr-1);
@@ -322,7 +289,7 @@ int extract_matrices
     double *LeftValues = new double[data->lmax];
     int *RightIndex = new int[data->rmax];
     double *RightValues = new double[data->rmax];
-    int err;
+    int err = 0;
     int lcnt, rcnt ;
     int gcid;
     int gid;
@@ -461,8 +428,8 @@ int extract_matrices
         //config->dm.print(5, "Done R fillcomplete");
 
         int Sdiag = (int) data->Snr * Sdiagfactor;
-        Sdiag = MIN(Sdiag, data->Snr-1);
-        Sdiag = MAX(Sdiag, 0);
+        Sdiag = SHYLU_CORE_MIN(Sdiag, data->Snr-1);
+        Sdiag = SHYLU_CORE_MAX(Sdiag, 0);
 
         // Add the diagonals to Sg
         for (int i = 0; config->schurApproxMethod == 1 && i < nrows ; i++)
@@ -474,8 +441,8 @@ int extract_matrices
             rcnt = 0;
             //TODO Will be trouble if SNumGlobalCols != Snc
             //assert(SNumGlobalCols == Snc);
-            //for (int j = MAX(i-Sdiag,0) ; j<MIN(SNumGlobalCols, i+Sdiag); j++)
-            for (int j = MAX(i-Sdiag, 0) ; j < MIN(data->Snr, i+Sdiag); j++)
+            //for (int j = SHYLU_CORE_MAX(i-Sdiag,0) ; j<SHYLU_CORE_MIN(SNumGlobalCols, i+Sdiag); j++)
+            for (int j = SHYLU_CORE_MAX(i-Sdiag, 0) ; j < SHYLU_CORE_MIN(data->Snr, i+Sdiag); j++)
             {
                 // find the adjacent columns from the row map of S
                 //assert (j >= 0 && j < Snr);
@@ -516,8 +483,7 @@ int extract_matrices
         //Rptr->ColMap().NumMyElements() << std::endl;
     // ]
 
-    return 0;
-
+    return err;
 }
 
 /* Find the DBBD form */
@@ -849,6 +815,7 @@ int shylu_factor(Epetra_CrsMatrix *A, shylu_symbolic *ssym, shylu_data *data,
     fact_time.start();
 #endif
 
+    int err = 0;
     Teuchos::RCP<Epetra_LinearProblem> LP = ssym->LP;
     Teuchos::RCP<Amesos_BaseSolver> Solver = ssym->Solver;
     Teuchos::RCP<Ifpack_Preconditioner> ifpackSolver = ssym->ifSolver;
@@ -1022,7 +989,7 @@ int shylu_factor(Epetra_CrsMatrix *A, shylu_symbolic *ssym, shylu_data *data,
         }
         std::string schurPrec = config->schurPreconditioner;
 
-        int err = data->innersolver->SetUserOperator
+        err = data->innersolver->SetUserOperator
                     (data->schur_op.get());
         assert (err == 0);
 
@@ -1056,7 +1023,7 @@ int shylu_factor(Epetra_CrsMatrix *A, shylu_symbolic *ssym, shylu_data *data,
         // Doing an inexact Schur complement
         if (config->libName == "Belos")
         {
-            int err = data->innersolver->SetUserMatrix
+            err = data->innersolver->SetUserMatrix
                         (data->Sbar.get());
             assert (err == 0);
 
@@ -1100,5 +1067,5 @@ int shylu_factor(Epetra_CrsMatrix *A, shylu_symbolic *ssym, shylu_data *data,
     std::cout << " Shylu_Factor(" << myPID << ") :: Total Time" << fact_time.totalElapsedTime() << std::endl;
     fact_time.reset();
 #endif
-    return 0;
+    return err;
 }

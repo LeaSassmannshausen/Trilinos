@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8; mode: python; py-indent-offset: 4; py-continuation-offset: 4 -*-
 """
 """
@@ -151,11 +151,11 @@ class TrilinosPRConfigurationInstallationTest(TestCase):
         """
         output = argparse.Namespace(
             source_repo_url="https://github.com/trilinos/Trilinos",
-            source_branch_name="source_branch_name",
             target_repo_url="https://github.com/trilinos/Trilinos",
             target_branch_name="develop",
-            pullrequest_build_name="Trilinos-pullrequest-gcc-8.3.0-installation-testing",
-            genconfig_build_name="rhel7_sems-gnu-8.3.0-openmpi-1.10.1-openmp_release-debug_static_no-kokkos-arch_no-asan_no-complex_no-fpic_mpi_no-pt_no-rdc_trilinos-pr",
+            pullrequest_build_name="Trilinos-pullrequest-gcc-installation-testing",
+            genconfig_build_name="rhel8_sems-gnu-openmpi_release_static_no-kokkos-arch_no-asan_no-complex_no-fpic_mpi_no-pt_no-rdc_no-package-enables",
+            dashboard_build_name="gnu-openmpi_release_static",
             pullrequest_cdash_track="Pull Request",
             jenkins_job_number=99,
             pullrequest_number='0000',
@@ -173,7 +173,9 @@ class TrilinosPRConfigurationInstallationTest(TestCase):
             max_cores_allowed=12,
             num_concurrent_tests=-1,
             ccache_enable=False,
-            dry_run = False
+            dry_run = False,
+            use_explicit_cachefile = False,
+            extra_configure_args = ""
         )
         return output
 

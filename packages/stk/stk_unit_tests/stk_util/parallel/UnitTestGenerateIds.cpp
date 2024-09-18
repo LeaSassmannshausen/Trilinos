@@ -187,7 +187,6 @@ TEST(GeneratedIds, findUniqueIdAcrossProcs)
     }
 
     checkUniqueIds(myIds, idsObtained, mpiInfo);
-    writeIdsToFile("ids_", mpiInfo.getProcId(), myIds, idsObtained);
 
     for (size_t i=0;i<idsObtained.size();i++)
     {
@@ -443,7 +442,8 @@ void getIdUsageAcrossAllProcs(std::vector< std::vector<uint64_t> > &idsToComm, s
                     MPI_Send(&numItemsToComm, 1, sierra::MPI::Datatype<uint64_t>::type(), j, mpiInfo.getNumProcs()*i+j, mpiInfo.getMpiComm());
                     if ( numItemsToComm > 0 )
                     {
-                        MPI_Send(&idsToComm[j][0], numItemsToComm, sierra::MPI::Datatype<uint64_t>::type(), j, mpiInfo.getNumProcs()*i+j, mpiInfo.getMpiComm());
+                      MPI_Send(idsToComm[j].data(), numItemsToComm, sierra::MPI::Datatype<uint64_t>::type(), j,
+                          mpiInfo.getNumProcs() * i + j, mpiInfo.getMpiComm());
                     }
                 }
             }
@@ -457,7 +457,8 @@ void getIdUsageAcrossAllProcs(std::vector< std::vector<uint64_t> > &idsToComm, s
             {
                 std::vector<uint64_t> idsFromOtherProc(numItemsToReceive,0);
                 MPI_Request request;
-                MPI_Irecv(&idsFromOtherProc[0], numItemsToReceive, sierra::MPI::Datatype<uint64_t>::type(), i, mpiInfo.getNumProcs()*i+mpiInfo.getProcId(), mpiInfo.getMpiComm(), &request);
+                MPI_Irecv(idsFromOtherProc.data(), numItemsToReceive, sierra::MPI::Datatype<uint64_t>::type(), i,
+                    mpiInfo.getNumProcs() * i + mpiInfo.getProcId(), mpiInfo.getMpiComm(), &request);
                 MPI_Status status2;
                 MPI_Wait(&request, &status2);
                 idsInUseAcrossAllProcsInMyRange.insert(idsInUseAcrossAllProcsInMyRange.end(), idsFromOtherProc.begin(), idsFromOtherProc.end());
@@ -596,7 +597,7 @@ void respondToRootProcessorAboutIdsOwnedOnThisProc(const int root, const uint64_
             }
         }
         int *rbuff = 0;
-        MPI_Reduce(&areIdsBeingused[0], rbuff, numIdsToGet, MPI_INT, MPI_SUM, root, comm);
+        MPI_Reduce(areIdsBeingused.data(), rbuff, numIdsToGet, MPI_INT, MPI_SUM, root, comm);
     }
 }
 
@@ -609,7 +610,7 @@ void retrieveIds(const INTMPI root, uint64_t id, MPI_Comm comm, uint64_t numIdsT
     {
         MPI_Bcast(&numIdsToGetPerProc, 1, sierra::MPI::Datatype<uint64_t>::type(), root, comm);
         std::vector<uint64_t> zeroids(numIdsToGetPerProc,0);
-        MPI_Reduce(&zeroids[0], &areIdsBeingUsed[0], numIdsToGetPerProc, MPI_INT, MPI_SUM, root, comm);
+        MPI_Reduce(zeroids.data(), areIdsBeingUsed.data(), numIdsToGetPerProc, MPI_INT, MPI_SUM, root, comm);
     }
 }
 
@@ -898,6 +899,7 @@ void generate_ids(const uint64_t maxId, const std::vector<uint64_t> &idsInUse, s
 
     if ( !uniqueIds.empty() )
     {
+        uniqueIdsFound.reserve(numIdsNeeded);
         for (uint64_t i=myIndexStart;i<myIndexEnd;i++)
         {
             if ( !std::binary_search(idsInUseAcrossAllProcsInMyRange.begin(), idsInUseAcrossAllProcsInMyRange.end(), i) )
@@ -958,7 +960,8 @@ void terminateIdRequestForThisProc(INTMPI root, MPI_Comm comm)
 void getAvailableIds(const std::vector<uint64_t> &myIds, uint64_t numIdsNeeded, std::vector<uint64_t> &idsObtained, uint64_t &startingIdToSearchForNewIds, const uint64_t maxId, const MpiInfo& mpiInfo)
 {
     std::vector<uint64_t> receivedInfo(mpiInfo.getNumProcs(),0);
-    MPI_Allgather(&numIdsNeeded, 1, sierra::MPI::Datatype<uint64_t>::type(), &receivedInfo[0], 1, sierra::MPI::Datatype<uint64_t>::type(), mpiInfo.getMpiComm());
+    MPI_Allgather(&numIdsNeeded, 1, sierra::MPI::Datatype<uint64_t>::type(), receivedInfo.data(), 1,
+        sierra::MPI::Datatype<uint64_t>::type(), mpiInfo.getMpiComm());
 
     std::vector<uint64_t> sortedIds(myIds.begin(), myIds.end());
     std::sort(sortedIds.begin(), sortedIds.end());
@@ -989,7 +992,8 @@ void getAvailableIds_exp(const std::vector<uint64_t> &myIds, uint64_t numIdsNeed
 {
     INTMPI numprocs = mpiInfo.getNumProcs();
     std::vector<uint64_t> receivedInfo(numprocs,0);
-    MPI_Allgather(&numIdsNeeded, 1, sierra::MPI::Datatype<uint64_t>::type(), &receivedInfo[0], 1, sierra::MPI::Datatype<uint64_t>::type(), mpiInfo.getMpiComm());
+    MPI_Allgather(&numIdsNeeded, 1, sierra::MPI::Datatype<uint64_t>::type(), receivedInfo.data(), 1,
+        sierra::MPI::Datatype<uint64_t>::type(), mpiInfo.getMpiComm());
 
     std::vector<uint64_t> sortedIds(myIds.begin(), myIds.end());
     std::sort(sortedIds.begin(), sortedIds.end());

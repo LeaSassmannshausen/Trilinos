@@ -1,26 +1,26 @@
-// Copyright(C) 1999-2023 National Technology & Engineering Solutions
+// Copyright(C) 1999-2024 National Technology & Engineering Solutions
 // of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 // NTESS, the U.S. Government retains certain rights in this software.
 //
 // See packages/seacas/LICENSE for details
 
-#include <Ioss_DatabaseIO.h>
-#include <Ioss_GroupingEntity.h>
-#include <Ioss_Property.h>
-#include <Ioss_Region.h>
-#include <Ioss_Utils.h>
-#include <Ioss_VariableType.h>
+#include "Ioss_DatabaseIO.h"
+#include "Ioss_GroupingEntity.h"
+#include "Ioss_Property.h"
+#include "Ioss_Region.h"
+#include "Ioss_Utils.h"
+#include "Ioss_VariableType.h"
 #include <cassert>
 #include <cstddef>
 #include <fmt/ostream.h>
 #include <iostream>
 #include <string>
-#include <vector>
 
 #include "Ioss_CodeTypes.h"
 #include "Ioss_EntityType.h"
 #include "Ioss_Field.h"
 #include "Ioss_FieldManager.h"
+#include "Ioss_ParallelUtils.h"
 #include "Ioss_PropertyManager.h"
 #include "Ioss_State.h"
 
@@ -106,7 +106,7 @@ std::string Ioss::GroupingEntity::get_filename() const
 {
   // Ok for database_ to be nullptr at this point.
   if (database_ == nullptr) {
-    return std::string();
+    return {};
   }
 
   return database_->get_filename();
@@ -146,7 +146,7 @@ Ioss::State Ioss::GroupingEntity::get_state() const { return entityState; }
 
 /** \brief Calculate and get an implicit property.
  *
- *  These are calcuated from data stored in the EntityBlock instead of having
+ *  These are calculated from data stored in the EntityBlock instead of having
  *  an explicit value assigned. An example would be 'element_block_count' for a region.
  *  Note that even though this is a pure virtual function, an implementation
  *  is provided to return properties that are common to all 'block'-type grouping entities.
@@ -159,7 +159,7 @@ Ioss::Property Ioss::GroupingEntity::get_implicit_property(const std::string &my
   // These include:
   if (my_name == "attribute_count") {
     count_attributes();
-    return Ioss::Property(my_name, static_cast<int>(attributeCount));
+    return {my_name, static_cast<int>(attributeCount)};
   }
 
   // End of the line. No property of this name exists.
@@ -195,9 +195,7 @@ bool Ioss::GroupingEntity::check_for_duplicate(const Ioss::Field &new_field) con
           }
           return true;
         }
-        else {
-          IOSS_ERROR(errmsg);
-        }
+        IOSS_ERROR(errmsg);
       }
     }
   }
@@ -293,23 +291,6 @@ int64_t Ioss::GroupingEntity::get_field_data(const std::string &field_name, void
   return retval;
 }
 
-int64_t Ioss::GroupingEntity::internal_get_zc_field_data(const Ioss::Field &field, void ** /*data*/,
-                                                         size_t * /*data_size*/) const
-{
-  // Dummy version to avoid putting empty virtual functions in all databases that don't support
-  // zero-copy;
-  std::ostringstream errmsg;
-  fmt::print(
-      errmsg,
-      "\nINTERNAL ERROR: Something is wrong on a database.  The field '{}' indicates that it"
-      " is zero-copyable, but the database containing that field does not implement the zero-copy"
-      " `get_field_internal()` function.\n\n",
-      field.get_name(), name());
-  IOSS_ERROR(errmsg);
-
-  return -2;
-}
-
 /** \brief Write field data from memory into the database file using a pointer.
  *
  *  \param[in] field_name The name of the field to write.
@@ -354,7 +335,7 @@ void Ioss::GroupingEntity::count_attributes() const
   Ioss::NameList::const_iterator IF;
   int64_t                        attribute_count = 0;
   for (IF = results_fields.begin(); IF != results_fields.end(); ++IF) {
-    std::string field_name = *IF;
+    const std::string &field_name = *IF;
     if (field_name != "attribute" || results_fields.size() == 1) {
       Ioss::Field field = get_field(field_name);
       attribute_count += field.raw_storage()->component_count();
@@ -406,10 +387,10 @@ void Ioss::GroupingEntity::property_update(const std::string &property,
   }
 }
 
-bool Ioss::GroupingEntity::equal_(const Ioss::GroupingEntity &rhs, const bool quiet) const
+bool Ioss::GroupingEntity::equal_(const Ioss::GroupingEntity &rhs, bool quiet) const
 {
   bool same = true;
-  if (this->entityName.compare(rhs.entityName) != 0) {
+  if (this->entityName != rhs.entityName) {
     if (quiet) {
       return false;
     }
@@ -471,16 +452,21 @@ bool Ioss::GroupingEntity::equal_(const Ioss::GroupingEntity &rhs, const bool qu
     auto it = std::find(rhs_properties.begin(), rhs_properties.end(), lhs_property);
     if (it == rhs_properties.end()) {
       if (!quiet) {
-        fmt::print(Ioss::OUTPUT(), "WARNING: {}: INPUT property ({}) not found in OUTPUT\n", name(),
-                   lhs_property);
+        fmt::print(Ioss::OUTPUT(), "WARNING: {}: INPUT property ({}) not found in input #2\n",
+                   name(), lhs_property);
+        same = false;
       }
+      continue;
+    }
+
+    if (lhs_property == "IOSS_INTERNAL_CONTAINED_IN") {
       continue;
     }
 
     if (this->properties.get(lhs_property) != rhs.properties.get(lhs_property)) {
       // EMPIRICALLY, different representations (e.g., CGNS vs. Exodus) of the same mesh
       // can have different values for the "original_block_order" property.
-      if (lhs_property.compare("original_block_order") == 0) {
+      if (lhs_property == "original_block_order") {
         if (!quiet) {
           fmt::print(Ioss::OUTPUT(),
                      "WARNING: {}: values for \"original_block_order\" DIFFER ({} vs. {})\n",
@@ -508,8 +494,11 @@ bool Ioss::GroupingEntity::equal_(const Ioss::GroupingEntity &rhs, const bool qu
                        name(), lhs_property);
           }
         }
-        return false;
+        else {
+          return false;
+        }
       }
+      same = false;
     }
   }
 
@@ -517,8 +506,9 @@ bool Ioss::GroupingEntity::equal_(const Ioss::GroupingEntity &rhs, const bool qu
     for (auto &rhs_property : rhs_properties) {
       auto it = std::find(lhs_properties.begin(), lhs_properties.end(), rhs_property);
       if (it == lhs_properties.end()) {
-        fmt::print(Ioss::OUTPUT(), "WARNING: {}: OUTPUT property ({}) not found in INPUT\n", name(),
-                   rhs_property);
+        fmt::print(Ioss::OUTPUT(), "WARNING: {}: OUTPUT property ({}) not found in input #1\n",
+                   name(), rhs_property);
+        same = false;
       }
     }
   }
@@ -544,7 +534,7 @@ bool Ioss::GroupingEntity::equal_(const Ioss::GroupingEntity &rhs, const bool qu
       if (rhs.field_exists(field)) {
         const auto &f2 = rhs.fields.get(field);
         if (!f1.equal(f2)) {
-          fmt::print(Ioss::OUTPUT(), "{}: FIELD ({}) mismatch\n", name(), field);
+          fmt::print(Ioss::OUTPUT(), "{}: FIELD ({}) mismatch\n\n", name(), field);
           same = false;
         }
       }
@@ -560,14 +550,12 @@ bool Ioss::GroupingEntity::equal_(const Ioss::GroupingEntity &rhs, const bool qu
     }
   }
 
-  if (rhs_fields.size() > lhs_fields.size()) {
-    // See which fields are missing from input #1...
-    // NOTE: `quiet` mode has already exited by this point.
-    for (auto &field : rhs_fields) {
-      if (!this->field_exists(field)) {
-        fmt::print(Ioss::OUTPUT(), "{}: FIELD ({}) not found in input #1\n", name(), field);
-        same = false;
-      }
+  // See which fields are missing from input #1...
+  // NOTE: `quiet` mode has already exited by this point.
+  for (auto &field : rhs_fields) {
+    if (!this->field_exists(field)) {
+      fmt::print(Ioss::OUTPUT(), "{}: FIELD ({}) not found in input #1\n", name(), field);
+      same = false;
     }
   }
   return same;

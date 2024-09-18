@@ -1,46 +1,10 @@
 // @HEADER
-//
-// ***********************************************************************
-//
+// *****************************************************************************
 //   Zoltan2: A package of combinatorial algorithms for scientific computing
-//                  Copyright 2012 Sandia Corporation
 //
-// Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-// the U.S. Government retains certain rights in this software.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Karen Devine      (kddevin@sandia.gov)
-//                    Erik Boman        (egboman@sandia.gov)
-//                    Siva Rajamanickam (srajama@sandia.gov)
-//
-// ***********************************************************************
-//
+// Copyright 2012 NTESS and the Zoltan2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 /*! \file Zoltan2_MatrixAdapter.hpp
@@ -112,15 +76,16 @@ private:
 public:
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-  typedef typename InputTraits<User>::scalar_t scalar_t;
-  typedef typename InputTraits<User>::lno_t    lno_t;
-  typedef typename InputTraits<User>::gno_t    gno_t;
-  typedef typename InputTraits<User>::part_t   part_t;
-  typedef typename InputTraits<User>::node_t   node_t;
-  typedef typename InputTraits<User>::offset_t offset_t;
-  typedef User user_t;
-  typedef UserCoord userCoord_t;
-  typedef MatrixAdapter<User,UserCoord> base_adapter_t;
+  using scalar_t = typename InputTraits<User>::scalar_t;
+  using lno_t = typename InputTraits<User>::lno_t;
+  using gno_t = typename InputTraits<User>::gno_t;
+  using part_t = typename InputTraits<User>::part_t;
+  using node_t = typename InputTraits<User>::node_t;
+  using offset_t = typename InputTraits<User>::offset_t;
+  using user_t = User;
+  using userCoord_t = UserCoord;
+  using base_adapter_t = MatrixAdapter<User,UserCoord>;
+  using device_t = typename node_t::device_type;
 #endif
 
   enum BaseAdapterType adapterType() const override {return MatrixAdapterType;}
@@ -129,10 +94,6 @@ public:
   MatrixAdapter() : primaryEntityType_(MATRIX_ROW),
                     coordinateInput_(),
                     haveCoordinateInput_(false) {}
-
-  /*! \brief Destructor
-   */
-  virtual ~MatrixAdapter(){}
 
   /*! \brief Returns the number of rows on this process.
    */
@@ -164,6 +125,16 @@ public:
     Z2_THROW_NOT_IMPLEMENTED
   }
 
+  virtual void getRowIDsHostView(typename BaseAdapter<User>::ConstIdsHostView& rowIds) const
+  {
+    Z2_THROW_NOT_IMPLEMENTED
+  }
+
+  virtual void getRowIDsDeviceView(typename BaseAdapter<User>::ConstIdsDeviceView& rowIds) const
+  {
+    Z2_THROW_NOT_IMPLEMENTED
+  }
+
   /*! \brief Sets pointers to this process' matrix entries using
              compressed sparse row (CRS) format.
              All matrix adapters must implement either getCRSView or
@@ -182,6 +153,19 @@ public:
     colIds = ArrayRCP<const gno_t>();
     Z2_THROW_NOT_IMPLEMENTED
   }
+
+  virtual void getCRSHostView(typename BaseAdapter<User>::ConstOffsetsHostView& offsets,
+                              typename BaseAdapter<User>::ConstIdsHostView& colIds) const
+  {
+      Z2_THROW_NOT_IMPLEMENTED
+  }
+
+  virtual void getCRSDeviceView(typename BaseAdapter<User>::ConstOffsetsDeviceView& offsets,
+                                typename BaseAdapter<User>::ConstIdsDeviceView& colIds) const
+  {
+      Z2_THROW_NOT_IMPLEMENTED
+  }
+
 
   /*! \brief Sets pointers to this process' matrix entries
              and their values using
@@ -208,6 +192,21 @@ public:
     Z2_THROW_NOT_IMPLEMENTED
   }
 
+  virtual void getCRSHostView(typename BaseAdapter<User>::ConstOffsetsHostView& offsets,
+                              typename BaseAdapter<User>::ConstIdsHostView& colIds,
+                              typename BaseAdapter<User>::ConstScalarsHostView& values) const
+  {
+      Z2_THROW_NOT_IMPLEMENTED
+  }
+
+  virtual void getCRSDeviceView(typename BaseAdapter<User>::ConstOffsetsDeviceView& offsets,
+                                typename BaseAdapter<User>::ConstIdsDeviceView& colIds,
+                                typename BaseAdapter<User>::ConstScalarsDeviceView& values) const
+  {
+      Z2_THROW_NOT_IMPLEMENTED
+  }
+
+
   /*! \brief Returns the number of weights per row (0 or greater).
       Row weights may be used when partitioning matrix rows.
    */
@@ -225,6 +224,24 @@ public:
     // Default implementation
     weights = NULL;
     stride = 0;
+    Z2_THROW_NOT_IMPLEMENTED
+  }
+
+  virtual void getRowWeightsHostView(typename BaseAdapter<User>::WeightsHostView1D& weights,
+                                     int /* idx */ = 0) const {
+      Z2_THROW_NOT_IMPLEMENTED
+  }
+
+  virtual void getRowWeightsHostView(typename BaseAdapter<User>::WeightsHostView &weights) const {
+    Z2_THROW_NOT_IMPLEMENTED
+  }
+
+  virtual void getRowWeightsDeviceView(typename BaseAdapter<User>::WeightsDeviceView1D& weights,
+                                       int /* idx */ = 0) const {
+      Z2_THROW_NOT_IMPLEMENTED
+  }
+
+  virtual void getRowWeightsDeviceView(typename BaseAdapter<User>::WeightsDeviceView &weights) const {
     Z2_THROW_NOT_IMPLEMENTED
   }
 
@@ -249,6 +266,16 @@ public:
   virtual void getColumnIDsView(const gno_t *&colIds) const
   {
     colIds = NULL;
+    Z2_THROW_NOT_IMPLEMENTED
+  }
+
+  virtual void getColumnIDsHostView(typename BaseAdapter<User>::ConstIdsHostView& colIds) const
+  {
+    Z2_THROW_NOT_IMPLEMENTED
+  }
+
+  virtual void getColumnIDsDeviceView(typename BaseAdapter<User>::ConstIdsDeviceView& colIds) const
+  {
     Z2_THROW_NOT_IMPLEMENTED
   }
 
@@ -314,6 +341,24 @@ public:
     // Default implementation
     weights = NULL;
     stride = 0;
+    Z2_THROW_NOT_IMPLEMENTED
+  }
+
+  virtual void getColumnWeightsHostView(typename BaseAdapter<User>::WeightsHostView1D& weights,
+                                     int /* idx */ = 0) const {
+      Z2_THROW_NOT_IMPLEMENTED
+  }
+
+  virtual void getColumnWeightsHostView(typename BaseAdapter<User>::WeightsHostView &weights) const {
+    Z2_THROW_NOT_IMPLEMENTED
+  }
+
+  virtual void getColumnWeightsDeviceView(typename BaseAdapter<User>::WeightsDeviceView1D& weights,
+                                       int /* idx */ = 0) const {
+      Z2_THROW_NOT_IMPLEMENTED
+  }
+
+  virtual void getColumnWeightsDeviceView(typename BaseAdapter<User>::WeightsDeviceView &weights) const {
     Z2_THROW_NOT_IMPLEMENTED
   }
 
@@ -431,6 +476,50 @@ public:
     }
   }
 
+  void getIDsHostView(typename BaseAdapter<User>::ConstIdsHostView& ids) const override {
+    switch (getPrimaryEntityType()) {
+    case MATRIX_ROW:
+      getRowIDsHostView(ids);
+      break;
+    case MATRIX_COLUMN:
+      getColumnIDsHostView(ids);
+      break;
+    case MATRIX_NONZERO: {
+      // TODO:  Need getNonzeroIDsHostView?  What is a Nonzero ID?
+      // TODO:  std::pair<gno_t, gno_t>?
+      std::ostringstream emsg;
+      emsg << __FILE__ << "," << __LINE__
+           << " error:  getIDsView not yet supported for matrix nonzeros."
+           << std::endl;
+      throw std::runtime_error(emsg.str());
+      }
+    default:   // Shouldn't reach default; just making compiler happy
+      break;
+    }
+  }
+
+  void getIDsDeviceView(typename BaseAdapter<User>::ConstIdsDeviceView& ids) const override {
+    switch (getPrimaryEntityType()) {
+    case MATRIX_ROW:
+      getRowIDsDeviceView(ids);
+      break;
+    case MATRIX_COLUMN:
+      getColumnIDsDeviceView(ids);
+      break;
+    case MATRIX_NONZERO: {
+      // TODO:  Need getNonzeroIDsDeviceView?  What is a Nonzero ID?
+      // TODO:  std::pair<gno_t, gno_t>?
+      std::ostringstream emsg;
+      emsg << __FILE__ << "," << __LINE__
+           << " error:  getIDsView not yet supported for matrix nonzeros."
+           << std::endl;
+      throw std::runtime_error(emsg.str());
+      }
+    default:   // Shouldn't reach default; just making compiler happy
+      break;
+    }
+  }
+
   int getNumWeightsPerID() const override
   {
     switch (getPrimaryEntityType()) {
@@ -445,7 +534,8 @@ public:
     }
   }
 
-  void getWeightsView(const scalar_t *&wgt, int &stride, int idx = 0) const override
+  void getWeightsView(const scalar_t *&wgt, int &stride,
+                      int idx = 0) const override
   {
     switch (getPrimaryEntityType()) {
     case MATRIX_ROW:
@@ -468,6 +558,96 @@ public:
       break;
     }
   }
+
+  void getWeightsHostView(typename BaseAdapter<User>::WeightsHostView &hostWgts) const override {
+      switch (getPrimaryEntityType()) {
+      case MATRIX_ROW:
+        getRowWeightsHostView(hostWgts);
+        break;
+      case MATRIX_COLUMN:
+        getColumnWeightsHostView(hostWgts);
+        break;
+      case MATRIX_NONZERO:
+        {
+        // TODO:  Need getNonzeroWeightsView with Nonzeros as primary object?
+        // TODO:  That is, get Nonzeros' weights based on some nonzero ID?
+        std::ostringstream emsg;
+        emsg << __FILE__ << "," << __LINE__
+             << " error:  getWeightsView not yet supported for matrix nonzeros."
+             << std::endl;
+        throw std::runtime_error(emsg.str());
+        }
+      default:   // Shouldn't reach default; just making compiler happy
+        break;
+      }  }
+
+  void getWeightsHostView(typename BaseAdapter<User>::WeightsHostView1D &hostWgts,
+                                  int idx = 0) const override {
+      switch (getPrimaryEntityType()) {
+      case MATRIX_ROW:
+        getRowWeightsHostView(hostWgts, idx);
+        break;
+      case MATRIX_COLUMN:
+        getColumnWeightsHostView(hostWgts, idx);
+        break;
+      case MATRIX_NONZERO:
+        {
+        // TODO:  Need getNonzeroWeightsView with Nonzeros as primary object?
+        // TODO:  That is, get Nonzeros' weights based on some nonzero ID?
+        std::ostringstream emsg;
+        emsg << __FILE__ << "," << __LINE__
+             << " error:  getWeightsView not yet supported for matrix nonzeros."
+             << std::endl;
+        throw std::runtime_error(emsg.str());
+        }
+      default:   // Shouldn't reach default; just making compiler happy
+        break;
+      }  }
+
+  void getWeightsDeviceView(typename BaseAdapter<User>::WeightsDeviceView& deviceWgts) const override {
+      switch (getPrimaryEntityType()) {
+      case MATRIX_ROW:
+        getRowWeightsDeviceView(deviceWgts);
+        break;
+      case MATRIX_COLUMN:
+        getColumnWeightsDeviceView(deviceWgts);
+        break;
+      case MATRIX_NONZERO:
+        {
+        // TODO:  Need getNonzeroWeightsView with Nonzeros as primary object?
+        // TODO:  That is, get Nonzeros' weights based on some nonzero ID?
+        std::ostringstream emsg;
+        emsg << __FILE__ << "," << __LINE__
+             << " error:  getWeightsView not yet supported for matrix nonzeros."
+             << std::endl;
+        throw std::runtime_error(emsg.str());
+        }
+      default:   // Shouldn't reach default; just making compiler happy
+        break;
+      }  }
+
+  void getWeightsDeviceView(typename BaseAdapter<User>::WeightsDeviceView1D& deviceWgts,
+                                    int idx = 0) const override {
+      switch (getPrimaryEntityType()) {
+      case MATRIX_ROW:
+        getRowWeightsDeviceView(deviceWgts, idx);
+        break;
+      case MATRIX_COLUMN:
+        getColumnWeightsDeviceView(deviceWgts, idx);
+        break;
+      case MATRIX_NONZERO:
+        {
+        // TODO:  Need getNonzeroWeightsView with Nonzeros as primary object?
+        // TODO:  That is, get Nonzeros' weights based on some nonzero ID?
+        std::ostringstream emsg;
+        emsg << __FILE__ << "," << __LINE__
+             << " error:  getWeightsView not yet supported for matrix nonzeros."
+             << std::endl;
+        throw std::runtime_error(emsg.str());
+        }
+      default:   // Shouldn't reach default; just making compiler happy
+        break;
+      }  }
 
   bool useDegreeAsWeight(int idx) const
   {

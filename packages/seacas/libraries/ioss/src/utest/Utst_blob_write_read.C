@@ -4,20 +4,28 @@
 //
 // See packages/seacas/LICENSE for details
 
-#include <Ioss_Blob.h>
-#include <Ioss_DatabaseIO.h>
-#include <Ioss_IOFactory.h>
-#include <Ioss_Property.h>
-#include <Ioss_Region.h>
-#include <Ioss_ScopeGuard.h>
-#include <Ioss_Sort.h>
-#include <Ioss_Utils.h>
-
-#include <Ionit_Initializer.h>
-
-#include <algorithm>
+#include "Ionit_Initializer.h"
+#include "Ioss_Blob.h"
+#include "Ioss_DatabaseIO.h"
+#include "Ioss_IOFactory.h"
+#include "Ioss_Property.h"
+#include "Ioss_Region.h"
+#include "Ioss_Sort.h"
+#include "Ioss_Utils.h"
+#include <cstdlib>
+#include <iostream>
+#include <stdint.h>
 #include <string>
 #include <vector>
+
+#include "Ioss_CodeTypes.h"
+#include "Ioss_DBUsage.h"
+#include "Ioss_Field.h"
+#include "Ioss_ParallelUtils.h"
+#include "Ioss_PropertyManager.h"
+#include "Ioss_ScopeGuard.h"
+#include "Ioss_State.h"
+#include "Ioss_VariableType.h"
 
 //--------------------------------------------------------------------
 /*----------------------------------------------------------------------
@@ -87,7 +95,7 @@ void write_blob()
   Ioss::DatabaseIO *dbo =
       Ioss::IOFactory::create("exodus", "ioss_blob_example.e", Ioss::WRITE_RESTART,
                               Ioss::ParallelUtils::comm_world(), properties);
-  if (dbo == NULL || !dbo->ok(true)) {
+  if (dbo == nullptr || !dbo->ok(true)) {
     std::exit(EXIT_FAILURE);
   }
 
@@ -104,21 +112,21 @@ void write_blob()
   size_t my_rank  = dbo->util().parallel_rank();
 
   // Define a blob -- give name and size
-  auto        count_offset = get_blob_size(b1_size, par_size, my_rank);
-  Ioss::Blob *blob1        = new Ioss::Blob(dbo, "Tempus", count_offset.first);
+  auto  count_offset = get_blob_size(b1_size, par_size, my_rank);
+  auto *blob1        = new Ioss::Blob(dbo, "Tempus", count_offset.first);
   region.add(blob1);
 
   // NOTE: These properties are not needed for serial case, but don't cause problems
   blob1->property_add(Ioss::Property("global_size", (int64_t)b1_size));
 
-  count_offset      = get_blob_size(b2_size, par_size, my_rank);
-  Ioss::Blob *blob2 = new Ioss::Blob(dbo, "Solver", count_offset.first);
+  count_offset = get_blob_size(b2_size, par_size, my_rank);
+  auto *blob2  = new Ioss::Blob(dbo, "Solver", count_offset.first);
   region.add(blob2);
 
   blob2->property_add(Ioss::Property("global_size", (int64_t)b2_size));
 
-  count_offset      = get_blob_size(b3_size, par_size, my_rank);
-  Ioss::Blob *blob3 = new Ioss::Blob(dbo, "ABlob", count_offset.first);
+  count_offset = get_blob_size(b3_size, par_size, my_rank);
+  auto *blob3  = new Ioss::Blob(dbo, "ABlob", count_offset.first);
   region.add(blob3);
 
   blob3->property_add(Ioss::Property("global_size", (int64_t)b3_size));
@@ -142,7 +150,7 @@ void write_blob()
 
   blob1->field_add(x);
   blob1->field_add(dx);
-  blob1->field_add(ddx);
+  blob1->field_add(std::move(ddx));
 
   // Blobs can have different fields
   blob2->field_add(x);
@@ -214,7 +222,7 @@ bool read_blob()
   Ioss::DatabaseIO *dbi =
       Ioss::IOFactory::create("exodus", "ioss_blob_example.e", Ioss::READ_RESTART,
                               Ioss::ParallelUtils::comm_world(), properties);
-  if (dbi == NULL || !dbi->ok(true)) {
+  if (dbi == nullptr || !dbi->ok(true)) {
     std::exit(EXIT_FAILURE);
   }
 

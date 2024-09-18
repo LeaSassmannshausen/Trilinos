@@ -13,7 +13,8 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //@HEADER
-/// @file KokkosKernels_MatrixPrec.hpp
+
+/// @file KokkosSparse_MatrixPrec.hpp
 
 #ifndef KK_MATRIX_PREC_HPP
 #define KK_MATRIX_PREC_HPP
@@ -27,6 +28,7 @@ namespace KokkosSparse {
 
 namespace Experimental {
 
+/// @file KokkosSparse_MatrixPrec.hpp
 /// \class MatrixPrec
 /// \brief  This is a simple class to use if one
 ///         already has a matrix representation of their
@@ -74,11 +76,9 @@ class MatrixPrec : public KokkosSparse::Experimental::Preconditioner<CRS> {
   ///\cdot X\f$.
   ///// The typical case is \f$\beta = 0\f$ and \f$\alpha = 1\f$.
   //
-  virtual void apply(
-      const Kokkos::View<const ScalarType *, Kokkos::Device<EXSP, MEMSP>> &X,
-      const Kokkos::View<ScalarType *, Kokkos::Device<EXSP, MEMSP>> &Y,
-      const char transM[] = "N", ScalarType alpha = karith::one(),
-      ScalarType beta = karith::zero()) const {
+  virtual void apply(const Kokkos::View<const ScalarType *, Kokkos::Device<EXSP, MEMSP>> &X,
+                     const Kokkos::View<ScalarType *, Kokkos::Device<EXSP, MEMSP>> &Y, const char transM[] = "N",
+                     ScalarType alpha = karith::one(), ScalarType beta = karith::zero()) const {
     KokkosSparse::spmv(transM, alpha, _A, X, beta, Y);
   }
   //@}

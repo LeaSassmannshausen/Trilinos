@@ -28,10 +28,9 @@ namespace KokkosBatched {
 struct SerialNormalizeInternal {
   template <typename ValueType>
   KOKKOS_INLINE_FUNCTION static int invoke(const int m,
-                                           /* */ ValueType *KOKKOS_RESTRICT v,
-                                           const int vs) {
+                                           /* */ ValueType *KOKKOS_RESTRICT v, const int vs) {
     typedef ValueType value_type;
-    typedef Kokkos::Details::ArithTraits<value_type> ats;
+    typedef Kokkos::ArithTraits<value_type> ats;
     typedef typename ats::mag_type mag_type;
 
     mag_type norm(0);
@@ -42,7 +41,7 @@ struct SerialNormalizeInternal {
       const auto v_at_i = v[i * vs];
       norm += ats::real(v_at_i * ats::conj(v_at_i));
     }
-    norm = Kokkos::Details::ArithTraits<mag_type>::sqrt(norm);
+    norm = Kokkos::ArithTraits<mag_type>::sqrt(norm);
 #if defined(KOKKOS_ENABLE_PRAGMA_UNROLL)
 #pragma unroll
 #endif
@@ -53,12 +52,10 @@ struct SerialNormalizeInternal {
 
   template <typename RealType>
   KOKKOS_INLINE_FUNCTION static int invoke(const int m,
-                                           /* */ RealType *KOKKOS_RESTRICT vr,
-                                           const int vrs,
-                                           /* */ RealType *KOKKOS_RESTRICT vi,
-                                           const int vis) {
+                                           /* */ RealType *KOKKOS_RESTRICT vr, const int vrs,
+                                           /* */ RealType *KOKKOS_RESTRICT vi, const int vis) {
     typedef RealType real_type;
-    typedef Kokkos::Details::ArithTraits<real_type> ats;
+    typedef Kokkos::ArithTraits<real_type> ats;
     typedef typename ats::mag_type mag_type;
 
     mag_type norm(0);
@@ -70,7 +67,7 @@ struct SerialNormalizeInternal {
       const auto vi_at_i = vi[i * vis];
       norm += vr_at_i * vr_at_i + vi_at_i * vi_at_i;
     }
-    norm = Kokkos::Details::ArithTraits<mag_type>::sqrt(norm);
+    norm = Kokkos::ArithTraits<mag_type>::sqrt(norm);
 #if defined(KOKKOS_ENABLE_PRAGMA_UNROLL)
 #pragma unroll
 #endif

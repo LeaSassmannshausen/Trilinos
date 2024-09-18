@@ -1,46 +1,10 @@
 // @HEADER
-//
-// ***********************************************************************
-//
+// *****************************************************************************
 //   Zoltan2: A package of combinatorial algorithms for scientific computing
-//                  Copyright 2012 Sandia Corporation
 //
-// Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-// the U.S. Government retains certain rights in this software.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Karen Devine      (kddevin@sandia.gov)
-//                    Erik Boman        (egboman@sandia.gov)
-//                    Siva Rajamanickam (srajama@sandia.gov)
-//
-// ***********************************************************************
-//
+// Copyright 2012 NTESS and the Zoltan2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 /*! \file Zoltan2_XpetraCrsMatrixAdapter.hpp
@@ -56,6 +20,9 @@
 #include <Zoltan2_PartitioningHelpers.hpp>
 
 #include <Xpetra_CrsMatrix.hpp>
+
+#include <iostream>
+#include <cassert>
 
 namespace Zoltan2 {
 
@@ -83,29 +50,26 @@ namespace Zoltan2 {
 */
 
 template <typename User, typename UserCoord=User>
-  class XpetraCrsMatrixAdapter : public MatrixAdapter<User,UserCoord> {
+  class XpetraCrsMatrixAdapter : public MatrixAdapter<User, UserCoord> {
 public:
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-  typedef typename InputTraits<User>::scalar_t    scalar_t;
-  typedef typename InputTraits<User>::lno_t    lno_t;
-  typedef typename InputTraits<User>::gno_t    gno_t;
-  typedef typename InputTraits<User>::part_t   part_t;
-  typedef typename InputTraits<User>::node_t   node_t;
-  typedef typename InputTraits<User>::offset_t offset_t;
-  typedef Xpetra::CrsMatrix<scalar_t, lno_t, gno_t, node_t> xmatrix_t;
-  typedef User user_t;
-  typedef UserCoord userCoord_t;
+  using scalar_t = typename InputTraits<User>::scalar_t;
+  using lno_t = typename InputTraits<User>::lno_t;
+  using gno_t = typename InputTraits<User>::gno_t;
+  using part_t = typename InputTraits<User>::part_t;
+  using node_t = typename InputTraits<User>::node_t;
+  using offset_t = typename InputTraits<User>::offset_t;
+  using xmatrix_t = Xpetra::CrsMatrix<scalar_t, lno_t, gno_t, node_t>;
+
+  using userCoord_t = UserCoord;
+  using user_t = User;
 #endif
 
-  /*! \brief Destructor
-   */
-  ~XpetraCrsMatrixAdapter() { }
-
-  /*! \brief Constructor   
-   *    \param inmatrix The users Epetra, Tpetra, or Xpetra CrsMatrix object 
+  /*! \brief Constructor
+   *    \param inmatrix The user's Epetra, Tpetra, or Xpetra CrsMatrix object
    *    \param nWeightsPerRow If row weights will be provided in setRowWeights(),
-   *        the set \c nWeightsPerRow to the number of weights per row.
+   *        then set \c nWeightsPerRow to the number of weights per row.
    */
   XpetraCrsMatrixAdapter(const RCP<const User> &inmatrix,
                          int nWeightsPerRow=0);
@@ -115,10 +79,10 @@ public:
    *    \stride          A stride to be used in reading the values.  The
    *        index \c idx weight for entity \k should be found at
    *        <tt>weightVal[k*stride]</tt>.
-   *    \param idx  A value between zero and one less that the \c nWeightsPerRow 
+   *    \param idx  A value between zero and one less that the \c nWeightsPerRow
    *                  argument to the constructor.
    *
-   * The order of weights should correspond to the order of the primary 
+   * The order of weights should correspond to the order of the primary
    * entity type; see, e.g.,  setRowWeights below.
    */
 
@@ -129,7 +93,7 @@ public:
    *    \stride          A stride to be used in reading the values.  The
    *        index \c idx weight for row \k should be found at
    *        <tt>weightVal[k*stride]</tt>.
-   *    \param idx  A value between zero and one less that the \c nWeightsPerRow 
+   *    \param idx  A value between zero and one less that the \c nWeightsPerRow
    *                  argument to the constructor.
    *
    * The order of weights should correspond to the order of rows
@@ -143,7 +107,7 @@ public:
 
   /*! \brief Specify an index for which the weight should be
               the degree of the entity
-   *    \param idx Zoltan2 will use the entity's 
+   *    \param idx Zoltan2 will use the entity's
    *         degree as the entity weight for index \c idx.
    */
   void setWeightIsDegree(int idx);
@@ -159,11 +123,11 @@ public:
   // The MatrixAdapter interface.
   ////////////////////////////////////////////////////
 
-  size_t getLocalNumRows() const { 
+  size_t getLocalNumRows() const {
     return matrix_->getLocalNumRows();
   }
 
-  size_t getLocalNumColumns() const { 
+  size_t getLocalNumColumns() const {
     return matrix_->getLocalNumCols();
   }
 
@@ -173,15 +137,15 @@ public:
 
   bool CRSViewAvailable() const { return true; }
 
-  void getRowIDsView(const gno_t *&rowIds) const 
+  void getRowIDsView(const gno_t *&rowIds) const
   {
     ArrayView<const gno_t> rowView = rowMap_->getLocalElementList();
     rowIds = rowView.getRawPtr();
   }
 
-  void getCRSView(ArrayRCP<const offset_t> &offsets, ArrayRCP<const gno_t> &colIds) const
+  void getCRSView(ArrayRCP<const offset_t> &offsets,
+                  ArrayRCP<const gno_t> &colIds) const
   {
-
     ArrayRCP< const lno_t > localColumnIds;
     ArrayRCP<const scalar_t> values;
     matrix_->getAllValues(offsets,localColumnIds,values);
@@ -190,8 +154,7 @@ public:
 
   void getCRSView(ArrayRCP<const offset_t> &offsets,
                   ArrayRCP<const gno_t> &colIds,
-                  ArrayRCP<const scalar_t> &values) const
-  {
+                  ArrayRCP<const scalar_t> &values) const {
     ArrayRCP< const lno_t > localColumnIds;
     matrix_->getAllValues(offsets,localColumnIds,values);
     colIds = columnIds_;
@@ -208,7 +171,7 @@ public:
       std::ostringstream emsg;
       emsg << __FILE__ << ":" << __LINE__
            << "  Invalid row weight index " << idx << std::endl;
-      throw std::runtime_error(emsg.str()); 
+      throw std::runtime_error(emsg.str());
     }
 
     size_t length;
@@ -273,7 +236,7 @@ template <typename User, typename UserCoord>
   matrix_->getAllValues(offset,localColumnIds,values);
   columnIds_.resize(nnz, 0);
 
-  for(offset_t i = 0; i < offset[nrows]; i++) {
+  for(offset_t i = 0; i < offset[nrows]; i++){
     columnIds_[i] = colMap_->getGlobalElement(localColumnIds[i]);
   }
 
@@ -314,7 +277,7 @@ template <typename User, typename UserCoord>
       std::ostringstream emsg;
       emsg << __FILE__ << ":" << __LINE__
            << "  Invalid row weight index " << idx << std::endl;
-      throw std::runtime_error(emsg.str()); 
+      throw std::runtime_error(emsg.str());
   }
 
   size_t nvtx = getLocalNumRows();
@@ -349,7 +312,7 @@ template <typename User, typename UserCoord>
       std::ostringstream emsg;
       emsg << __FILE__ << ":" << __LINE__
            << "  Invalid row weight index " << idx << std::endl;
-      throw std::runtime_error(emsg.str()); 
+      throw std::runtime_error(emsg.str());
   }
 
 
@@ -360,9 +323,9 @@ template <typename User, typename UserCoord>
 template <typename User, typename UserCoord>
   template <typename Adapter>
     void XpetraCrsMatrixAdapter<User,UserCoord>::applyPartitioningSolution(
-      const User &in, User *&out, 
+      const User &in, User *&out,
       const PartitioningSolution<Adapter> &solution) const
-{ 
+{
   // Get an import list (rows to be received)
   size_t numNewRows;
   ArrayRCP<gno_t> importList;
@@ -384,9 +347,9 @@ template <typename User, typename UserCoord>
 template <typename User, typename UserCoord>
   template <typename Adapter>
     void XpetraCrsMatrixAdapter<User,UserCoord>::applyPartitioningSolution(
-      const User &in, RCP<User> &out, 
+      const User &in, RCP<User> &out,
       const PartitioningSolution<Adapter> &solution) const
-{ 
+{
   // Get an import list (rows to be received)
   size_t numNewRows;
   ArrayRCP<gno_t> importList;
@@ -403,5 +366,5 @@ template <typename User, typename UserCoord>
 }
 
 }  //namespace Zoltan2
-  
+
 #endif

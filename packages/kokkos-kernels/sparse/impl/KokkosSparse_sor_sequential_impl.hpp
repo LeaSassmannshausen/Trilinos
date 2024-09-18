@@ -17,7 +17,7 @@
 #ifndef KOKKOSSPARSE_IMPL_SOR_HPP
 #define KOKKOSSPARSE_IMPL_SOR_HPP
 
-/// \file Kokkos_Sparse_impl_sor.hpp
+/// \file KokkosSparse_impl_sor.hpp
 /// \brief Sequential implementations of Gauss-Seidel and SOR.
 ///
 /// This file exists mainly as a temporary porting aid.  Until we can
@@ -69,15 +69,12 @@ namespace Sequential {
 /// \param omega [in] Damping parameter.
 /// \param direction [in] Sweep direction: "F" for forward, "B" for
 ///   backward.
-template <class LocalOrdinal, class OffsetType, class MatrixScalar,
-          class DomainScalar, class RangeScalar>
-void gaussSeidel(const LocalOrdinal numRows, const LocalOrdinal numCols,
-                 const OffsetType* const ptr, const LocalOrdinal* const ind,
-                 const MatrixScalar* const val, const DomainScalar* const B,
-                 const OffsetType b_stride, RangeScalar* const X,
-                 const OffsetType x_stride, const MatrixScalar* const D,
-                 const MatrixScalar omega, const char direction[]) {
-  using Kokkos::Details::ArithTraits;
+template <class LocalOrdinal, class OffsetType, class MatrixScalar, class DomainScalar, class RangeScalar>
+void gaussSeidel(const LocalOrdinal numRows, const LocalOrdinal numCols, const OffsetType* const ptr,
+                 const LocalOrdinal* const ind, const MatrixScalar* const val, const DomainScalar* const B,
+                 const OffsetType b_stride, RangeScalar* const X, const OffsetType x_stride,
+                 const MatrixScalar* const D, const MatrixScalar omega, const char direction[]) {
+  using Kokkos::ArithTraits;
   typedef LocalOrdinal LO;
   const OffsetType theNumRows = static_cast<OffsetType>(numRows);
   const OffsetType theNumCols = static_cast<OffsetType>(numCols);
@@ -159,8 +156,7 @@ void gaussSeidel(const LocalOrdinal numRows, const LocalOrdinal numCols,
           }
         }
         for (OffsetType c = 0; c < theNumCols; ++c) {
-          X[i + x_stride * c] +=
-              omega * D[i] * (B[i + b_stride * c] - x_temp[c]);
+          X[i + x_stride * c] += omega * D[i] * (B[i + b_stride * c] - x_temp[c]);
         }
       }
     } else if (direction[0] == 'B' || direction[0] == 'b') {  // backward mode
@@ -179,8 +175,7 @@ void gaussSeidel(const LocalOrdinal numRows, const LocalOrdinal numCols,
           }
         }
         for (OffsetType c = 0; c < theNumCols; ++c) {
-          X[i + x_stride * c] +=
-              omega * D[i] * (B[i + b_stride * c] - x_temp[c]);
+          X[i + x_stride * c] += omega * D[i] * (B[i + b_stride * c] - x_temp[c]);
         }
       }
       {  // last loop iteration
@@ -196,8 +191,7 @@ void gaussSeidel(const LocalOrdinal numRows, const LocalOrdinal numCols,
           }
         }
         for (OffsetType c = 0; c < theNumCols; ++c) {
-          X[i + x_stride * c] +=
-              omega * D[i] * (B[i + b_stride * c] - x_temp[c]);
+          X[i + x_stride * c] += omega * D[i] * (B[i + b_stride * c] - x_temp[c]);
         }
       }
     }
@@ -237,17 +231,14 @@ void gaussSeidel(const LocalOrdinal numRows, const LocalOrdinal numCols,
 /// \param omega [in] Damping parameter.
 /// \param direction [in] Sweep direction: "F" for forward, "B" for
 ///   backward.
-template <class LocalOrdinal, class OffsetType, class MatrixScalar,
-          class DomainScalar, class RangeScalar>
-void reorderedGaussSeidel(
-    const LocalOrdinal numRows, const LocalOrdinal numCols,
-    const OffsetType* const ptr, const LocalOrdinal* const ind,
-    const MatrixScalar* const val, const DomainScalar* const B,
-    const OffsetType b_stride, RangeScalar* const X, const OffsetType x_stride,
-    const MatrixScalar* const D, const LocalOrdinal* const rowInd,
-    const LocalOrdinal numRowInds,  // length of rowInd
-    const MatrixScalar omega, const char direction[]) {
-  using Kokkos::Details::ArithTraits;
+template <class LocalOrdinal, class OffsetType, class MatrixScalar, class DomainScalar, class RangeScalar>
+void reorderedGaussSeidel(const LocalOrdinal numRows, const LocalOrdinal numCols, const OffsetType* const ptr,
+                          const LocalOrdinal* const ind, const MatrixScalar* const val, const DomainScalar* const B,
+                          const OffsetType b_stride, RangeScalar* const X, const OffsetType x_stride,
+                          const MatrixScalar* const D, const LocalOrdinal* const rowInd,
+                          const LocalOrdinal numRowInds,  // length of rowInd
+                          const MatrixScalar omega, const char direction[]) {
+  using Kokkos::ArithTraits;
   typedef LocalOrdinal LO;
   const OffsetType theNumRows = static_cast<OffsetType>(numRows);
   const OffsetType theNumCols = static_cast<OffsetType>(numCols);
@@ -323,7 +314,7 @@ void reorderedGaussSeidel(
       for (LO ii = 0; ii < numRowInds; ++ii) {
         LO i = rowInd[ii];
         for (OffsetType c = 0; c < theNumCols; ++c) {
-          x_temp[c] = Kokkos::Details::ArithTraits<RangeScalar>::zero();
+          x_temp[c] = Kokkos::ArithTraits<RangeScalar>::zero();
         }
         for (OffsetType k = ptr[i]; k < ptr[i + 1]; ++k) {
           const LO j              = ind[k];
@@ -333,8 +324,7 @@ void reorderedGaussSeidel(
           }
         }
         for (OffsetType c = 0; c < theNumCols; ++c) {
-          X[i + x_stride * c] +=
-              omega * D[i] * (B[i + b_stride * c] - x_temp[c]);
+          X[i + x_stride * c] += omega * D[i] * (B[i + b_stride * c] - x_temp[c]);
         }
       }
     } else if (direction[0] == 'B' || direction[0] == 'b') {  // backward mode
@@ -344,7 +334,7 @@ void reorderedGaussSeidel(
       for (LO ii = numRowInds - 1; ii != 0; --ii) {
         LO i = rowInd[ii];
         for (OffsetType c = 0; c < theNumCols; ++c) {
-          x_temp[c] = Kokkos::Details::ArithTraits<RangeScalar>::zero();
+          x_temp[c] = Kokkos::ArithTraits<RangeScalar>::zero();
         }
         for (OffsetType k = ptr[i]; k < ptr[i + 1]; ++k) {
           const LO j              = ind[k];
@@ -354,15 +344,14 @@ void reorderedGaussSeidel(
           }
         }
         for (OffsetType c = 0; c < theNumCols; ++c) {
-          X[i + x_stride * c] +=
-              omega * D[i] * (B[i + b_stride * c] - x_temp[c]);
+          X[i + x_stride * c] += omega * D[i] * (B[i + b_stride * c] - x_temp[c]);
         }
       }
       {  // last loop iteration
         const LO ii = 0;
         LO i        = rowInd[ii];
         for (OffsetType c = 0; c < theNumCols; ++c) {
-          x_temp[c] = Kokkos::Details::ArithTraits<RangeScalar>::zero();
+          x_temp[c] = Kokkos::ArithTraits<RangeScalar>::zero();
         }
         for (OffsetType k = ptr[i]; k < ptr[i + 1]; ++k) {
           const LO j              = ind[k];
@@ -372,8 +361,7 @@ void reorderedGaussSeidel(
           }
         }
         for (OffsetType c = 0; c < theNumCols; ++c) {
-          X[i + x_stride * c] +=
-              omega * D[i] * (B[i + b_stride * c] - x_temp[c]);
+          X[i + x_stride * c] += omega * D[i] * (B[i + b_stride * c] - x_temp[c]);
         }
       }
     }

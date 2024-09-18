@@ -60,7 +60,7 @@ namespace stk { namespace mesh { class Bucket; } }
 
 namespace {
 
-using stk::mesh::fixtures::simple_fields::SelectorFixture;
+using stk::mesh::fixtures::SelectorFixture;
 
 void testSelectorWithBuckets(const SelectorFixture &selectorFixture, const stk::mesh::Selector &selector, bool gold_shouldEntityBeInSelector[]);
 
@@ -113,7 +113,7 @@ TEST(Verify, selectorFixtureDoesNotSegFault)
   EXPECT_TRUE(true);
 }
 
-TEST(Verify, twoSelectorFixturesCreatedSequetiallyDoNotSegFault)
+TEST(Verify, twoSelectorFixturesCreatedSequentiallyDoNotSegFault)
 {
   {
     SelectorFixture fix;
@@ -182,7 +182,6 @@ TEST(Verify, selectorEmptyDuringMeshMod)
   std::shared_ptr<stk::mesh::BulkData> bulkPtr = builder.create();
   stk::mesh::BulkData& bulk = *bulkPtr;
   stk::mesh::MetaData& meta = bulk.mesh_meta_data();
-  meta.use_simple_fields();
   stk::mesh::Part& block1 = meta.declare_part_with_topology("block_1", stk::topology::HEX_8);
   meta.commit();
 
@@ -222,6 +221,16 @@ TEST(Verify, selectorEmptyDuringMeshMod)
   else {
     EXPECT_TRUE(block1Selector.is_empty(stk::topology::ELEM_RANK));
   }
+}
+
+TEST(Verify, selector_declarePartSubset)
+{
+  SelectorFixture fix;
+  stk::mesh::Part& partAsub = fix.m_meta_data.declare_part_with_topology("subPart", stk::topology::NODE);
+  fix.m_meta_data.declare_part_subset(fix.m_partA, partAsub);
+  EXPECT_EQ(1u, fix.m_fieldABC->restrictions().size());
+  const stk::mesh::Selector& fieldABCselector = fix.m_fieldABC->restrictions()[0].selector();
+  EXPECT_TRUE(fieldABCselector(partAsub));
 }
 
 TEST(Verify, complementOfPartASelector)
@@ -784,7 +793,6 @@ std::shared_ptr<stk::mesh::BulkData> create_mesh(stk::ParallelMachine comm,
   stk::mesh::MeshBuilder builder(comm);
   builder.set_spatial_dimension(spatialDim);
   std::shared_ptr<stk::mesh::BulkData> bulk = builder.create();
-  bulk->mesh_meta_data().use_simple_fields();
   return bulk;
 }
 

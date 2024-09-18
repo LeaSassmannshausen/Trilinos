@@ -1,45 +1,11 @@
-
-//@HEADER
-// ************************************************************************
+// @HEADER
+// *****************************************************************************
+//               ShyLU: Scalable Hybrid LU Preconditioner and Solver
 //
-//               ShyLU: Hybrid preconditioner package
-//                 Copyright 2012 Sandia Corporation
-//
-// Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-// the U.S. Government retains certain rights in this software.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Michael A. Heroux (maherou@sandia.gov)
-//
-// ************************************************************************
-//@HEADER
-
+// Copyright 2011 NTESS and the ShyLU contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
+// @HEADER
 
 #include "shylu.h"
 #include "shylu_util.h"
@@ -609,7 +575,7 @@ Teuchos::RCP<Epetra_CrsMatrix> computeSchur_GuidedProbing
     int *indices3 = new int[maxentries];
 
     //std::cout << "Creating local matrices" << std::endl;
-    int err;
+    int err = 0;
     Epetra_CrsMatrix localC(Copy, C_localRMap, C->MaxNumEntries(), false);
     for (i = 0; i < c_localElems ; i++)
     {
@@ -722,18 +688,18 @@ Teuchos::RCP<Epetra_CrsMatrix> computeSchur_GuidedProbing
 
         int cindex;
         // int mypid = C->Comm().MyPID(); // unused
-        Epetra_MultiVector probevec(G_localRMap, nvectors);
+        Epetra_MultiVector ProbeVec(G_localRMap, nvectors);
         Epetra_MultiVector Scol(G_localRMap, nvectors);
         for (i = 0 ; i < findex*nvectors ; i+=nvectors)
         {
-            probevec.PutScalar(0.0); // TODO: Move it out
+            ProbeVec.PutScalar(0.0); // TODO: Move it out
             for (int k = 0; k < nvectors; k++)
             {
                 cindex = k+i;
                 // TODO: Can do better than this, just need to go to the column map
                 // of C, there might be null columns in C
                 // Not much of use for Shasta 2x2 .. Later.
-                probevec.ReplaceGlobalValue(g_rows[cindex], k, 1.0);
+                ProbeVec.ReplaceGlobalValue(g_rows[cindex], k, 1.0);
                 //if (mypid == 0)
                 //std::cout << "Changing row to 1.0 " << g_rows[cindex] << std::endl;
             }
@@ -741,7 +707,7 @@ Teuchos::RCP<Epetra_CrsMatrix> computeSchur_GuidedProbing
 #ifdef TIMING_OUTPUT
             app_time.start();
 #endif
-            probeop.Apply(probevec, Scol);
+            probeop.Apply(ProbeVec, Scol);
 #ifdef TIMING_OUTPUT
             app_time.stop();
 #endif
@@ -794,11 +760,10 @@ Teuchos::RCP<Epetra_CrsMatrix> computeSchur_GuidedProbing
 
         probeop.ResetTempVectors(1);
 
+        Epetra_MultiVector probevec(G_localRMap, 1);
+        Epetra_MultiVector scol(G_localRMap, 1);
         for ( ; i < g_localElems ; i++)
         {
-            // TODO: Can move the next two decalarations outside the loop
-            Epetra_MultiVector probevec(G_localRMap, 1);
-            Epetra_MultiVector Scol(G_localRMap, 1);
 
             probevec.PutScalar(0.0);
             // TODO: Can do better than this, just need to go to the column map
@@ -808,12 +773,12 @@ Teuchos::RCP<Epetra_CrsMatrix> computeSchur_GuidedProbing
 #ifdef TIMING_OUTPUT
             app_time.start();
 #endif
-            probeop.Apply(probevec, Scol);
+            probeop.Apply(probevec, scol);
 #ifdef TIMING_OUTPUT
             app_time.stop();
 #endif
-            vecvalues = Scol[0];
-            Scol.MaxValue(maxvalue);
+            vecvalues = scol[0];
+            scol.MaxValue(maxvalue);
             //std::cout << "MAX" << maxvalue << std::endl;
             for (int j = 0 ; j < g_localElems ; j++)
             {
@@ -891,21 +856,21 @@ Teuchos::RCP<Epetra_CrsMatrix> computeSchur_GuidedProbing
         }
         // Use the prober to probe the probeop for the sparsity pattern
         // add that to Sbar and call Fill complete
-        int nvectors = data->guided_prober->getNumOrthogonalVectors();
+        nvectors = data->guided_prober->getNumOrthogonalVectors();
         std::cout << "Number of Orthogonal Vectors for guided probing" << nvectors
                 << std::endl;
 
         probeop.ResetTempVectors(nvectors);
         Teuchos::RCP<Epetra_CrsMatrix> blockdiag_Sbar =
                                  data->guided_prober->probe(probeop);
-        int maxentries = blockdiag_Sbar->GlobalMaxNumEntries();
+        maxentries = blockdiag_Sbar->GlobalMaxNumEntries();
         int *indices = new int[maxentries];
         double *values = new double[maxentries];
 
         int numentries;
-        for (int i = 0; i < blockdiag_Sbar->NumGlobalRows() ; i++)
+        for (i = 0; i < blockdiag_Sbar->NumGlobalRows() ; i++)
         {
-            int gid = blockdiag_Sbar->GRID(i);
+            gid = blockdiag_Sbar->GRID(i);
             blockdiag_Sbar->ExtractGlobalRowCopy(gid, maxentries, numentries,
                                             values, indices);
             Sbar->InsertGlobalValues(gid, numentries, values, indices);
@@ -916,6 +881,7 @@ Teuchos::RCP<Epetra_CrsMatrix> computeSchur_GuidedProbing
         delete[] values;
     }
 
+    (void)err;
     delete[] values1;
     delete[] indices1;
     delete[] values2;

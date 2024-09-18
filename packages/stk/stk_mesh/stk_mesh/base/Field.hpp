@@ -38,7 +38,6 @@
 //----------------------------------------------------------------------
 
 #include <stk_mesh/base/FieldBase.hpp>
-#include <stk_mesh/base/FieldTraits.hpp>
 #include <stk_mesh/baseImpl/FieldRepository.hpp>
 #include <stk_util/util/string_case_compare.hpp>  // for equal_case
 #include <iomanip>
@@ -197,7 +196,17 @@ public:
 
     out << "{";
     for (unsigned i = 0; i < num_scalar_values; ++i) {
-      out << std::setprecision(thisPrecision) << casted_data[i] << " ";
+      if constexpr (sizeof(Scalar) == 1) {
+        if constexpr (std::is_signed_v<Scalar>) {
+          out << std::setprecision(thisPrecision) << static_cast<int>(casted_data[i]) << " ";
+        }
+        else {
+          out << std::setprecision(thisPrecision) << static_cast<unsigned>(casted_data[i]) << " ";
+        }
+      }
+      else {
+        out << std::setprecision(thisPrecision) << casted_data[i] << " ";
+      }
     }
     out << "}";
 
@@ -223,7 +232,7 @@ public:
       const int len_suffix = std::strlen(reserved_state_suffix[i]);
       const int offset     = len_name - len_suffix ;
       if ( 0 <= offset ) {
-        const char * const name_suffix = name().c_str() + offset;
+        [[maybe_unused]] const char * const name_suffix = name().c_str() + offset;
         STK_ThrowErrorMsgIf(equal_case(name_suffix , reserved_state_suffix[i]),
                         "For name = \"" << name_suffix << "\" CANNOT HAVE THE RESERVED STATE SUFFIX \"" <<
                         reserved_state_suffix[i] << "\"");

@@ -1,3 +1,11 @@
+// @HEADER
+// *****************************************************************************
+//                           Intrepid2 Package
+//
+// Copyright 2007 NTESS and the Intrepid2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
+// @HEADER
 //
 //  H1StandardAssembly.hpp
 //  Trilinos
@@ -41,6 +49,9 @@ Intrepid2::ScalarView<Scalar,DeviceType> performStandardQuadratureH1(Intrepid2::
   // dimensions of the returned view are (C,F,F)
   auto fs = FUNCTION_SPACE_HGRAD;
 
+  Intrepid2::ScalarView<Intrepid2::Orientation,DeviceType> orientations("orientations", geometry.numCells() );
+  geometry.orientations(orientations, 0, -1);
+  
   shards::CellTopology cellTopo = geometry.cellTopology();
   
   auto basis = getBasis< BasisFamily >(cellTopo, fs, polyOrder);
@@ -68,9 +79,11 @@ Intrepid2::ScalarView<Scalar,DeviceType> performStandardQuadratureH1(Intrepid2::
   ScalarView<Scalar,DeviceType> basisValues    ("basis values", numFields, numPoints );
   ScalarView<Scalar,DeviceType> basisGradValues("basis grad values", numFields, numPoints, spaceDim);
 
+  ScalarView<Scalar,DeviceType> unorientedTransformedGradValues("unoriented transformed grad values", worksetSize, numFields, numPoints, spaceDim);
   ScalarView<Scalar,DeviceType> transformedGradValues("transformed grad values", worksetSize, numFields, numPoints, spaceDim);
   ScalarView<Scalar,DeviceType> transformedWeightedGradValues("transformed weighted grad values", worksetSize, numFields, numPoints, spaceDim);
   
+  ScalarView<Scalar,DeviceType> unorientedTransformedBasisValues("unoriented transformed basis values", worksetSize, numFields, numPoints);
   ScalarView<Scalar,DeviceType> transformedBasisValues("transformed basis values", worksetSize, numFields, numPoints);
   ScalarView<Scalar,DeviceType> transformedWeightedBasisValues("transformed weighted basis values", worksetSize, numFields, numPoints);
   
@@ -111,17 +124,20 @@ Intrepid2::ScalarView<Scalar,DeviceType> performStandardQuadratureH1(Intrepid2::
     
     std::pair<int,int> cellRange = {startCell, startCell+numCellsInWorkset};
     auto cellWorkset = Kokkos::subview(expandedCellNodes, cellRange, Kokkos::ALL(), Kokkos::ALL());
+    auto orientationsWorkset = Kokkos::subview(orientations, cellRange);
     
     if (numCellsInWorkset != worksetSize)
     {
-      Kokkos::resize(jacobian,                      numCellsInWorkset, numPoints, spaceDim, spaceDim);
-      Kokkos::resize(jacobianInverse,               numCellsInWorkset, numPoints, spaceDim, spaceDim);
-      Kokkos::resize(jacobianDeterminant,           numCellsInWorkset, numPoints);
-      Kokkos::resize(cellMeasures,                  numCellsInWorkset, numPoints);
-      Kokkos::resize(transformedBasisValues,        numCellsInWorkset, numFields, numPoints);
-      Kokkos::resize(transformedGradValues,         numCellsInWorkset, numFields, numPoints, spaceDim);
-      Kokkos::resize(transformedWeightedBasisValues,numCellsInWorkset, numFields, numPoints);
-      Kokkos::resize(transformedWeightedGradValues, numCellsInWorkset, numFields, numPoints, spaceDim);
+      Kokkos::resize(jacobian,                         numCellsInWorkset, numPoints, spaceDim, spaceDim);
+      Kokkos::resize(jacobianInverse,                  numCellsInWorkset, numPoints, spaceDim, spaceDim);
+      Kokkos::resize(jacobianDeterminant,              numCellsInWorkset, numPoints);
+      Kokkos::resize(cellMeasures,                     numCellsInWorkset, numPoints);
+      Kokkos::resize(unorientedTransformedGradValues,  numCellsInWorkset, numFields, numPoints, spaceDim);
+      Kokkos::resize(unorientedTransformedBasisValues, numCellsInWorkset, numFields, numPoints);
+      Kokkos::resize(transformedBasisValues,           numCellsInWorkset, numFields, numPoints);
+      Kokkos::resize(transformedGradValues,            numCellsInWorkset, numFields, numPoints, spaceDim);
+      Kokkos::resize(transformedWeightedBasisValues,   numCellsInWorkset, numFields, numPoints);
+      Kokkos::resize(transformedWeightedGradValues,    numCellsInWorkset, numFields, numPoints, spaceDim);
     }
     jacobianAndCellMeasureTimer->start();
     CellTools::setJacobian(jacobian, cubaturePoints, cellWorkset, cellTopo); // accounted for outside loop, as numCells * flopsPerJacobianPerCell.
@@ -134,7 +150,12 @@ Intrepid2::ScalarView<Scalar,DeviceType> performStandardQuadratureH1(Intrepid2::
     
     // because structured integration performs transformations within integrate(), to get a fairer comparison here we include the transformation calls.
     fstIntegrateCall->start();
-    FunctionSpaceTools::HGRADtransformGRAD(transformedGradValues, jacobianInverse, basisGradValues);
+    FunctionSpaceTools::HGRADtransformGRAD(unorientedTransformedGradValues, jacobianInverse, basisGradValues);
+    // we want to exclude orientation application in the core integration timing -- this time gets reported as "Other"
+    fstIntegrateCall->stop();
+    OrientationTools<DeviceType>::modifyBasisByOrientation(transformedGradValues, unorientedTransformedGradValues,
+                                                           orientationsWorkset, basis.get());
+    fstIntegrateCall->start();
     transformIntegrateFlopCount += double(numCellsInWorkset) * double(numFields) * double(numPoints) * double(spaceDim) * (spaceDim - 1) * 2.0; // 2: one multiply, one add per (P,D) entry in the contraction.
     FunctionSpaceTools::multiplyMeasure(transformedWeightedGradValues, cellMeasures, transformedGradValues);
     transformIntegrateFlopCount += double(numCellsInWorkset) * double(numFields) * double(numPoints) * double(spaceDim); // multiply each entry of transformedGradValues: one flop for each.
@@ -144,7 +165,12 @@ Intrepid2::ScalarView<Scalar,DeviceType> performStandardQuadratureH1(Intrepid2::
     FunctionSpaceTools::integrate(cellStiffnessSubview, transformedGradValues, transformedWeightedGradValues);
     ExecutionSpace().fence();
     
-    FunctionSpaceTools::HGRADtransformVALUE(transformedBasisValues, basisValues);
+    FunctionSpaceTools::HGRADtransformVALUE(unorientedTransformedBasisValues, basisValues);
+    // we want to exclude orientation application in the core integration timing -- this time gets reported as "Other"
+    fstIntegrateCall->stop();
+    OrientationTools<DeviceType>::modifyBasisByOrientation(transformedBasisValues, unorientedTransformedBasisValues,
+                                                           orientationsWorkset, basis.get());
+    fstIntegrateCall->start();
     FunctionSpaceTools::multiplyMeasure(transformedWeightedBasisValues, cellMeasures, transformedBasisValues);
     bool sumInto = true; // add the (value,value) integral to the (grad,grad) that we've already integrated
     FunctionSpaceTools::integrate(cellStiffnessSubview, transformedBasisValues, transformedWeightedBasisValues, sumInto);

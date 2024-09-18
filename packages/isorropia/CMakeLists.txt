@@ -11,6 +11,7 @@ TRIBITS_PACKAGE(Isorropia)
 #
 
 # ToDo: Add these as you need them!
+TRIBITS_ADD_SHOW_DEPRECATED_WARNINGS_OPTION()
 
 #
 # C) Add the libraries, tests, and examples
@@ -24,11 +25,6 @@ ADD_SUBDIRECTORY(utils)
 TRIBITS_ADD_TEST_DIRECTORIES(test)
 
 TRIBITS_ADD_EXAMPLE_DIRECTORIES(example)
-
-#
-# Exclude files for source package.
-#
-
 TRIBITS_EXCLUDE_AUTOTOOLS_FILES()
 
 #

@@ -33,8 +33,6 @@ SET(Tpetra_MACHINE_XML_FILE_DIR
 GLOBAL_SET(HAVE_TPETRACORE_TEUCHOSKOKKOSCOMPAT ON)
 GLOBAL_SET(HAVE_TPETRACORE_TEUCHOSKOKKOSCOMM ON)
 GLOBAL_SET(HAVE_TPETRACORE_KOKKOS ON)
-GLOBAL_SET(HAVE_TPETRACORE_KOKKOS ON)
-GLOBAL_SET(HAVE_TPETRACORE_KOKKOS ON)
 
 TRIBITS_ADD_OPTION_AND_DEFINE(
   ${PACKAGE_NAME}_ENABLE_SS_TESTING
@@ -108,6 +106,14 @@ GLOBAL_SET(${PACKAGE_NAME}_ETI_NODES   ${${PACKAGE_NAME}_ETI_NODES})
 # ==================================================================
 # Other Tpetra options
 # ==================================================================
+
+TRIBITS_ADD_OPTION_AND_DEFINE(
+  Tpetra_ENABLE_Reduced_ETI
+  HAVE_TPETRA_REDUCED_ETI
+  "Uses reduced ETI of Tpetra to speed compilation."
+  OFF
+  )
+
 
 TRIBITS_ADD_OPTION_AND_DEFINE(
   ${PACKAGE_NAME}_Threaded_MKL
@@ -190,15 +196,6 @@ TRIBITS_ADD_OPTION_AND_DEFINE(
   "Do MV import instead of BMV import."
   OFF
   )
-
-TRIBITS_ADD_OPTION_AND_DEFINE(
-  Tpetra_ENABLE_KokkosIntegrationTest
-  HAVE_TPETRA_KOKKOSINTEGRATION_TEST
-  "Enable the KokkosIntegrationTest"
-  ON
-  )
-
-
 
 
 #

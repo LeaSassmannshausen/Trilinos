@@ -137,7 +137,6 @@ void populateBulkDataWithFile(const std::string& exodusFileName, MPI_Comm commun
 // The order of the following lines in {} are important
 {
   stk::io::StkMeshIoBroker exodusFileReader(communicator);
-  exodusFileReader.use_simple_fields();
 
   // Inform STK IO which STK Mesh objects to populate later
   exodusFileReader.set_bulk_data(bulkData);
@@ -523,7 +522,7 @@ void connectElementToEdge(stk::unit_test_util::BulkDataTester& stkMeshBulkData, 
     nodes[i] = stkMeshBulkData.get_entity(nodeKey);
   }
 
-  stk::mesh::impl::connectUpwardEntityToEntity(stkMeshBulkData, element, edge, &nodes[0]);
+  stk::mesh::impl::connectUpwardEntityToEntity(stkMeshBulkData, element, edge, nodes.data());
 }
 
 void create_edges(stk::unit_test_util::BulkDataTester& stkMeshBulkData, std::vector<stk::mesh::EntityId>& edgeIds,

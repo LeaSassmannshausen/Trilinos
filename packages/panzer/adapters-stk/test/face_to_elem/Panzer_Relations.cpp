@@ -1,3 +1,13 @@
+// @HEADER
+// *****************************************************************************
+//           Panzer: A partial differential equation assembly
+//       engine for strongly coupled complex multiphysics systems
+//
+// Copyright 2011 NTESS and the Panzer contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
+// @HEADER
+
 #include "Panzer_Relations.hpp"
 #include "Panzer_NodalFieldPattern.hpp"
 #include "Panzer_EdgeFieldPattern.hpp"
@@ -203,7 +213,7 @@ void FaceToElems::setNormals(Teuchos::RCP<std::vector<panzer::Workset> > workset
 
   for (int nwkst=0; nwkst<num_worksets; ++nwkst){
     panzer::Workset &workset = (*worksets)[nwkst];
-    auto coords = workset.cell_vertex_coordinates;
+    auto coords = workset.cell_node_coordinates;
     auto coords_h = Kokkos::create_mirror_view(coords.get_static_view());
     Kokkos::deep_copy(coords_h, coords.get_static_view());
     int num_cells = workset.num_cells;

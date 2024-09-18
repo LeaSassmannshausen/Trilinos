@@ -74,7 +74,9 @@ Eval::Eval(const Eval& otherEval)
     m_parseStatus(otherEval.m_parseStatus),
     m_headNode(otherEval.m_headNode),
     m_nodes(otherEval.m_nodes),
+    m_evaluationNodes(otherEval.m_evaluationNodes),
     m_arrayOffsetType(otherEval.m_arrayOffsetType),
+    m_resultBuffer(otherEval.m_resultBuffer),
     m_parsedEval(nullptr)
 {}
 
@@ -210,10 +212,7 @@ bool
 Eval::undefinedFunction() const
 {
   /* Check for an undefined function in any allocated node */
-  for (const auto& node : m_nodes) {
-    if (node->m_data.function.undefinedFunction) return true;
-  }
-  return false;
+  return !m_undefinedFunctionSet.empty();
 }
 
 bool
@@ -367,6 +366,7 @@ Eval::initialize_function_map()
   m_functionMap["cycloidal_ramp"] = FunctionType::CYCLOIDAL_RAMP;
   m_functionMap["cos_ramp"] = FunctionType::COS_RAMP;
   m_functionMap["cosine_ramp"] = FunctionType::COS_RAMP;
+  m_functionMap["linear_ramp"] = FunctionType::LINEAR_RAMP;
   m_functionMap["haversine_pulse"] = FunctionType::HAVERSINE_PULSE;
   m_functionMap["point2d"] = FunctionType::POINT2D;
   m_functionMap["point3d"] = FunctionType::POINT3D;
@@ -466,7 +466,37 @@ Eval::getValue(const std::string &name)
 }
 
 Eval &
+Eval::bindVariable(const std::string &name, const double &value_ref, int definedLength)
+{
+  VariableMap::iterator it = m_variableMap.find(name);
+  if (it != m_variableMap.end()) {
+    (*it).second->bind(value_ref, definedLength);
+  }
+  return *this;
+}
+
+Eval &
 Eval::bindVariable(const std::string &name, double &value_ref, int definedLength)
+{
+  VariableMap::iterator it = m_variableMap.find(name);
+  if (it != m_variableMap.end()) {
+    (*it).second->bind(value_ref, definedLength);
+  }
+  return *this;
+}
+
+Eval &
+Eval::bindVariable(const std::string &name, const int &value_ref, int definedLength)
+{
+  VariableMap::iterator it = m_variableMap.find(name);
+  if (it != m_variableMap.end()) {
+    (*it).second->bind(value_ref, definedLength);
+  }
+  return *this;
+}
+
+Eval &
+Eval::bindVariable(const std::string &name, int &value_ref, int definedLength)
 {
   VariableMap::iterator it = m_variableMap.find(name);
   if (it != m_variableMap.end()) {

@@ -29,12 +29,10 @@ namespace KokkosBatched {
 ///
 struct SerialWilkinsonShiftInternal {
   template <typename ValueType>
-  KOKKOS_INLINE_FUNCTION static int invoke(
-      const ValueType a, const ValueType b, const ValueType c,
-      const ValueType d,
-      /* */ Kokkos::complex<ValueType>* lambda1,
-      /* */ Kokkos::complex<ValueType>* lambda2,
-      /* */ bool* is_complex) {
+  KOKKOS_INLINE_FUNCTION static int invoke(const ValueType a, const ValueType b, const ValueType c, const ValueType d,
+                                           /* */ Kokkos::complex<ValueType>* lambda1,
+                                           /* */ Kokkos::complex<ValueType>* lambda2,
+                                           /* */ bool* is_complex) {
     /// compute eigenvalues of 2x2 system [a b;
     ///                                    c d]
     /// when the system has a real complex values,
@@ -52,18 +50,16 @@ struct SerialWilkinsonShiftInternal {
 
     if (v < 0) {
       // complex
-      const value_type sqrt_v =
-          Kokkos::Details::ArithTraits<value_type>::sqrt(-v);
-      *lambda1    = Kokkos::complex<value_type>(p, sqrt_v);
-      *lambda2    = Kokkos::complex<value_type>(p, -sqrt_v);
-      *is_complex = true;
+      const value_type sqrt_v = Kokkos::ArithTraits<value_type>::sqrt(-v);
+      *lambda1                = Kokkos::complex<value_type>(p, sqrt_v);
+      *lambda2                = Kokkos::complex<value_type>(p, -sqrt_v);
+      *is_complex             = true;
     } else {
       // real
-      const value_type sqrt_v =
-          Kokkos::Details::ArithTraits<value_type>::sqrt(v);
-      *lambda1    = Kokkos::complex<value_type>(p + sqrt_v);
-      *lambda2    = Kokkos::complex<value_type>(p - sqrt_v);
-      *is_complex = false;
+      const value_type sqrt_v = Kokkos::ArithTraits<value_type>::sqrt(v);
+      *lambda1                = Kokkos::complex<value_type>(p + sqrt_v);
+      *lambda2                = Kokkos::complex<value_type>(p - sqrt_v);
+      *is_complex             = false;
     }
     return 0;
   }

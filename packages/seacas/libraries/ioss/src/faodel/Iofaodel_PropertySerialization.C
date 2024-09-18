@@ -1,4 +1,4 @@
-// Copyright(C) 1999-2021 National Technology & Engineering Solutions
+// Copyright(C) 1999-2021, 2023 National Technology & Engineering Solutions
 // of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 // NTESS, the U.S. Government retains certain rights in this software.
 //
@@ -7,32 +7,32 @@
 #include "Iofaodel_PropertySerialization.h"
 #include "Iofaodel_Utils.h"
 
-#include <Ioss_CommSet.h>
-#include <Ioss_DatabaseIO.h>
-#include <Ioss_DatabaseIO.h> // for DatabaseIO
-#include <Ioss_EdgeBlock.h>
-#include <Ioss_EdgeSet.h>
-#include <Ioss_ElementBlock.h>
-#include <Ioss_ElementSet.h>
-#include <Ioss_FaceBlock.h>
-#include <Ioss_FaceSet.h>
-#include <Ioss_Field.h> // for Region
-#include <Ioss_GroupingEntity.h>
-#include <Ioss_IOFactory.h>
-#include <Ioss_NodeBlock.h>
-#include <Ioss_NodeSet.h>
-#include <Ioss_Property.h> // for Region
-#include <Ioss_Region.h>
-#include <Ioss_Region.h> // for Region
-#include <Ioss_SideBlock.h>
-#include <Ioss_SideSet.h>
-#include <Ioss_State.h> // for State
-#include <Ioss_StructuredBlock.h>
+#include "Ioss_CommSet.h"
+#include "Ioss_DatabaseIO.h"
+#include "Ioss_DatabaseIO.h" // for DatabaseIO
+#include "Ioss_EdgeBlock.h"
+#include "Ioss_EdgeSet.h"
+#include "Ioss_ElementBlock.h"
+#include "Ioss_ElementSet.h"
+#include "Ioss_FaceBlock.h"
+#include "Ioss_FaceSet.h"
+#include "Ioss_Field.h" // for Region
+#include "Ioss_GroupingEntity.h"
+#include "Ioss_IOFactory.h"
+#include "Ioss_NodeBlock.h"
+#include "Ioss_NodeSet.h"
+#include "Ioss_Property.h" // for Region
+#include "Ioss_Region.h"
+#include "Ioss_Region.h" // for Region
+#include "Ioss_SideBlock.h"
+#include "Ioss_SideSet.h"
+#include "Ioss_State.h" // for State
+#include "Ioss_StructuredBlock.h"
 
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
-#include <assert.h>
+#include <cassert>
 
 namespace Iofaodel {
 
@@ -108,8 +108,8 @@ namespace Iofaodel {
 
         is_implicit(property.is_implicit()), is_valid(property.is_valid()),
 
-        name{start, property.get_name().size()}, value{name.offset + name.size,
-                                                       Iofaodel::data_size(property)},
+        name{start, property.get_name().size()},
+        value{name.offset + name.size, Iofaodel::data_size(property)},
         data_size(name.size + value.size)
   {
   }

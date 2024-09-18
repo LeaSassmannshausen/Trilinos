@@ -260,7 +260,7 @@ void testNGPThrowRequireMsg()
 
 TEST(UnitTestingOfThrowMacros, NGP_ThrowRequireMsg)
 {
-#if defined(KOKKOS_ENABLE_CUDA) || defined(_OPENMP) || defined(KOKKOS_ENABLE_HIP)
+#if defined(STK_ENABLE_GPU) || defined(_OPENMP)
   // Unable to test a device-side abort, as this eventually results in a throw
   // inside Kokkos::finalize().
   // Also, OpenMP seems to produce an abort (in adddition to a throw?).
@@ -303,7 +303,7 @@ void testNGPThrowRequire()
 
 TEST(UnitTestingOfThrowMacros, NGP_ThrowRequire)
 {
-#if defined(KOKKOS_ENABLE_CUDA) || defined(_OPENMP) || defined(KOKKOS_ENABLE_HIP)
+#if defined(STK_ENABLE_GPU) || defined(_OPENMP)
   // Unable to test a device-side abort, as this eventually results in a throw
   // inside Kokkos::finalize().
   //
@@ -338,7 +338,7 @@ void testNGPThrowAssertMsg()
 
 TEST(UnitTestingOfThrowMacros, NGP_ThrowAssertMsg_debug)
 {
-#if defined(KOKKOS_ENABLE_CUDA) || defined(_OPENMP) || defined(KOKKOS_ENABLE_HIP)
+#if defined(STK_ENABLE_GPU) || defined(_OPENMP)
   // Unable to test a device-side abort, as this eventually results in a throw
   // inside Kokkos::finalize().
   //
@@ -372,7 +372,7 @@ void testNGPThrowAssertMsg()
 
 TEST(UnitTestingOfThrowMacros, NGP_ThrowAssertMsg_release)
 {
-#if defined(KOKKOS_ENABLE_CUDA) || defined(_OPENMP) || defined(KOKKOS_ENABLE_HIP)
+#if defined(STK_ENABLE_GPU) || defined(_OPENMP)
   // Unable to test a device-side abort, as this eventually results in a throw
   // inside Kokkos::finalize().
   //
@@ -395,7 +395,7 @@ void testNGPThrowErrorMsgIf()
 
 TEST(UnitTestingOfThrowMacros, NGP_ThrowErrorMsgIf)
 {
-#if defined(KOKKOS_ENABLE_CUDA) || defined(_OPENMP) || defined(KOKKOS_ENABLE_HIP)
+#if defined(STK_ENABLE_GPU) || defined(_OPENMP)
   // Unable to test a device-side abort, as this eventually results in a throw
   // inside Kokkos::finalize().
   //
@@ -427,7 +427,7 @@ void testNGPThrowErrorIf()
 
 TEST(UnitTestingOfThrowMacros, NGP_ThrowErrorIf)
 {
-#if defined(KOKKOS_ENABLE_CUDA) || defined(_OPENMP) || defined(KOKKOS_ENABLE_HIP)
+#if defined(STK_ENABLE_GPU) || defined(_OPENMP)
   // Unable to test a device-side abort, as this eventually results in a throw
   // inside Kokkos::finalize().
   //
@@ -456,7 +456,7 @@ void testNGPThrowErrorMsg()
 
 TEST(UnitTestingOfThrowMacros, NGP_ThrowErrorMsg)
 {
-#if defined(KOKKOS_ENABLE_CUDA) || defined(_OPENMP) || defined(KOKKOS_ENABLE_HIP)
+#if defined(STK_ENABLE_GPU) || defined(_OPENMP)
   // Unable to test a device-side abort, as this eventually results in a throw
   // inside Kokkos::finalize().
   //
@@ -477,7 +477,7 @@ TEST(UnitTestingOfThrowMacros, NGP_ThrowErrorMsg)
 #endif
 }
 
-#if defined(STK_BUILT_IN_SIERRA) && !defined(NDEBUG)
+#if !defined(NDEBUG)
 // clang-format off
 #define TEST_THROW_MACROS_IN_BLOCKS_ARG(testThrow, cond) \
 {                                                        \
@@ -518,26 +518,6 @@ TEST(UnitTestingOfThrowMacros, NGP_ThrowErrorMsg)
 #define TEST_NGP_THROW_MSG_MACROS_IN_BLOCKS(testThrow)  TEST_THROW_MSG_MACROS_IN_BLOCKS_ARG(testThrow, true)
 #define TEST_NGP_THROW_MSG_IF_MACROS_IN_BLOCKS(testThrow)  TEST_THROW_MSG_MACROS_IN_BLOCKS_ARG(testThrow, false)
 
-TEST(UnitTestingOfThrowMacros, ThrowsInSingleStatementBlock)
-{
-  EXPECT_ANY_THROW(TEST_THROW_MACROS_IN_BLOCKS(ThrowRequireWithSierraHelpMsg));
-  EXPECT_ANY_THROW(TEST_THROW_MACROS_IN_BLOCKS(ThrowRequire));
-  EXPECT_ANY_THROW(TEST_THROW_IF_MACROS_IN_BLOCKS(ThrowErrorIf));
-  EXPECT_ANY_THROW(TEST_THROW_IF_MACROS_IN_BLOCKS(ThrowInvalidArgIf));
-
-  EXPECT_ANY_THROW(TEST_THROW_MSG_MACROS_IN_BLOCKS(ThrowRequireMsg));
-  EXPECT_ANY_THROW(TEST_THROW_MSG_IF_MACROS_IN_BLOCKS(ThrowErrorMsgIf));
-  EXPECT_ANY_THROW(TEST_THROW_MSG_IF_MACROS_IN_BLOCKS(ThrowInvalidArgMsgIf));
-
-#ifdef NDEBUG
-  EXPECT_NO_THROW(TEST_THROW_MACROS_IN_BLOCKS(ThrowAssert));
-  EXPECT_NO_THROW(TEST_THROW_MSG_MACROS_IN_BLOCKS(ThrowAssertMsg));
-#else
-  EXPECT_ANY_THROW(TEST_THROW_MACROS_IN_BLOCKS(ThrowAssert));
-  EXPECT_ANY_THROW(TEST_THROW_MSG_MACROS_IN_BLOCKS(ThrowAssertMsg));
-#endif
-}
-
 TEST(UnitTestingOfThrowMacros, STK_ThrowsInSingleStatementBlock)
 {
   EXPECT_ANY_THROW(TEST_THROW_MACROS_IN_BLOCKS(STK_ThrowRequireWithSierraHelpMsg));
@@ -566,24 +546,6 @@ void run_ngp_macros_test(Lambda lambda) {
 template <typename... Lambdas>
 void run_ngp_macros_in_single_statement_block(Lambdas... lambdas) {
   (run_ngp_macros_test(lambdas), ...);
-}
-
-void test_ngp_macros_in_single_statement_block() {
-  auto ngpThrowRequire = KOKKOS_LAMBDA(const int) { TEST_NGP_THROW_MACROS_IN_BLOCKS(NGP_ThrowRequire); };
-  auto ngpThrowAssert = KOKKOS_LAMBDA(const int) { TEST_NGP_THROW_MACROS_IN_BLOCKS(NGP_ThrowAssert); };
-  auto ngpThrowErrorIf = KOKKOS_LAMBDA(const int) { TEST_NGP_THROW_IF_MACROS_IN_BLOCKS(NGP_ThrowErrorIf); };
-
-  auto ngpThrowRequireMsg = KOKKOS_LAMBDA(const int) { TEST_NGP_THROW_MSG_MACROS_IN_BLOCKS(NGP_ThrowRequireMsg); };
-  auto ngpThrowAssertMsg = KOKKOS_LAMBDA(const int) { TEST_NGP_THROW_MSG_MACROS_IN_BLOCKS(NGP_ThrowAssertMsg); };
-  auto ngpThrowErrorMsgIf = KOKKOS_LAMBDA(const int) { TEST_NGP_THROW_MSG_IF_MACROS_IN_BLOCKS(NGP_ThrowErrorMsgIf); };
-
-  run_ngp_macros_in_single_statement_block(ngpThrowRequire, ngpThrowAssert, ngpThrowErrorIf, ngpThrowRequireMsg,
-                                           ngpThrowRequire, ngpThrowAssertMsg,  ngpThrowErrorMsgIf);
-}
-
-TEST(UnitTestingOfThrowMacros, NGPThrowsInSingleStatementBlock)
-{
-  test_ngp_macros_in_single_statement_block();
 }
 
 void test_stk_ngp_macros_in_single_statement_block() {

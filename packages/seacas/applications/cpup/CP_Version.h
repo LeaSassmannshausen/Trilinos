@@ -1,14 +1,11 @@
 /*
- * Copyright(C) 1999-2022 National Technology & Engineering Solutions
+ * Copyright(C) 1999-2024 National Technology & Engineering Solutions
  * of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
  * NTESS, the U.S. Government retains certain rights in this software.
  *
  * See packages/seacas/LICENSE for details
  */
 #pragma once
-
-static char const *qainfo[] = {
-    "cpup",
-    "0.94 beta",
-    "2022/10/31",
-};
+#include <array>
+#include <string>
+static const std::array<std::string, 3> qainfo{"cpup", "0.96 beta", "2024/08/06"};

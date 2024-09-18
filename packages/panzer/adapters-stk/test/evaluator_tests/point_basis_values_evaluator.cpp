@@ -1,43 +1,11 @@
 // @HEADER
-// ***********************************************************************
-//
+// *****************************************************************************
 //           Panzer: A partial differential equation assembly
 //       engine for strongly coupled complex multiphysics systems
-//                 Copyright (2011) Sandia Corporation
 //
-// Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-// the U.S. Government retains certain rights in this software.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Roger P. Pawlowski (rppawlo@sandia.gov) and
-// Eric C. Cyr (eccyr@sandia.gov)
-// ***********************************************************************
+// Copyright 2011 NTESS and the Panzer contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 #include <Teuchos_ConfigDefs.hpp>
@@ -225,23 +193,23 @@ namespace panzer {
     Kokkos::deep_copy(point_coords_jac_h, point_coords_jac.get_view());
     auto point_coords_jac_inv_h = Kokkos::create_mirror_view(point_coords_jac_inv.get_view());
     Kokkos::deep_copy(point_coords_jac_inv_h, point_coords_jac_inv.get_view());
-    auto cell_vertex_coordinates_h = Kokkos::create_mirror_view(workset.cell_vertex_coordinates.get_view());
-    Kokkos::deep_copy(cell_vertex_coordinates_h, workset.cell_vertex_coordinates.get_view());
+    auto cell_node_coordinates_h = Kokkos::create_mirror_view(workset.cell_node_coordinates.get_view());
+    Kokkos::deep_copy(cell_node_coordinates_h, workset.cell_node_coordinates.get_view());
     auto basis_coordinates_ref_h = Kokkos::create_mirror_view(workset.bases[1]->basis_coordinates_ref.get_view());
     Kokkos::deep_copy(basis_coordinates_ref_h, workset.bases[1]->basis_coordinates_ref.get_view());
     for(int c=0;c<basis_q1->numCells();c++) {
        double dx = 0.5;
        double dy = 0.5;
        for(int p=0;p<num_points;p++) {
-          double x = dx*(point_coordinates_h(p,0)+1.0)/2.0 + cell_vertex_coordinates_h(c,0,0);
-          double y = dy*(point_coordinates_h(p,1)+1.0)/2.0 + cell_vertex_coordinates_h(c,0,1);
+          double x = dx*(point_coordinates_h(p,0)+1.0)/2.0 + cell_node_coordinates_h(c,0,0);
+          double y = dy*(point_coordinates_h(p,1)+1.0)/2.0 + cell_node_coordinates_h(c,0,1);
           TEST_FLOATING_EQUALITY(point_coords_h(c,p,0),x,1e-10);
           TEST_FLOATING_EQUALITY(point_coords_h(c,p,1),y,1e-10);
        }
 
        for(int p=0;p<basis_q1->cardinality();p++) {
-          double x = dx*(basis_coordinates_ref_h(p,0)+1.0)/2.0 + cell_vertex_coordinates_h(c,0,0);
-          double y = dy*(basis_coordinates_ref_h(p,1)+1.0)/2.0 + cell_vertex_coordinates_h(c,0,1);
+          double x = dx*(basis_coordinates_ref_h(p,0)+1.0)/2.0 + cell_node_coordinates_h(c,0,0);
+          double y = dy*(basis_coordinates_ref_h(p,1)+1.0)/2.0 + cell_node_coordinates_h(c,0,1);
           TEST_FLOATING_EQUALITY(point_coords_basis_h(c,p,0),x,1e-10);
           TEST_FLOATING_EQUALITY(point_coords_basis_h(c,p,1),y,1e-10);
        }
@@ -298,7 +266,7 @@ namespace panzer {
     Teuchos::RCP<panzer::IntegrationRule> point_rule = buildIR(workset_size,integration_order);
     panzer::IntegrationValues2<double> int_values("",true);
     int_values.setupArrays(point_rule);
-    int_values.evaluateValues(workset.cell_vertex_coordinates);
+    int_values.evaluateValues(workset.cell_node_coordinates);
 
     // Teuchos::RCP<Kokkos::DynRankView<double,PHX::Device> > userArray = Teuchos::rcpFromRef(int_values.cub_points);
     auto userArray = int_values.cub_points;
@@ -433,7 +401,7 @@ namespace panzer {
     Teuchos::RCP<panzer::IntegrationRule> point_rule = buildIR(workset_size,integration_order);
     panzer::IntegrationValues2<double> int_values("",true);
     int_values.setupArrays(point_rule);
-    int_values.evaluateValues(workset.cell_vertex_coordinates);
+    int_values.evaluateValues(workset.cell_node_coordinates);
 
     // Teuchos::RCP<Kokkos::DynRankView<double,PHX::Device> > userArray = Teuchos::rcpFromRef(int_values.cub_points);
     auto userArray = int_values.cub_points;
@@ -614,7 +582,7 @@ namespace panzer {
     Teuchos::RCP<panzer::IntegrationRule> point_rule = buildIR(workset_size,integration_order);
     panzer::IntegrationValues2<double> int_values("",true);
     int_values.setupArrays(point_rule);
-    int_values.evaluateValues(workset.cell_vertex_coordinates);
+    int_values.evaluateValues(workset.cell_node_coordinates);
 
     // Teuchos::RCP<Kokkos::DynRankView<double,PHX::Device> > userArray = Teuchos::rcpFromRef(int_values.cub_points);
     auto userArray = int_values.cub_points;

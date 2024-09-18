@@ -40,12 +40,11 @@ namespace Impl {
 // corresponding input coefficient.  Any literal coefficient of zero
 // has BLAS semantics of ignoring the corresponding (multi)vector
 // entry.
-template <class XMV, class YMV, class ZMV, int scalar_x, int scalar_y,
-          int scalar_z, class SizeType = typename ZMV::size_type>
+template <class XMV, class YMV, class ZMV, int scalar_x, int scalar_y, int scalar_z,
+          class SizeType = typename ZMV::size_type>
 struct MV_Update_Functor {
-  typedef typename ZMV::execution_space execution_space;
   typedef SizeType size_type;
-  typedef Kokkos::Details::ArithTraits<typename ZMV::non_const_value_type> ATS;
+  typedef Kokkos::ArithTraits<typename ZMV::non_const_value_type> ATS;
 
   const size_type numCols;
   const typename XMV::non_const_value_type alpha_;
@@ -55,19 +54,10 @@ struct MV_Update_Functor {
   const typename ZMV::non_const_value_type gamma_;
   ZMV Z_;
 
-  MV_Update_Functor(const typename XMV::non_const_value_type& alpha,
-                    const XMV& X,
-                    const typename YMV::non_const_value_type& beta,
-                    const YMV& Y,
-                    const typename ZMV::non_const_value_type& gamma,
-                    const ZMV& Z)
-      : numCols(X.extent(1)),
-        alpha_(alpha),
-        X_(X),
-        beta_(beta),
-        Y_(Y),
-        gamma_(gamma),
-        Z_(Z) {
+  MV_Update_Functor(const typename XMV::non_const_value_type& alpha, const XMV& X,
+                    const typename YMV::non_const_value_type& beta, const YMV& Y,
+                    const typename ZMV::non_const_value_type& gamma, const ZMV& Z)
+      : numCols(X.extent(1)), alpha_(alpha), X_(X), beta_(beta), Y_(Y), gamma_(gamma), Z_(Z) {
     static_assert(Kokkos::is_view<XMV>::value,
                   "KokkosBlas::Impl::"
                   "MV_Update_Functor: X is not a Kokkos::View.");
@@ -77,17 +67,15 @@ struct MV_Update_Functor {
     static_assert(Kokkos::is_view<ZMV>::value,
                   "KokkosBlas::Impl::"
                   "MV_Update_Functor: Z is not a Kokkos::View.");
-    static_assert(std::is_same<typename ZMV::value_type,
-                               typename ZMV::non_const_value_type>::value,
+    static_assert(std::is_same<typename ZMV::value_type, typename ZMV::non_const_value_type>::value,
                   "KokkosBlas::Impl::MV_Update_Functor: Z is const.  "
                   "It must be nonconst, because it is an output argument "
                   "(we have to be able to write to its entries).");
     // Casting enum values to int avoids compiler warnings about
     // comparing different kinds of enum values.
-    static_assert(
-        (int)ZMV::rank == (int)XMV::rank && (int)ZMV::rank == (int)YMV::rank,
-        "KokkosBlas::Impl::MV_Update_Functor: "
-        "X, Y, and Z must have the same rank.");
+    static_assert((int)ZMV::rank == (int)XMV::rank && (int)ZMV::rank == (int)YMV::rank,
+                  "KokkosBlas::Impl::MV_Update_Functor: "
+                  "X, Y, and Z must have the same rank.");
     static_assert(ZMV::rank == 2,
                   "KokkosBlas::Impl::MV_Update_Functor: "
                   "XMV, YMV, and ZMV must have rank 2.");
@@ -210,12 +198,11 @@ struct MV_Update_Functor {
 // coefficients.  The value 2 tells the functor to use the
 // corresponding input coefficient.  Any literal coefficient of zero
 // has BLAS semantics of ignoring the corresponding vector entry.
-template <class XV, class YV, class ZV, int scalar_x, int scalar_y,
-          int scalar_z, class SizeType = typename ZV::size_type>
+template <class XV, class YV, class ZV, int scalar_x, int scalar_y, int scalar_z,
+          class SizeType = typename ZV::size_type>
 struct V_Update_Functor {
-  typedef typename ZV::execution_space execution_space;
   typedef SizeType size_type;
-  typedef Kokkos::Details::ArithTraits<typename ZV::non_const_value_type> ATS;
+  typedef Kokkos::ArithTraits<typename ZV::non_const_value_type> ATS;
 
   const size_type numCols;
   const typename XV::non_const_value_type alpha_;
@@ -228,13 +215,7 @@ struct V_Update_Functor {
   V_Update_Functor(const typename XV::non_const_value_type& alpha, const XV& X,
                    const typename YV::non_const_value_type& beta, const YV& Y,
                    const typename ZV::non_const_value_type& gamma, const ZV& Z)
-      : numCols(X.extent(1)),
-        alpha_(alpha),
-        X_(X),
-        beta_(beta),
-        Y_(Y),
-        gamma_(gamma),
-        Z_(Z) {
+      : numCols(X.extent(1)), alpha_(alpha), X_(X), beta_(beta), Y_(Y), gamma_(gamma), Z_(Z) {
     static_assert(Kokkos::is_view<XV>::value,
                   "KokkosBlas::Impl::"
                   "V_Update_Functor: X is not a Kokkos::View.");
@@ -244,17 +225,15 @@ struct V_Update_Functor {
     static_assert(Kokkos::is_view<ZV>::value,
                   "KokkosBlas::Impl::"
                   "V_Update_Functor: Z is not a Kokkos::View.");
-    static_assert(std::is_same<typename ZV::value_type,
-                               typename ZV::non_const_value_type>::value,
+    static_assert(std::is_same<typename ZV::value_type, typename ZV::non_const_value_type>::value,
                   "KokkosBlas::Impl::V_Update_Functor: Z is const.  "
                   "It must be nonconst, because it is an output argument "
                   "(we have to be able to write to its entries).");
     // Casting to int avoids compiler warnings about comparing
     // different kinds of enum values.
-    static_assert(
-        (int)ZV::rank == (int)XV::rank && (int)ZV::rank == (int)YV::rank,
-        "KokkosBlas::Impl::V_Update_Functor: "
-        "X, Y, and Z must have the same rank.");
+    static_assert((int)ZV::rank == (int)XV::rank && (int)ZV::rank == (int)YV::rank,
+                  "KokkosBlas::Impl::V_Update_Functor: "
+                  "X, Y, and Z must have the same rank.");
     static_assert(ZV::rank == 1,
                   "KokkosBlas::Impl::V_Update_Functor: "
                   "XV, YV, and ZV must have rank 1.");
@@ -316,13 +295,10 @@ struct V_Update_Functor {
 //
 // Any literal coefficient of zero has BLAS semantics of ignoring the
 // corresponding multivector entry.
-template <class XMV, class YMV, class ZMV, class SizeType>
-void MV_Update_Generic(const typename XMV::non_const_value_type& alpha,
-                       const XMV& X,
-                       const typename YMV::non_const_value_type& beta,
-                       const YMV& Y,
-                       const typename ZMV::non_const_value_type& gamma,
-                       const ZMV& Z, int a = 2, int b = 2, int c = 2) {
+template <class execution_space, class XMV, class YMV, class ZMV, class SizeType>
+void MV_Update_Generic(const execution_space& space, const typename XMV::non_const_value_type& alpha, const XMV& X,
+                       const typename YMV::non_const_value_type& beta, const YMV& Y,
+                       const typename ZMV::non_const_value_type& gamma, const ZMV& Z, int a = 2, int b = 2, int c = 2) {
   static_assert(Kokkos::is_view<XMV>::value,
                 "KokkosBlas::Impl::"
                 "MV_Update_Generic: X is not a Kokkos::View.");
@@ -332,44 +308,37 @@ void MV_Update_Generic(const typename XMV::non_const_value_type& alpha,
   static_assert(Kokkos::is_view<ZMV>::value,
                 "KokkosBlas::Impl::"
                 "MV_Update_Generic: Z is not a Kokkos::View.");
-  static_assert(std::is_same<typename ZMV::value_type,
-                             typename ZMV::non_const_value_type>::value,
+  static_assert(std::is_same<typename ZMV::value_type, typename ZMV::non_const_value_type>::value,
                 "KokkosBlas::Impl::MV_Update_Generic: Z is const.  "
                 "It must be nonconst, because it is an output argument "
                 "(we have to be able to write to its entries).");
   // Casting to int avoids compiler warnings about comparing different
   // kinds of enum values.
-  static_assert(
-      (int)ZMV::rank == (int)XMV::rank && (int)ZMV::rank == (int)YMV::rank,
-      "KokkosBlas::Impl::MV_Update_Generic: "
-      "X, Y, and Z must have the same rank.");
+  static_assert((int)ZMV::rank == (int)XMV::rank && (int)ZMV::rank == (int)YMV::rank,
+                "KokkosBlas::Impl::MV_Update_Generic: "
+                "X, Y, and Z must have the same rank.");
   static_assert(ZMV::rank == 2,
                 "KokkosBlas::Impl::MV_Update_Generic: "
                 "XMV, YMV, and ZMV must have rank 2.");
 
-  typedef typename XMV::execution_space execution_space;
   const SizeType numRows = X.extent(0);
-  Kokkos::RangePolicy<execution_space, SizeType> policy(0, numRows);
+  Kokkos::RangePolicy<execution_space, SizeType> policy(space, 0, numRows);
 
   if (a == 0) {
     if (b == 0) {
       if (c == 0) {
-        MV_Update_Functor<XMV, YMV, ZMV, 0, 0, 0, SizeType> op(alpha, X, beta,
-                                                               Y, gamma, Z);
+        MV_Update_Functor<XMV, YMV, ZMV, 0, 0, 0, SizeType> op(alpha, X, beta, Y, gamma, Z);
         Kokkos::parallel_for("KokkosBlas::update<MV,0,0,0>", policy, op);
       } else {
-        MV_Update_Functor<XMV, YMV, ZMV, 0, 0, 2, SizeType> op(alpha, X, beta,
-                                                               Y, gamma, Z);
+        MV_Update_Functor<XMV, YMV, ZMV, 0, 0, 2, SizeType> op(alpha, X, beta, Y, gamma, Z);
         Kokkos::parallel_for("KokkosBlas::update<MV,0,0,c>", policy, op);
       }
     } else {
       if (c == 0) {
-        MV_Update_Functor<XMV, YMV, ZMV, 0, 2, 0, SizeType> op(alpha, X, beta,
-                                                               Y, gamma, Z);
+        MV_Update_Functor<XMV, YMV, ZMV, 0, 2, 0, SizeType> op(alpha, X, beta, Y, gamma, Z);
         Kokkos::parallel_for("KokkosBlas::update<MV,0,b,0>", policy, op);
       } else {
-        MV_Update_Functor<XMV, YMV, ZMV, 0, 2, 2, SizeType> op(alpha, X, beta,
-                                                               Y, gamma, Z);
+        MV_Update_Functor<XMV, YMV, ZMV, 0, 2, 2, SizeType> op(alpha, X, beta, Y, gamma, Z);
         Kokkos::parallel_for("KokkosBlas::update<MV,0,b,c>", policy, op);
       }
     }
@@ -380,22 +349,18 @@ void MV_Update_Generic(const typename XMV::non_const_value_type& alpha,
   else {
     if (b == 0) {
       if (c == 0) {
-        MV_Update_Functor<XMV, YMV, ZMV, 2, 0, 0, SizeType> op(alpha, X, beta,
-                                                               Y, gamma, Z);
+        MV_Update_Functor<XMV, YMV, ZMV, 2, 0, 0, SizeType> op(alpha, X, beta, Y, gamma, Z);
         Kokkos::parallel_for("KokkosBlas::update<MV,a,0,0>", policy, op);
       } else {
-        MV_Update_Functor<XMV, YMV, ZMV, 2, 0, 2, SizeType> op(alpha, X, beta,
-                                                               Y, gamma, Z);
+        MV_Update_Functor<XMV, YMV, ZMV, 2, 0, 2, SizeType> op(alpha, X, beta, Y, gamma, Z);
         Kokkos::parallel_for("KokkosBlas::update<MV,a,0,c>", policy, op);
       }
     } else {
       if (c == 0) {
-        MV_Update_Functor<XMV, YMV, ZMV, 2, 2, 0, SizeType> op(alpha, X, beta,
-                                                               Y, gamma, Z);
+        MV_Update_Functor<XMV, YMV, ZMV, 2, 2, 0, SizeType> op(alpha, X, beta, Y, gamma, Z);
         Kokkos::parallel_for("KokkosBlas::update<MV,a,b,0>", policy, op);
       } else {
-        MV_Update_Functor<XMV, YMV, ZMV, 2, 2, 2, SizeType> op(alpha, X, beta,
-                                                               Y, gamma, Z);
+        MV_Update_Functor<XMV, YMV, ZMV, 2, 2, 2, SizeType> op(alpha, X, beta, Y, gamma, Z);
         Kokkos::parallel_for("KokkosBlas::update<MV,a,b,c>", policy, op);
       }
     }
@@ -417,13 +382,10 @@ void MV_Update_Generic(const typename XMV::non_const_value_type& alpha,
 //
 // Any literal coefficient of zero has BLAS semantics of ignoring the
 // corresponding vector entry.
-template <class XV, class YV, class ZV, class SizeType>
-void V_Update_Generic(const typename XV::non_const_value_type& alpha,
-                      const XV& X,
-                      const typename YV::non_const_value_type& beta,
-                      const YV& Y,
-                      const typename ZV::non_const_value_type& gamma,
-                      const ZV& Z, int a = 2, int b = 2, int c = 2) {
+template <class execution_space, class XV, class YV, class ZV, class SizeType>
+void V_Update_Generic(const execution_space& space, const typename XV::non_const_value_type& alpha, const XV& X,
+                      const typename YV::non_const_value_type& beta, const YV& Y,
+                      const typename ZV::non_const_value_type& gamma, const ZV& Z, int a = 2, int b = 2, int c = 2) {
   static_assert(Kokkos::is_view<XV>::value,
                 "KokkosBlas::Impl::"
                 "V_Update_Generic: X is not a Kokkos::View.");
@@ -433,44 +395,37 @@ void V_Update_Generic(const typename XV::non_const_value_type& alpha,
   static_assert(Kokkos::is_view<ZV>::value,
                 "KokkosBlas::Impl::"
                 "V_Update_Generic: Z is not a Kokkos::View.");
-  static_assert(std::is_same<typename ZV::value_type,
-                             typename ZV::non_const_value_type>::value,
+  static_assert(std::is_same<typename ZV::value_type, typename ZV::non_const_value_type>::value,
                 "KokkosBlas::Impl::V_Update_Generic: Z is const.  "
                 "It must be nonconst, because it is an output argument "
                 "(we have to be able to write to its entries).");
   // Casting to int avoids compiler warnings about comparing
   // different kinds of enum values.
-  static_assert(
-      (int)ZV::rank == (int)XV::rank && (int)ZV::rank == (int)YV::rank,
-      "KokkosBlas::Impl::V_Update_Generic: "
-      "X, Y, and Z must have the same rank.");
+  static_assert((int)ZV::rank == (int)XV::rank && (int)ZV::rank == (int)YV::rank,
+                "KokkosBlas::Impl::V_Update_Generic: "
+                "X, Y, and Z must have the same rank.");
   static_assert(ZV::rank == 1,
                 "KokkosBlas::Impl::V_Update_Generic: "
                 "XV, YV, and ZV must have rank 1.");
 
-  typedef typename XV::execution_space execution_space;
   const SizeType numRows = X.extent(0);
-  Kokkos::RangePolicy<execution_space, SizeType> policy(0, numRows);
+  Kokkos::RangePolicy<execution_space, SizeType> policy(space, 0, numRows);
 
   if (a == 0) {
     if (b == 0) {
       if (c == 0) {
-        V_Update_Functor<XV, YV, ZV, 0, 0, 0, SizeType> op(alpha, X, beta, Y,
-                                                           gamma, Z);
+        V_Update_Functor<XV, YV, ZV, 0, 0, 0, SizeType> op(alpha, X, beta, Y, gamma, Z);
         Kokkos::parallel_for("KokkosBlas::update<0,0,0>", policy, op);
       } else {
-        V_Update_Functor<XV, YV, ZV, 0, 0, 2, SizeType> op(alpha, X, beta, Y,
-                                                           gamma, Z);
+        V_Update_Functor<XV, YV, ZV, 0, 0, 2, SizeType> op(alpha, X, beta, Y, gamma, Z);
         Kokkos::parallel_for("KokkosBlas::update<0,0,c>", policy, op);
       }
     } else {
       if (c == 0) {
-        V_Update_Functor<XV, YV, ZV, 0, 2, 0, SizeType> op(alpha, X, beta, Y,
-                                                           gamma, Z);
+        V_Update_Functor<XV, YV, ZV, 0, 2, 0, SizeType> op(alpha, X, beta, Y, gamma, Z);
         Kokkos::parallel_for("KokkosBlas::update<0,b,0>", policy, op);
       } else {
-        V_Update_Functor<XV, YV, ZV, 0, 2, 2, SizeType> op(alpha, X, beta, Y,
-                                                           gamma, Z);
+        V_Update_Functor<XV, YV, ZV, 0, 2, 2, SizeType> op(alpha, X, beta, Y, gamma, Z);
         Kokkos::parallel_for("KokkosBlas::update<0,b,c>", policy, op);
       }
     }
@@ -481,22 +436,18 @@ void V_Update_Generic(const typename XV::non_const_value_type& alpha,
   else {
     if (b == 0) {
       if (c == 0) {
-        V_Update_Functor<XV, YV, ZV, 2, 0, 0, SizeType> op(alpha, X, beta, Y,
-                                                           gamma, Z);
+        V_Update_Functor<XV, YV, ZV, 2, 0, 0, SizeType> op(alpha, X, beta, Y, gamma, Z);
         Kokkos::parallel_for("KokkosBlas::update<a,0,0>", policy, op);
       } else {
-        V_Update_Functor<XV, YV, ZV, 2, 0, 2, SizeType> op(alpha, X, beta, Y,
-                                                           gamma, Z);
+        V_Update_Functor<XV, YV, ZV, 2, 0, 2, SizeType> op(alpha, X, beta, Y, gamma, Z);
         Kokkos::parallel_for("KokkosBlas::update<a,0,c>", policy, op);
       }
     } else {
       if (c == 0) {
-        V_Update_Functor<XV, YV, ZV, 2, 2, 0, SizeType> op(alpha, X, beta, Y,
-                                                           gamma, Z);
+        V_Update_Functor<XV, YV, ZV, 2, 2, 0, SizeType> op(alpha, X, beta, Y, gamma, Z);
         Kokkos::parallel_for("KokkosBlas::update<a,b,0>", policy, op);
       } else {
-        V_Update_Functor<XV, YV, ZV, 2, 2, 2, SizeType> op(alpha, X, beta, Y,
-                                                           gamma, Z);
+        V_Update_Functor<XV, YV, ZV, 2, 2, 2, SizeType> op(alpha, X, beta, Y, gamma, Z);
         Kokkos::parallel_for("KokkosBlas::update<a,b,c>", policy, op);
       }
     }

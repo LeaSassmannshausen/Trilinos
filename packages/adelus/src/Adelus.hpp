@@ -1,46 +1,11 @@
 /*
 //@HEADER
-// ************************************************************************
+// *****************************************************************************
+//                        Adelus
 //
-//                        Adelus v. 1.0
-//       Copyright (2020) National Technology & Engineering
-//               Solutions of Sandia, LLC (NTESS).
-//
-// Under the terms of Contract DE-NA0003525 with NTESS,
-// the U.S. Government retains certain rights in this software.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of NTESS nor the names of the contributors may be
-// used to endorse or promote products derived from this software without
-// specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY NTESS "AS IS" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-// IN NO EVENT SHALL NTESS OR THE CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-// INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-// IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
-// POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Vinh Dang (vqdang@sandia.gov)
-//                    Joseph Kotulski (jdkotul@sandia.gov)
-//                    Siva Rajamanickam (srajama@sandia.gov)
-//
-// ************************************************************************
+// Copyright 2020 NTESS and the Adelus contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 //@HEADER
 */
 
@@ -50,6 +15,7 @@
 #pragma once
 
 #include <Kokkos_Core.hpp>
+#include <Adelus_global_comm.hpp>
 #include <Adelus_defines.h>
 #include <Adelus_distribute.hpp>
 #include <Adelus_xlu_solve.hpp>
@@ -64,7 +30,7 @@ namespace Adelus {
 
   /// Adelus GetDistribution
   /// Gives the distribution information that is required by the dense solver
-  
+
   /// \param comm (In)               - communicator that Adelus runs on
   /// \param nprocs_row (In)         - number of processors for a row
   /// \param number_of_unknowns (In) - order of the dense matrix
@@ -76,7 +42,7 @@ namespace Adelus {
   /// \param my_rhs (Out)            - number of right hand sides on this processor
   /// \param my_row (Out)            - row number in processor mesh, 0 to the  number of processors for a column -1
   /// \param my_col (Out)            - column number in processor mesh, 0 to the  number of processors for a row -1
-    
+
   inline
   int GetDistribution( MPI_Comm comm,
                        const int nprocs_row,
@@ -106,10 +72,10 @@ namespace Adelus {
     return(0);
 
   }
-  
+
   /// Adelus GetDistribution (old interface)
   /// Gives the distribution information that is required by the dense solver
-  
+
   /// \param nprocs_row_ (In)        - number of processors for a row
   /// \param number_of_unknowns (In) - order of the dense matrix
   /// \param nrhs_ (In)              - number of right hand sides
@@ -120,7 +86,7 @@ namespace Adelus {
   /// \param my_rhs_ (Out)           - number of right hand sides on this processor
   /// \param my_row (Out)            - row number in processor mesh, 0 to the  number of processors for a column -1
   /// \param my_col (Out)            - column number in processor mesh, 0 to the  number of processors for a row -1
-    
+
   inline
   int GetDistribution( int* nprocs_row_,
                        int* number_of_unknowns,
@@ -134,7 +100,7 @@ namespace Adelus {
                        int* my_col ) {
     // This function echoes the multiprocessor distribution of the matrix
 
-    distmat_( MPI_COMM_WORLD,
+    distmat_( get_global_comm(),
               *nprocs_row_,
               *number_of_unknowns,
               *nrhs_,
@@ -144,7 +110,7 @@ namespace Adelus {
               *my_first_col_,
               *my_rhs_,
               *my_row,
-              *my_col ); 
+              *my_col );
 
     return(0);
 
@@ -157,13 +123,13 @@ namespace Adelus {
   /// \param AA (InOut)       -- Kokkos View that has the matrix and rhs packed in this processor
   ///                            (Note: matrix and rhs are overwritten)
   /// \param secs (Out)       -- factor and solve time in seconds
-    
+
   template<class HandleType, class ZRHSViewType>
   inline
   void FactorSolve( HandleType& ahandle,
                     ZRHSViewType& AA,
                     double* secs ) {
-	
+
 #ifdef PRINT_STATUS
     printf("FactorSolve (Kokkos View interface) in rank %d\n", ahandle.get_myrank());
 #endif
@@ -182,7 +148,7 @@ namespace Adelus {
   /// \param num_procsr (In)  -- number of processors for a row
   /// \param num_rhs (In)     -- number of right hand sides
   /// \param secs (Out)       -- factor and solve time in seconds
-    
+
   template<class ZDView>
   inline
   void FactorSolve( ZDView AA,
@@ -194,8 +160,8 @@ namespace Adelus {
                     double* secs ) {
     int rank;
 
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	
+    MPI_Comm_rank(get_global_comm(), &rank);
+
 #ifdef PRINT_STATUS
     printf("FactorSolve (Kokkos View interface) in rank %d -- my_rows %u , my_cols %u , matrix_size %u, num_procs_per_row %u, num_rhs %u\n", rank, my_rows_, my_cols_, *matrix_size, *num_procsr, *num_rhs);
 #endif
@@ -203,9 +169,9 @@ namespace Adelus {
     using value_type = typename ZDView::value_type;
     using execution_space = typename ZDView::device_type::execution_space;
     using memory_space    = typename ZDView::device_type::memory_space;
-  
-    Adelus::AdelusHandle<value_type, execution_space, memory_space> 
-      ahandle(0, MPI_COMM_WORLD, *matrix_size, *num_procsr, *num_rhs );
+
+    Adelus::AdelusHandle<value_type, execution_space, memory_space>
+      ahandle(0, get_global_comm(), *matrix_size, *num_procsr, *num_rhs );
     lusolve_(ahandle, AA, secs);
 
   }
@@ -320,7 +286,7 @@ namespace Adelus {
 
     AA_Internal AA_i(reinterpret_cast<Kokkos::complex<double> *>(AA), my_rows_, my_cols_ + my_rhs_ + 6);
 
-#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP) 
+#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP)
     typedef Kokkos::View<Kokkos::complex<double>**,
                          Kokkos::LayoutLeft,
 #ifdef KOKKOS_ENABLE_CUDA
@@ -364,7 +330,7 @@ namespace Adelus {
                             double* secs ) {
     int rank;
 
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank) ;
+    MPI_Comm_rank(get_global_comm(), &rank) ;
 
     { // Note: To avoid segmentation fault when FactorSolve is called multiple times with the unmanaged View, it's safest to make sure unmanaged View falls out of scope before freeing its memory.
     typedef Kokkos::View<Kokkos::complex<double>**,
@@ -374,7 +340,7 @@ namespace Adelus {
 
     AA_Internal AA_i(reinterpret_cast<Kokkos::complex<double> *>(AA), my_rows_, my_cols_ + my_rhs_ + 6);
 
-#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP) 
+#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP)
     typedef Kokkos::View<Kokkos::complex<double>**,
                          Kokkos::LayoutLeft,
 #ifdef KOKKOS_ENABLE_CUDA
@@ -394,9 +360,9 @@ namespace Adelus {
     using value_type = typename AA_Internal_dev::value_type;
     using execution_space = typename AA_Internal_dev::device_type::execution_space;
     using memory_space    = typename AA_Internal_dev::device_type::memory_space;
-  
-    Adelus::AdelusHandle<value_type, execution_space, memory_space> 
-      ahandle(0, MPI_COMM_WORLD, *matrix_size, *num_procsr, *num_rhs );
+
+    Adelus::AdelusHandle<value_type, execution_space, memory_space>
+      ahandle(0, get_global_comm(), *matrix_size, *num_procsr, *num_rhs );
     lusolve_( ahandle, AA_i_dev, secs );
 
     Kokkos::deep_copy( AA_i, AA_i_dev );
@@ -408,9 +374,9 @@ namespace Adelus {
     using value_type = typename AA_Internal::value_type;
     using execution_space = typename AA_Internal::device_type::execution_space;
     using memory_space    = typename AA_Internal::device_type::memory_space;
-  
-    Adelus::AdelusHandle<value_type, execution_space, memory_space> 
-      ahandle(0, MPI_COMM_WORLD, *matrix_size, *num_procsr, *num_rhs );
+
+    Adelus::AdelusHandle<value_type, execution_space, memory_space>
+      ahandle(0, get_global_comm(), *matrix_size, *num_procsr, *num_rhs );
     lusolve_( ahandle, AA_i, secs );
 #endif
     }
@@ -478,7 +444,7 @@ namespace Adelus {
 
     AA_Internal AA_i(reinterpret_cast<double *>(AA), my_rows_, my_cols_ + my_rhs_ + 6);
 
-#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP) 
+#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP)
     typedef Kokkos::View<double**,
                          Kokkos::LayoutLeft,
 #ifdef KOKKOS_ENABLE_CUDA
@@ -522,7 +488,7 @@ namespace Adelus {
                             double* secs ) {
     int rank;
 
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank) ;
+    MPI_Comm_rank(get_global_comm(), &rank) ;
 
     { // Note: To avoid segmentation fault when FactorSolve is called multiple times with the unmanaged View, it's safest to make sure unmanaged View falls out of scope before freeing its memory.
     typedef Kokkos::View<double**,
@@ -532,7 +498,7 @@ namespace Adelus {
 
     AA_Internal AA_i(reinterpret_cast<double *>(AA), my_rows_, my_cols_ + my_rhs_ + 6);
 
-#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP) 
+#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP)
     typedef Kokkos::View<double**,
                          Kokkos::LayoutLeft,
 #ifdef KOKKOS_ENABLE_CUDA
@@ -552,9 +518,9 @@ namespace Adelus {
     using value_type = typename AA_Internal_dev::value_type;
     using execution_space = typename AA_Internal_dev::device_type::execution_space;
     using memory_space    = typename AA_Internal_dev::device_type::memory_space;
-  
-    Adelus::AdelusHandle<value_type, execution_space, memory_space> 
-      ahandle(0, MPI_COMM_WORLD, *matrix_size, *num_procsr, *num_rhs );
+
+    Adelus::AdelusHandle<value_type, execution_space, memory_space>
+      ahandle(0, get_global_comm(), *matrix_size, *num_procsr, *num_rhs );
     lusolve_( ahandle, AA_i_dev, secs );
 
     Kokkos::deep_copy( AA_i, AA_i_dev );
@@ -566,9 +532,9 @@ namespace Adelus {
     using value_type = typename AA_Internal::value_type;
     using execution_space = typename AA_Internal::device_type::execution_space;
     using memory_space    = typename AA_Internal::device_type::memory_space;
-  
-    Adelus::AdelusHandle<value_type, execution_space, memory_space> 
-      ahandle(0, MPI_COMM_WORLD, *matrix_size, *num_procsr, *num_rhs );
+
+    Adelus::AdelusHandle<value_type, execution_space, memory_space>
+      ahandle(0, get_global_comm(), *matrix_size, *num_procsr, *num_rhs );
     lusolve_( ahandle, AA_i, secs );
 #endif
     }
@@ -680,7 +646,7 @@ namespace Adelus {
                             double* secs ) {
     int rank;
 
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank) ;
+    MPI_Comm_rank(get_global_comm(), &rank) ;
 
     { // Note: To avoid segmentation fault when FactorSolve is called multiple times with the unmanaged View, it's safest to make sure unmanaged View falls out of scope before freeing its memory.
     typedef Kokkos::View<Kokkos::complex<float>**,
@@ -710,9 +676,9 @@ namespace Adelus {
     using value_type = typename AA_Internal_dev::value_type;
     using execution_space = typename AA_Internal_dev::device_type::execution_space;
     using memory_space    = typename AA_Internal_dev::device_type::memory_space;
-  
-    Adelus::AdelusHandle<value_type, execution_space, memory_space> 
-      ahandle(0, MPI_COMM_WORLD, *matrix_size, *num_procsr, *num_rhs );
+
+    Adelus::AdelusHandle<value_type, execution_space, memory_space>
+      ahandle(0, get_global_comm(), *matrix_size, *num_procsr, *num_rhs );
     lusolve_( ahandle, AA_i_dev, secs );
 
     Kokkos::deep_copy( AA_i, AA_i_dev );
@@ -724,9 +690,9 @@ namespace Adelus {
     using value_type = typename AA_Internal::value_type;
     using execution_space = typename AA_Internal::device_type::execution_space;
     using memory_space    = typename AA_Internal::device_type::memory_space;
-  
-    Adelus::AdelusHandle<value_type, execution_space, memory_space> 
-      ahandle(0, MPI_COMM_WORLD, *matrix_size, *num_procsr, *num_rhs );
+
+    Adelus::AdelusHandle<value_type, execution_space, memory_space>
+      ahandle(0, get_global_comm(), *matrix_size, *num_procsr, *num_rhs );
     lusolve_( ahandle, AA_i, secs );
 #endif
     }
@@ -838,7 +804,7 @@ namespace Adelus {
                             double* secs ) {
     int rank;
 
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank) ;
+    MPI_Comm_rank(get_global_comm(), &rank) ;
 
     { // Note: To avoid segmentation fault when FactorSolve is called multiple times with the unmanaged View, it's safest to make sure unmanaged View falls out of scope before freeing its memory.
     typedef Kokkos::View<float**,
@@ -868,9 +834,9 @@ namespace Adelus {
     using value_type = typename AA_Internal_dev::value_type;
     using execution_space = typename AA_Internal_dev::device_type::execution_space;
     using memory_space    = typename AA_Internal_dev::device_type::memory_space;
-  
-    Adelus::AdelusHandle<value_type, execution_space, memory_space> 
-      ahandle(0, MPI_COMM_WORLD, *matrix_size, *num_procsr, *num_rhs );
+
+    Adelus::AdelusHandle<value_type, execution_space, memory_space>
+      ahandle(0, get_global_comm(), *matrix_size, *num_procsr, *num_rhs );
     lusolve_( ahandle, AA_i_dev, secs );
 
     Kokkos::deep_copy( AA_i, AA_i_dev );
@@ -882,9 +848,9 @@ namespace Adelus {
     using value_type = typename AA_Internal::value_type;
     using execution_space = typename AA_Internal::device_type::execution_space;
     using memory_space    = typename AA_Internal::device_type::memory_space;
-  
-    Adelus::AdelusHandle<value_type, execution_space, memory_space> 
-      ahandle(0, MPI_COMM_WORLD, *matrix_size, *num_procsr, *num_rhs );
+
+    Adelus::AdelusHandle<value_type, execution_space, memory_space>
+      ahandle(0, get_global_comm(), *matrix_size, *num_procsr, *num_rhs );
     lusolve_( ahandle, AA_i, secs );
 #endif
     }

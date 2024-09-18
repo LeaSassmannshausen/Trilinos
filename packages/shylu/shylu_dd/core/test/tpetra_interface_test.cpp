@@ -1,3 +1,12 @@
+// @HEADER
+// *****************************************************************************
+//               ShyLU: Scalable Hybrid LU Preconditioner and Solver
+//
+// Copyright 2011 NTESS and the ShyLU contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
+// @HEADER
+
 #include <assert.h>
 #include <iostream>
 #include <sstream>
@@ -155,8 +164,7 @@ int main(int argc, char** argv)
     }
 
 
-#ifdef HAVE_SHYLU_DDCORE_ZOLTAN2
-
+#if defined(HAVE_SHYLU_DDCORE_ZOLTAN2CORE)
   ShyLU::PartitionInterface<Matrix_t, Vector_t> partI3(A.get(), pLUList.get());
   partI3.partition();
 

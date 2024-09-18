@@ -1,45 +1,11 @@
-/*
-//@HEADER
-// ***********************************************************************
-//
+// @HEADER
+// *****************************************************************************
 //       Ifpack2: Templated Object-Oriented Algebraic Preconditioner Package
-//                 Copyright (2009) Sandia Corporation
 //
-// Under terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-// license for use of this work by or on behalf of the U.S. Government.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Michael A. Heroux (maherou@sandia.gov)
-//
-// ***********************************************************************
-//@HEADER
-*/
+// Copyright 2009 NTESS and the Ifpack2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
+// @HEADER
 
 
 /*! \file Ifpack2_UnitTestMDF.cpp
@@ -114,6 +80,13 @@ TEUCHOS_UNIT_TEST_TEMPLATE_3_DECL(Ifpack2MDF, Test0, Scalar, LocalOrdinal, Globa
   TEST_EQUALITY(reversePermuations,prec.getReversePermutations());
 }
 
+// Apply a looser tolerance for float than double
+template<typename Scalar>
+inline Scalar test_mdf_reference_tol() { return 1e-8; }
+
+template<>
+inline float test_mdf_reference_tol<float>() { return 5e-6; }
+
 template<size_t maxEntrPerRow,typename Scalar,typename LO,typename GO,typename Node>
 void test_mdf_reference_problem(
   bool& success,
@@ -128,24 +101,17 @@ void test_mdf_reference_problem(
   using row_matrix_t = Tpetra::RowMatrix<Scalar,LO,GO,Node>;
   using crs_matrix_t = Tpetra::CrsMatrix<Scalar,LO,GO,Node>;
   Teuchos::RCP<const Tpetra::Map<LO,GO,Node> > rowmap(tif_utest::create_tpetra_map<LO,GO,Node>(locNumRow));
-  Teuchos::RCP<crs_matrix_t> crsmatrix(new crs_matrix_t(rowmap,maxEntrPerRow));
+  Teuchos::RCP<crs_matrix_t> crsmatrix(new crs_matrix_t(rowmap,rowmap,maxEntrPerRow));
 
   //Fill matrix
   {
-    GO rb = rowmap()->getGlobalElement(0);
-    GO col_indices[maxEntrPerRow];
-
-    for(LO row_lo = 0; row_lo < locNumRow; ++row_lo)
-    {
+    for(LO row_lo = 0; row_lo < locNumRow; ++row_lo) {
       const LO & entrStart = crs_row_map[row_lo];
       const LO entriesInRow = crs_row_map[row_lo+1] - entrStart;
-      for (LO i =0; i < entriesInRow; ++i)
-        col_indices[i] = crs_col_ind[entrStart + i] + rb;
-
-      crsmatrix->insertGlobalValues (row_lo + rb,
+      crsmatrix->insertLocalValues (row_lo,
                           entriesInRow,
                           &crs_values[entrStart],
-                          col_indices);
+                          &crs_col_ind[entrStart]);
     }
     crsmatrix->fillComplete();
   }
@@ -155,7 +121,7 @@ void test_mdf_reference_problem(
   {
     Teuchos::ParameterList params;
     params.set("fact: mdf level-of-fill", 0.0);
-    params.set("Verbosity",0);
+    params.set("Verbosity", 0);
     TEST_NOTHROW(prec.setParameters(params));
   }
 
@@ -190,10 +156,10 @@ void test_mdf_reference_problem(
 
     Teuchos::ArrayRCP<const Scalar> yview = yMDF.get1dView();
 
-    const Scalar tol = 1e-8;
-    TEST_COMPARE_FLOATING_ARRAYS(yview, knownSln, tol);
+    TEST_COMPARE_FLOATING_ARRAYS(yview, knownSln, test_mdf_reference_tol<Scalar>());
   }
 
+#if defined(HAVE_IFPACK2_XPETRA) && defined(HAVE_IFPACK2_ZOLTAN2)
   // Now apply reordering with AdditiveSchwarz
   Ifpack2::AdditiveSchwarz<row_matrix_t> reorderedPrec(crsmatrix.getConst());
   {
@@ -236,6 +202,7 @@ void test_mdf_reference_problem(
     Teuchos::ArrayRCP<const Scalar> yILUview = yILU.get1dView();
     TEST_COMPARE_FLOATING_ARRAYS(yMDFview, yILUview, 100*Teuchos::ScalarTraits<Scalar>::eps());
   }
+#endif
 }
 
 TEUCHOS_UNIT_TEST_TEMPLATE_3_DECL(Ifpack2MDF, Test1, Scalar, LocalOrdinal, GlobalOrdinal)
@@ -300,38 +267,36 @@ TEUCHOS_UNIT_TEST_TEMPLATE_3_DECL(Ifpack2MDF, Test1, Scalar, LocalOrdinal, Globa
 
 TEUCHOS_UNIT_TEST_TEMPLATE_3_DECL(Ifpack2MDF, Test2, Scalar, LocalOrdinal, GlobalOrdinal)
 {
-  // Finite difference Advection-difussion problem with uniform spacing, D = 0.1, and v = {1,0}.
-  //     0 = D lapl(c) - v div(c)
+  // Finite difference Advection-difussion problem with uniform spacing, D = 0.1, and v = {1,0}, and source term
+  //     0 = D lapl(c) - v div(c) + src
+  // where source = 0.1*(sin(x/Lx*2*pi)/2+1)*(sin(y/Ly*2*pi)/2+1)
   // Matrix generated in matlab
 
+  const LocalOrdinal crs_row_map[] = {0, 4, 9, 13, 17, 22, 26, 30, 35, 39};
+  const LocalOrdinal crs_col_ind[] = {
+    0, 1, 3, 6, 
+    0, 1, 2, 4, 7, 
+    1, 2, 5, 8, 
+    0, 3, 4, 6, 
+    1, 3, 4, 5, 7, 
+    2, 4, 5, 8, 
+    0, 3, 6, 7, 
+    1, 4, 6, 7, 8, 
+    2, 5, 7, 8};
+  const Scalar crs_values[] = {
+    -0.3946, -0.1, -0.1, -0.1, 
+    0.9, -0.5187, -0.1, -0.1, -0.1, 
+    0.9, -0.4567, -0.1, -0.1, 
+    -0.1, -0.5187, -0.1, -0.1, 
+    -0.1, 0.9, -0.5679, -0.1, -0.1, 
+    -0.1, 0.9, -0.5433, -0.1, 
+    -0.1, -0.1, -0.4567, -0.1, 
+    -0.1, -0.1, 0.9, -0.5433, -0.1, 
+    -0.1, -0.1, 0.9, -0.5};
+  const LocalOrdinal known_Perm[] = {5, 8, 2, 4, 7, 6, 3, 0, 1};
+  const Scalar known_sln[] = {-1.33087277527186, -2.60397120798988, -7.11775593415348, -0.999724724820625, -1.69383010526766, -2.51463317632001, -1.14468009596675, -2.12778343905707, -4.46471296630885};
   const LocalOrdinal locNumRow = 9;
   const LocalOrdinal maxEntrPerRow = 5;
-
-  const LocalOrdinal crs_row_map[locNumRow + 1] = {0, 5, 10, 15, 20, 25, 30, 35, 40, 45};
-  const LocalOrdinal crs_col_ind[] = {
-    0, 1, 2, 3, 6, 
-    0, 1, 2, 4, 7, 
-    0, 1, 2, 5, 8, 
-    0, 3, 4, 5, 6, 
-    1, 3, 4, 5, 7, 
-    2, 3, 4, 5, 8, 
-    0, 3, 6, 7, 8, 
-    1, 4, 6, 7, 8, 
-    2, 5, 6, 7, 8
-  };
-  const Scalar crs_values[] = {
-    -0.6, -0.1,  0.9, -0.1, -0.1, 
-     0.9, -0.6, -0.1, -0.1, -0.1, 
-    -0.1,  0.9, -0.6, -0.1, -0.1, 
-    -0.1, -0.6, -0.1,  0.9, -0.1, 
-    -0.1,  0.9, -0.6, -0.1, -0.1, 
-    -0.1, -0.1,  0.9, -0.6, -0.1, 
-    -0.1, -0.1, -0.6, -0.1,  0.9, 
-    -0.1, -0.1,  0.9, -0.6, -0.1, 
-    -0.1, -0.1, -0.1,  0.9, -0.6
-  };
-  const LocalOrdinal known_Perm[] = {0, 3, 6, 1, 4, 5, 7, 8, 2};
-  const Scalar known_sln[] = {5.16247188607349, 5.52439770923273, 6.238246086077, 4.89405015653464, 5.66305162810038, 5.1671248742544, 4.75093559248463, 5.88204162861661, 4.46367801745558};
 
   test_mdf_reference_problem<maxEntrPerRow,Scalar,LocalOrdinal,GlobalOrdinal,Node>(
     success,

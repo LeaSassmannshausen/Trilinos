@@ -10,6 +10,8 @@ TRIBITS_PACKAGE(Pliris)
 # B) Set up package-specific options
 #
 
+TRIBITS_ADD_SHOW_DEPRECATED_WARNINGS_OPTION()
+
 TRIBITS_ADD_OPTION_AND_DEFINE(${PACKAGE_NAME}_ENABLE_ZCPLX
   ZCPLX
   "Enable double precision complex functionality."
@@ -52,8 +54,6 @@ TRIBITS_ADD_TEST_DIRECTORIES(test)
 #
 # Exclude files for source package.
 #
-
-TRIBITS_EXCLUDE_AUTOTOOLS_FILES()
 
 TRIBITS_EXCLUDE_FILES(
   doc/matrix_.*.gif

@@ -1,43 +1,11 @@
 // @HEADER
-// ***********************************************************************
-//
+// *****************************************************************************
 //           Panzer: A partial differential equation assembly
 //       engine for strongly coupled complex multiphysics systems
-//                 Copyright (2011) Sandia Corporation
 //
-// Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-// the U.S. Government retains certain rights in this software.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Roger P. Pawlowski (rppawlo@sandia.gov) and
-// Eric C. Cyr (eccyr@sandia.gov)
-// ***********************************************************************
+// Copyright 2011 NTESS and the Panzer contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 #include "Panzer_IntrepidFieldPattern.hpp"
@@ -133,6 +101,8 @@ namespace panzer {
   Intrepid2FieldPattern::
   getCellTopology() const
   {
+    // TODO BWR Probably should change the name of this call...
+    // TODO BWR However this is a virtual function
     return intrepidBasis_->getBaseCellTopology();
   }
 
@@ -241,12 +211,13 @@ namespace panzer {
    */
   void 
   Intrepid2FieldPattern::
-  getInterpolatoryCoordinates(const Kokkos::DynRankView<double,PHX::Device> & cellVertices,
-                              Kokkos::DynRankView<double,PHX::Device> & coords) const
+  getInterpolatoryCoordinates(const Kokkos::DynRankView<double,PHX::Device> & cellNodes,
+                              Kokkos::DynRankView<double,PHX::Device> & coords,
+                              Teuchos::RCP<const shards::CellTopology> meshCellTopology) const
   {
-    TEUCHOS_ASSERT(cellVertices.rank()==3);
+    TEUCHOS_ASSERT(cellNodes.rank()==3);
 
-    int numCells = cellVertices.extent(0);
+    int numCells = cellNodes.extent(0);
 
     // grab the local coordinates
     Kokkos::DynRankView<double,PHX::Device> localCoords;
@@ -257,7 +228,14 @@ namespace panzer {
 
     if(numCells>0) {
       Intrepid2::CellTools<PHX::Device> cellTools;
-      cellTools.mapToPhysicalFrame(coords,localCoords,cellVertices,intrepidBasis_->getBaseCellTopology());
+      // For backwards compatability, allow the FE basis to supply the mesh cell topology (via the FEM base cell topo)
+      // This will occur if no meshCellTopology is provided (defaults to Teuchos::null)
+      // If provided, use the mesh topology directly
+      if (meshCellTopology==Teuchos::null) {
+        cellTools.mapToPhysicalFrame(coords,localCoords,cellNodes,intrepidBasis_->getBaseCellTopology());
+      } else {
+        cellTools.mapToPhysicalFrame(coords,localCoords,cellNodes,*meshCellTopology);
+      }
     }
   }
 

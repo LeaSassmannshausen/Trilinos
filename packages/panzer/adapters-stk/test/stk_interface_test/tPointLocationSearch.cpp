@@ -1,43 +1,11 @@
 // @HEADER
-// ***********************************************************************
-//
+// *****************************************************************************
 //           Panzer: A partial differential equation assembly
 //       engine for strongly coupled complex multiphysics systems
-//                 Copyright (2011) Sandia Corporation
 //
-// Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-// the U.S. Government retains certain rights in this software.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Roger P. Pawlowski (rppawlo@sandia.gov) and
-// Eric C. Cyr (eccyr@sandia.gov)
-// ***********************************************************************
+// Copyright 2011 NTESS and the Panzer contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 #include <Teuchos_ConfigDefs.hpp>
@@ -63,8 +31,6 @@
 #include <stk_search/CoarseSearch.hpp>
 #include <stk_search/BoundingBox.hpp>
 #include <stk_search_util/stk_mesh/CreateBoundingBox.hpp>
-
-typedef stk::mesh::Field<double, stk::mesh::Cartesian>  VectorField;
 
 namespace panzer_stk {
 
@@ -99,7 +65,7 @@ TEUCHOS_UNIT_TEST(tPointLocationSearch, basic)
    // Build (domain) bounding boxes for all cells in mesh
    RCP<stk::mesh::MetaData> meta_data = mesh->getMetaData();
    RCP<stk::mesh::BulkData> bulk_data = mesh->getBulkData(); 
-   const stk::mesh::Field<double, stk::mesh::Cartesian>* domain_coord_field = &(mesh->getCoordinatesField());
+   const stk::mesh::Field<double>* domain_coord_field = &(mesh->getCoordinatesField());
    stk::ParallelMachine comm = bulk_data->parallel();
    // NOTE: the create bounding boxes call has specific typedefs on data.  We need to rewrite for general case.
    std::vector<AxisAlignedBoundingBox3D> domain_vector;
@@ -136,7 +102,7 @@ TEUCHOS_UNIT_TEST(tPointLocationSearch, basic)
 
    stk::search_util::build_axis_aligned_bbox(*bulk_data,
 					     mesh->getElementRank(),
-					     const_cast<stk::mesh::Field<double, stk::mesh::Cartesian>* >(domain_coord_field),
+               const_cast<stk::mesh::Field<double>* >(domain_coord_field),
 					     domain_vector);
    
 

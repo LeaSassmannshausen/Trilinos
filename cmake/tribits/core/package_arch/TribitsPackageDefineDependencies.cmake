@@ -1,40 +1,10 @@
 # @HEADER
-# ************************************************************************
-#
+# *****************************************************************************
 #            TriBITS: Tribal Build, Integrate, and Test System
-#                    Copyright 2013 Sandia Corporation
 #
-# Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-# the U.S. Government retains certain rights in this software.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are
-# met:
-#
-# 1. Redistributions of source code must retain the above copyright
-# notice, this list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright
-# notice, this list of conditions and the following disclaimer in the
-# documentation and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the Corporation nor the names of the
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-# LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# ************************************************************************
+# Copyright 2013-2016 NTESS and the TriBITS contributors.
+# SPDX-License-Identifier: BSD-3-Clause
+# *****************************************************************************
 # @HEADER
 
 include(TribitsGeneralMacros)
@@ -57,12 +27,12 @@ include(TribitsGeneralMacros)
 #      [LIB_OPTIONAL_TPLS <tpl1> <tpl2> ...]
 #      [TEST_REQUIRED_TPLS <tpl1> <tpl2> ...]
 #      [TEST_OPTIONAL_TPLS <tpl1> <tpl2> ...]
-#      [REGRESSION_EMAIL_LIST  <regression-email-address>]
 #      [SUBPACKAGES_DIRS_CLASSIFICATIONS_OPTREQS
 #        <spkg1_name>  <spkg1_dir>  <spkg1_classifications>  <spkg1_optreq>
 #        <spkg2_name>  <spkg2_dir>  <spkg2_classifications>  <spkg2_optreq>
 #        ...
 #        ]
+#      [REGRESSION_EMAIL_LIST  <regression-email-address>]
 #      )
 #
 # Every argument in this macro is optional (that is, an package can have no
@@ -84,9 +54,9 @@ include(TribitsGeneralMacros)
 #   ``TEST_REQUIRED_PACKAGES``
 #
 #     List of additional upstream packages that must be enabled in order to
-#     build and/or run the tests and/or examples in this package.  If any
-#     of these upstream packages are not enabled, then there will be no
-#     tests or examples defined or run for this package.
+#     build and/or run the tests and/or examples in this package.  If any of
+#     these upstream packages are not enabled, then there will be no tests or
+#     examples defined or run for this package.
 #
 #   ``TEST_OPTIONAL_PACKAGES``
 #
@@ -94,39 +64,52 @@ include(TribitsGeneralMacros)
 #     tests in this package.  These upstream packages need not be enabled in
 #     order to run some basic tests or examples for this package.  Typically,
 #     extra tests that depend on optional test packages involve integration
-#     testing of some type.
+#     testing of some type.  Not enabling these optional upstream packages
+#     will result in diminished tests or examples.
 #
 #   ``LIB_REQUIRED_TPLS``
 #
-#     List of required upstream TPLs that must be enabled in order to build
-#     and use the libraries (or capabilities) in this package.
+#     **DEPRECATED:** List of required upstream TPLs that must be enabled in
+#     order to build and use the libraries (or capabilities) in this package.
+#     (Add these to ``LIB_REQUIRED_PACKAGES`` instead.)
 #
 #   ``LIB_OPTIONAL_TPLS``
 #
-#     List of additional optional upstream TPLs that can be used in this
-#     package if enabled.  These upstream TPLs need not be enabled in order to
-#     use this package but not enabling one or more of these optional upstream
-#     TPLs will result in diminished capabilities of this package.
+#     **DEPRECATED:** List of additional optional upstream TPLs that can be
+#     used in this package if enabled.  These upstream TPLs need not be
+#     enabled in order to use this package but not enabling one or more of
+#     these optional upstream TPLs will result in diminished capabilities of
+#     this package. (Add these to ``LIB_OPTIONAL_PACKAGES`` instead.)
 #
 #   ``TEST_REQUIRED_TPLS``
 #
-#     List of additional upstream TPLs that must be enabled in order to build
-#     and/or run the tests and/or examples in this package.  If any of
-#     these upstream TPLs are not enabled, then there will be no tests or
-#     examples defined or run for this package.
+#     **DEPRECATED:** List of additional upstream TPLs that must be enabled in
+#     order to build and/or run the tests and/or examples in this package.  If
+#     any of these upstream TPLs are not enabled, then there will be no tests
+#     or examples defined or run for this package.  (Add these to
+#     ``TEST_REQUIRED_PACKAGES`` instead.)
 #
 #   ``TEST_OPTIONAL_TPLS``
 #
-#     List of additional optional upstream TPLs that can be used by the tests
-#     in this package.  These upstream TPLs need not be enabled in order to
-#     run basic tests for this package.  Typically, extra tests that depend
-#     on optional TPLs involve integration testing or some additional testing
-#     of some type.
+#     **DEPRECATED:** List of additional optional upstream TPLs that can be
+#     used by the tests in this package.  These upstream TPLs need not be
+#     enabled in order to run basic tests for this package.  Typically, extra
+#     tests that depend on optional TPLs involve integration testing or some
+#     additional testing of some type.  (Add these to
+#     ``TEST_OPTIONAL_PACKAGES`` instead.)
+#
+# NOTE: The above ``XXX_TPLS`` arguments/lists are **deprecated**.  At the
+# package level, there is no distinction between upstream internal and
+# external packages/TPLs, so all upstream package dependencies can (and should)
+# be listed in the ``XXX_PACKAGES`` arguments/lists.  (There is no change in
+# behavior listing upstream packages in ``XXX_PACKAGES`` or the ``XXX_TPLS``
+# arguments/lists.)
 #
 # Only upstream packages can be listed (as defined by the order the packages
 # are listed in `tribits_repository_define_packages()`_ in the
-# `<repoDir>/PackagesList.cmake`_ file).  Otherwise an error will occur and
-# processing will stop.  Misspelled package names are caught as well.
+# `<repoDir>/PackagesList.cmake`_ or `<repoDir>/TPLsList.cmake`_ files).
+# Otherwise an error will occur and processing will stop.  Misspelled package
+# names are caught as well.
 #
 # Only direct package dependencies need to be listed.  Indirect package
 # dependencies are automatically handled.  For example, if this package
@@ -136,26 +119,20 @@ include(TribitsGeneralMacros)
 # The dependency on ``PKG1`` will be taken care of automatically by the
 # TriBITS dependency management system.
 #
-# However, currently, all TPL dependencies must be listed, even the indirect
-# ones.  This is a requirement that will be dropped in a future version of
-# TriBITS.
-#
 # The packages listed in ``LIB_REQUIRED_PACKAGES`` are implicitly also
 # dependencies in ``TEST_REQUIRED_PACKAGES``.  Likewise
 # ``LIB_OPTIONAL_PACKAGES`` are implicitly also dependencies in
-# ``TEST_OPTIONAL_PACKAGES``.  Same goes for TPL dependencies.
+# ``TEST_OPTIONAL_PACKAGES``.
 #
 # The upstream dependencies within a single list do not need to be listed in
-# any order.  For example if ``PKG2`` depends on ``PKG1``, and this given
-# package depends on both, then one can list::
+# any particular order.  For example, if ``PKG2`` depends on ``PKG1``, and
+# this given package depends on both, then one can list the dependencies as::
 #
 #   LIB_REQUIRED_PACKAGES PKG2 PKG1
 #
 # or::
 #
-#   "LIB_REQUIRED_PACKAGES PKG1 PKG2
-#
-# Likewise the order that dependent TPLs are listed is not significant.
+#   LIB_REQUIRED_PACKAGES PKG1 PKG2
 #
 # If some upstream packages are allowed to be missing, this can be specified
 # by calling the macro `tribits_allow_missing_external_packages()`_.
@@ -198,27 +175,6 @@ include(TribitsGeneralMacros)
 #     The email list that is used to send CDash error messages.  If this
 #     argument is missing, then the email list that CDash errors go to is
 #     determined by other means (see `CDash regression email addresses`_).
-#
-# NOTE: All this macro really does is to just define the variables:
-#
-# * ``LIB_REQUIRED_DEP_PACKAGES``
-# * ``LIB_OPTIONAL_DEP_PACKAGES``
-# * ``TEST_REQUIRED_DEP_PACKAGES``
-# * ``TEST_OPTIONAL_DEP_PACKAGES``
-# * ``LIB_REQUIRED_DEP_TPLS``
-# * ``LIB_OPTIONAL_DEP_TPLS``
-# * ``TEST_REQUIRED_DEP_TPLS``
-# * ``TEST_OPTIONAL_DEP_TPLS``
-# * ``REGRESSION_EMAIL_LIST``
-# * ``SUBPACKAGES_DIRS_CLASSIFICATIONS_OPTREQS``
-#
-# which are then read by the TriBITS cmake code to build the package
-# dependency graph.  The advantage of using this macro instead of just
-# directly setting the variables is that an package only needs to list
-# dependencies that exist.  Otherwise, the ``Dependencies.cmake`` file will
-# need to set all of the above local variables, even those that are empty.
-# This is an error checking property of the TriBITS system to avoid misspelling
-# the names of these variables.
 #
 macro(tribits_package_define_dependencies)
 

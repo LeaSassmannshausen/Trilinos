@@ -1,4 +1,4 @@
-// Copyright(C) 1999-2022 National Technology & Engineering Solutions
+// Copyright(C) 1999-, 20232023,  National Technology & Engineering Solutions
 // of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 // NTESS, the U.S. Government retains certain rights in this software.
 //
@@ -16,7 +16,6 @@ class SystemInterface
 {
 public:
   SystemInterface();
-  ~SystemInterface();
 
   bool parse_options(int argc, char **argv);
 
@@ -28,11 +27,14 @@ public:
   bool   match_elem_ids() const { return matchElemIds_; }
   bool   omit_nodesets() const { return omitNodesets_; }
   bool   omit_sidesets() const { return omitSidesets_; }
+  bool   omit_assemblies() const { return omitAssemblies_; }
   bool   convert_nodes_to_nodesets(int part_number) const;
-  bool   disable_field_recognition() const { return disableFieldRecognition_; }
-  bool   ints64bit() const { return ints64bit_; }
-  bool   use_netcdf4() const { return useNetcdf4_; }
-  bool   ignore_element_ids() const { return ignoreElementIds_; }
+  bool   create_assemblies() const { return createAssemblies_; }
+
+  bool disable_field_recognition() const { return disableFieldRecognition_; }
+  bool ints64bit() const { return ints64bit_; }
+  bool use_netcdf4() const { return useNetcdf4_; }
+  bool ignore_element_ids() const { return ignoreElementIds_; }
 
   int  compression_level() const { return compressionLevel_; }
   bool zlib() const { return zlib_; }
@@ -53,6 +55,7 @@ public:
   const Omissions &block_omissions() const { return blockOmissions_; }
   const Omissions &nset_omissions() const { return nsetOmissions_; }
   const Omissions &sset_omissions() const { return ssetOmissions_; }
+  const Omissions &assembly_omissions() const { return assemblyOmissions_; }
 
   const std::string &block_prefix() const { return blockPrefix_; }
 
@@ -87,6 +90,7 @@ private:
   int  compressionLevel_{0};
   bool omitNodesets_{false};
   bool omitSidesets_{false};
+  bool omitAssemblies_{false};
   bool matchNodeIds_{false};
   bool matchNodeXYZ_{false};
   bool matchElemIds_{false};
@@ -96,6 +100,7 @@ private:
   bool ignoreElementIds_{false};
   bool zlib_{true};
   bool szip_{false};
+  bool createAssemblies_{true};
 
   std::string blockPrefix_{"p"};
 
@@ -104,6 +109,7 @@ private:
 
   Omissions blockInclusions_;
   Omissions blockOmissions_;
+  Omissions assemblyOmissions_;
   Omissions nsetOmissions_;
   Omissions ssetOmissions_;
 

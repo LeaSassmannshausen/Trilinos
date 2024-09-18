@@ -1,42 +1,10 @@
 // @HEADER
-// ***********************************************************************
-//
+// *****************************************************************************
 //         Stratimikos: Thyra-based strategies for linear solvers
-//                Copyright (2006) Sandia Corporation
 //
-// Under terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-// license for use of this work by or on behalf of the U.S. Government.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Roscoe A. Bartlett (rabartl@sandia.gov)
-//
-// ***********************************************************************
+// Copyright 2006 NTESS and the Stratimikos contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 /*! \file BelosThyraAdapter.hpp
@@ -52,6 +20,7 @@
 #ifndef BELOS_THYRA_ADAPTER_HPP
 #define BELOS_THYRA_ADAPTER_HPP
 
+#include "Stratimikos_Config.h"
 #include "BelosConfigDefs.hpp"
 #include "BelosMultiVecTraits.hpp"
 #include "BelosOperatorTraits.hpp"
@@ -63,7 +32,17 @@
 #  include <Thyra_TsqrAdaptor.hpp>
 #endif // HAVE_BELOS_TSQR
 
-#include <Teuchos_TimeMonitor.hpp>
+#ifdef HAVE_STRATIMIKOS_BELOS_TIMERS
+# include <Teuchos_TimeMonitor.hpp>
+
+# define STRATIMIKOS_TIME_MONITOR(NAME) \
+  Teuchos::TimeMonitor tM(*Teuchos::TimeMonitor::getNewTimer(std::string(NAME)))
+
+#else
+
+# define STRATIMIKOS_TIME_MONITOR(NAME)
+
+#endif
 
 namespace Belos {
 
@@ -275,22 +254,28 @@ namespace Belos {
          const ScalarType beta, TMVB& mv )
     {
       using Teuchos::arrayView; using Teuchos::arcpFromArrayView;
-
-      Teuchos::TimeMonitor tM(*Teuchos::TimeMonitor::getNewTimer(std::string("Belos::MVT::MvTimesMatAddMv")));
+      STRATIMIKOS_TIME_MONITOR("Belos::MVT::MvTimesMatAddMv");
 
       const int m = B.numRows();
       const int n = B.numCols();
-      auto vs = A.domain();
-      // Create a view of the B object!
-      Teuchos::RCP< const TMVB >
-        B_thyra = vs->createCachedMembersView(
-          RTOpPack::ConstSubMultiVectorView<ScalarType>(
-            0, m, 0, n,
-            arcpFromArrayView(arrayView(&B(0,0), B.stride()*B.numCols())), B.stride()
-            )
-          );
-      // perform the operation via A: mv <- alpha*A*B_thyra + beta*mv
-      Thyra::apply<ScalarType>(A, Thyra::NOTRANS, *B_thyra, Teuchos::outArg(mv), alpha, beta);
+      // Check if B is 1-by-1, in which case we can just call MvAddMv()
+      if ((m == 1) && (n == 1)) {
+        using Teuchos::tuple; using Teuchos::ptrInArg; using Teuchos::inoutArg;
+        const ScalarType alphaNew = alpha * B(0, 0);
+        Thyra::linear_combination<ScalarType>(tuple(alphaNew)(), tuple(ptrInArg(A))(), beta, inoutArg(mv));
+      } else {
+        // perform the operation via A: mv <- alpha*A*B_thyra + beta*mv
+        auto vs = A.domain();
+        // Create a view of the B object!
+        Teuchos::RCP< const TMVB >
+          B_thyra = vs->createCachedMembersView(
+            RTOpPack::ConstSubMultiVectorView<ScalarType>(
+              0, m, 0, n,
+              arcpFromArrayView(arrayView(&B(0,0), B.stride()*B.numCols())), B.stride()
+              )
+            );
+        Thyra::apply<ScalarType>(A, Thyra::NOTRANS, *B_thyra, Teuchos::outArg(mv), alpha, beta);
+      }
     }
 
     /*! \brief Replace \c mv with \f$\alpha A + \beta B\f$.
@@ -299,8 +284,7 @@ namespace Belos {
                          const ScalarType beta,  const TMVB& B, TMVB& mv )
     {
       using Teuchos::tuple; using Teuchos::ptrInArg; using Teuchos::inoutArg;
-
-      Teuchos::TimeMonitor tM(*Teuchos::TimeMonitor::getNewTimer(std::string("Belos::MVT::MvAddMv")));
+      STRATIMIKOS_TIME_MONITOR("Belos::MVT::MvAddMv");
 
       Thyra::linear_combination<ScalarType>(
         tuple(alpha, beta)(), tuple(ptrInArg(A), ptrInArg(B))(), Teuchos::ScalarTraits<ScalarType>::zero(), inoutArg(mv));
@@ -310,7 +294,7 @@ namespace Belos {
      */
     static void MvScale ( TMVB& mv, const ScalarType alpha )
       {
-        Teuchos::TimeMonitor tM(*Teuchos::TimeMonitor::getNewTimer(std::string("Belos::MVT::MvScale")));
+        STRATIMIKOS_TIME_MONITOR("Belos::MVT::MvScale");
 
         Thyra::scale(alpha, Teuchos::inoutArg(mv));
       }
@@ -319,7 +303,7 @@ namespace Belos {
      */
     static void MvScale (TMVB& mv, const std::vector<ScalarType>& alpha)
     {
-      Teuchos::TimeMonitor tM(*Teuchos::TimeMonitor::getNewTimer(std::string("Belos::MVT::MvScale")));
+      STRATIMIKOS_TIME_MONITOR("Belos::MVT::MvScale");
 
       for (unsigned int i=0; i<alpha.size(); i++) {
         Thyra::scale<ScalarType> (alpha[i], mv.col(i).ptr());
@@ -332,8 +316,7 @@ namespace Belos {
       Teuchos::SerialDenseMatrix<int,ScalarType>& B )
     {
       using Teuchos::arrayView; using Teuchos::arcpFromArrayView;
-
-      Teuchos::TimeMonitor tM(*Teuchos::TimeMonitor::getNewTimer(std::string("Belos::MVT::MvTransMv")));
+      STRATIMIKOS_TIME_MONITOR("Belos::MVT::MvTransMv");
 
       // Create a multivector to hold the result (m by n)
       int m = A.domain()->dim();
@@ -345,7 +328,8 @@ namespace Belos {
           RTOpPack::SubMultiVectorView<ScalarType>(
             0, m, 0, n,
             arcpFromArrayView(arrayView(&B(0,0), B.stride()*B.numCols())), B.stride()
-            )
+            ),
+          false
           );
       Thyra::apply<ScalarType>(A, Thyra::CONJTRANS, mv, B_thyra.ptr(), alpha);
     }
@@ -355,7 +339,7 @@ namespace Belos {
      */
     static void MvDot( const TMVB& mv, const TMVB& A, std::vector<ScalarType>& b )
       {
-        Teuchos::TimeMonitor tM(*Teuchos::TimeMonitor::getNewTimer(std::string("Belos::MVT::MvDot")));
+        STRATIMIKOS_TIME_MONITOR("Belos::MVT::MvDot");
 
         Thyra::dots(mv, A, Teuchos::arrayViewFromVector(b));
       }
@@ -370,7 +354,7 @@ namespace Belos {
     */
     static void MvNorm( const TMVB& mv, std::vector<magType>& normvec,
       NormType type = TwoNorm ) {
-      Teuchos::TimeMonitor tM(*Teuchos::TimeMonitor::getNewTimer(std::string("Belos::MVT::MvNorm")));
+      STRATIMIKOS_TIME_MONITOR("Belos::MVT::MvNorm");
 
       if(type == TwoNorm)
         Thyra::norms_2(mv, Teuchos::arrayViewFromVector(normvec));
@@ -473,7 +457,7 @@ namespace Belos {
     static void
     Assign (const TMVB& A, TMVB& mv)
     {
-      Teuchos::TimeMonitor tM(*Teuchos::TimeMonitor::getNewTimer(std::string("Belos::MVT::Assign")));
+      STRATIMIKOS_TIME_MONITOR("Belos::MVT::Assign");
 
       const int numColsA = A.domain()->dim();
       const int numColsMv = mv.domain()->dim();

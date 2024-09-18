@@ -1,45 +1,11 @@
-/*
 // @HEADER
-// ***********************************************************************
-//
+// *****************************************************************************
 //          Tpetra: Templated Linear Algebra Services Package
-//                 Copyright (2008) Sandia Corporation
 //
-// Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-// the U.S. Government retains certain rights in this software.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Michael A. Heroux (maherou@sandia.gov)
-//
-// ************************************************************************
+// Copyright 2008 NTESS and the Tpetra contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
-*/
 
 #include "Tpetra_TestingUtilities.hpp"
 #include "Tpetra_BlockView.hpp"
@@ -112,13 +78,13 @@ namespace {
   TEUCHOS_UNIT_TEST_TEMPLATE_2_DECL( ExpBlockView, Factor, ST, LO )
   {
     using Teuchos::Array;
-    typedef typename Kokkos::Details::ArithTraits<ST>::val_type IST;
+    typedef typename Kokkos::ArithTraits<ST>::val_type IST;
     typedef Teuchos::LAPACK<LO, ST> lapack_type;
     typedef Kokkos::View<IST**, Kokkos::LayoutLeft, Kokkos::HostSpace> block_type;
     typedef Kokkos::View<LO*, Kokkos::HostSpace> int_vec_type;
     typedef Kokkos::View<IST*, Kokkos::HostSpace> scalar_vec_type;
 
-    const auto tol = 10.0 * Kokkos::Details::ArithTraits<IST>::eps ();
+    const auto tol = 10.0 * Kokkos::ArithTraits<IST>::eps ();
 
     TEST_ASSERT( Kokkos::is_initialized () );
     if (! Kokkos::is_initialized ()) {
@@ -209,13 +175,13 @@ namespace {
   TEUCHOS_UNIT_TEST_TEMPLATE_2_DECL( ExpBlockView, FactorPivot, ST, LO )
   {
     using Teuchos::Array;
-    typedef typename Kokkos::Details::ArithTraits<ST>::val_type IST;
+    typedef typename Kokkos::ArithTraits<ST>::val_type IST;
     typedef Teuchos::LAPACK<LO, ST> lapack_type;
     typedef Kokkos::View<IST**, Kokkos::LayoutLeft, Kokkos::HostSpace> block_type;
     typedef Kokkos::View<LO*, Kokkos::HostSpace> int_vec_type;
     typedef Kokkos::View<IST*, Kokkos::HostSpace> scalar_vec_type;
 
-    const auto tol = 10.0 * Kokkos::Details::ArithTraits<IST>::eps ();
+    const auto tol = 10.0 * Kokkos::ArithTraits<IST>::eps ();
 
     TEST_ASSERT( Kokkos::is_initialized () );
     if (! Kokkos::is_initialized ()) {
@@ -306,7 +272,7 @@ namespace {
   // problem (the identity matrix).
   TEUCHOS_UNIT_TEST_TEMPLATE_2_DECL( ExpBlockView, SolveIdentity, ST, LO )
   {
-    typedef typename Kokkos::Details::ArithTraits<ST>::val_type IST;
+    typedef typename Kokkos::ArithTraits<ST>::val_type IST;
     typedef Kokkos::View<IST**, Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryUnmanaged> block_type;
     typedef Kokkos::View<IST*, Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryUnmanaged> vec_type;
     typedef Kokkos::View<int*, Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryUnmanaged> piv_type;
@@ -365,7 +331,7 @@ namespace {
   // calling GEQRF compiles.
   TEUCHOS_UNIT_TEST_TEMPLATE_2_DECL( ExpBlockView, GEQRF, ST, LO )
   {
-    typedef typename Kokkos::Details::ArithTraits<ST>::val_type IST;
+    typedef typename Kokkos::ArithTraits<ST>::val_type IST;
     typedef Kokkos::View<IST**, Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryUnmanaged> block_type;
     const IST zero = static_cast<IST> (0.0);
     const IST one = static_cast<IST> (1.0);
@@ -410,7 +376,7 @@ namespace {
       if (info != 0) {
         continue; // workspace query failed; skip the rest
       }
-      lwork = static_cast<int> (Kokkos::Details::ArithTraits<IST>::real (workView[0]));
+      lwork = static_cast<int> (Kokkos::ArithTraits<IST>::real (workView[0]));
       TEST_ASSERT( lwork >= 0 );
       if (lwork < 0) {
         continue; // workspace query failed; skip the rest
@@ -544,7 +510,7 @@ namespace {
 
   TEUCHOS_UNIT_TEST_TEMPLATE_2_DECL( ExpBlockView, SCAL, ST, LO )
   {
-    typedef typename Kokkos::Details::ArithTraits<ST>::val_type IST; // "impl_scalar_type"
+    typedef typename Kokkos::ArithTraits<ST>::val_type IST; // "impl_scalar_type"
     typedef Kokkos::View<IST**, Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryUnmanaged> blk_type;
     typedef Kokkos::View<IST*, Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryUnmanaged> vec_type;
 
@@ -623,7 +589,7 @@ namespace {
 
   TEUCHOS_UNIT_TEST_TEMPLATE_2_DECL( ExpBlockView, COPY, ST, LO )
   {
-    typedef typename Kokkos::Details::ArithTraits<ST>::val_type IST; // "impl_scalar_type"
+    typedef typename Kokkos::ArithTraits<ST>::val_type IST; // "impl_scalar_type"
     typedef Kokkos::View<IST**, Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryUnmanaged> blk_type;
     typedef Kokkos::View<IST*, Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryUnmanaged> vec_type;
 
@@ -695,7 +661,7 @@ namespace {
 
   TEUCHOS_UNIT_TEST_TEMPLATE_2_DECL( ExpBlockView, AXPY, ST, LO )
   {
-    typedef typename Kokkos::Details::ArithTraits<ST>::val_type IST; // "impl_scalar_type"
+    typedef typename Kokkos::ArithTraits<ST>::val_type IST; // "impl_scalar_type"
     typedef Kokkos::View<IST**, Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryUnmanaged> blk_type;
     typedef Kokkos::View<IST*, Kokkos::LayoutRight, Kokkos::HostSpace, Kokkos::MemoryUnmanaged> vec_type;
 

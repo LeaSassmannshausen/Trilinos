@@ -1,3 +1,12 @@
+// @HEADER
+// *****************************************************************************
+//               ShyLU: Scalable Hybrid LU Preconditioner and Solver
+//
+// Copyright 2011 NTESS and the ShyLU contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
+// @HEADER
+
 #ifndef SHYLU_ITERATIVESOLVER_INTERFACE_DECL_HPP
 #define SHYLU_ITERATIVESOLVER_INTERFACE_DECL_HPP
 
@@ -29,7 +38,7 @@
 #endif
 
 //#include <Zoltan2_config.h>
-#ifdef HAVE_SHYLU_DDCORE_ZOLTAN2
+#if defined(HAVE_SHYLU_DDCORE_ZOLTAN2CORE)
 #include <Zoltan2_XpetraCrsMatrixAdapter.hpp>
 #include <Zoltan2_XpetraMultiVectorAdapter.hpp>
 #include <Zoltan2_PartitioningProblem.hpp>
@@ -110,3 +119,10 @@ namespace ShyLU
 }//end namespace ShyLU
 
 #endif
+
+#if defined(ShyLU_DDCore_SHOW_DEPRECATED_WARNINGS)
+#ifdef __GNUC__
+#warning "The ShyLU_DDCore package is deprecated"
+#endif
+#endif
+

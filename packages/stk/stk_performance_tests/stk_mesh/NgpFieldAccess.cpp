@@ -56,7 +56,7 @@
 namespace ngp_field_perf_test
 {
 
-class NgpFieldAccess : public stk::unit_test_util::simple_fields::MeshFixture
+class NgpFieldAccess : public stk::unit_test_util::MeshFixture
 {
 public:
   NgpFieldAccess()
@@ -86,13 +86,13 @@ protected:
   void setup_multi_block_mesh(unsigned numElemsPerDim, unsigned numBlocks)
   {
     stk::performance_tests::setup_multiple_blocks(get_meta(), numBlocks);
-    stk::io::fill_mesh(stk::unit_test_util::simple_fields::get_mesh_spec(numElemsPerDim), get_bulk());
+    stk::io::fill_mesh(stk::unit_test_util::get_mesh_spec(numElemsPerDim), get_bulk());
     stk::performance_tests::move_elements_to_other_blocks(get_bulk(), numElemsPerDim);
   }
 
-  void verify_averaged_centroids_are_center_of_mesh(int elemsPerDim)
+  void verify_averaged_centroids_are_center_of_mesh(int elemsPerDim, stk::mesh::Field<double>& centroidField)
   {
-    std::vector<double> average = stk::performance_tests::get_centroid_average_from_host(get_bulk(), *centroid, stk::mesh::Selector(get_meta().universal_part()));
+    std::vector<double> average = stk::performance_tests::get_centroid_average_from_host(get_bulk(), centroidField, stk::mesh::Selector(get_meta().universal_part()));
     double meshCenter = elemsPerDim/2.0;
     for(size_t dim = 0; dim < 3; dim++) {
       EXPECT_DOUBLE_EQ(meshCenter, average[dim]);
@@ -134,14 +134,14 @@ TEST_F(NgpFieldAccess, Centroid)
 
   setup_empty_mesh(stk::mesh::BulkData::NO_AUTO_AURA);
   declare_centroid_field();
-  stk::io::fill_mesh(stk::unit_test_util::simple_fields::get_mesh_spec(ELEMS_PER_DIM), get_bulk());
+  stk::io::fill_mesh(stk::unit_test_util::get_mesh_spec(ELEMS_PER_DIM), get_bulk());
 
   for (unsigned j = 0; j < NUM_RUNS; j++) {
     batchTimer.start_batch_timer();
     for (int i = 0; i <NUM_ITERS; i++) {
       stk::performance_tests::calculate_centroid_using_coord_field<stk::mesh::NgpField<double>>(get_bulk(), *centroid);
     }
-    verify_averaged_centroids_are_center_of_mesh(ELEMS_PER_DIM, get_meta().universal_part());
+    verify_averaged_centroids_are_center_of_mesh(ELEMS_PER_DIM, *centroid);
     batchTimer.stop_batch_timer();
   }
   batchTimer.print_batch_timing(NUM_ITERS);
@@ -159,16 +159,16 @@ TEST_F(NgpFieldAccess, HostCentroid)
 
   setup_empty_mesh(stk::mesh::BulkData::NO_AUTO_AURA);
   declare_centroid_field();
-  stk::io::fill_mesh(stk::unit_test_util::simple_fields::get_mesh_spec(ELEMS_PER_DIM), get_bulk());
-
-  stk::performance_tests::calculate_centroid_using_coord_field<stk::mesh::NgpField<double>>(get_bulk(), *centroid);
+  stk::io::fill_mesh(stk::unit_test_util::get_mesh_spec(ELEMS_PER_DIM), get_bulk());
 
   for (unsigned j = 0; j < NUM_RUNS; j++) {
     batchTimer.start_batch_timer();
+
     for (int i = 0; i < NUM_ITERS; i++) {
       stk::performance_tests::calculate_centroid_using_host_coord_fields(get_bulk(), *hostCentroid);
     }
-    compare_and_verify_average_centroids(ELEMS_PER_DIM, get_meta().universal_part());
+    verify_averaged_centroids_are_center_of_mesh(ELEMS_PER_DIM, *hostCentroid);
+
     batchTimer.stop_batch_timer();
   }
   batchTimer.print_batch_timing(NUM_ITERS);
@@ -215,7 +215,7 @@ TEST_F(NgpFieldAccess, CentroidPartialBlock)
   const int NUM_ITERS = 250;
   const int ELEMS_PER_DIM = 100;
   const int NUM_BLOCKS = 100;
-  int BLOCKS = stk::unit_test_util::simple_fields::get_command_line_option<int>("-n", 50);
+  int BLOCKS = stk::unit_test_util::get_command_line_option<int>("-n", 50);
   BLOCKS = std::max(BLOCKS, 1);
   BLOCKS = std::min(BLOCKS, NUM_BLOCKS);
 

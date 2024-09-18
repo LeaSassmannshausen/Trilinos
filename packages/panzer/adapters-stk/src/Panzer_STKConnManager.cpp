@@ -1,43 +1,11 @@
 // @HEADER
-// ***********************************************************************
-//
+// *****************************************************************************
 //           Panzer: A partial differential equation assembly
 //       engine for strongly coupled complex multiphysics systems
-//                 Copyright (2011) Sandia Corporation
 //
-// Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-// the U.S. Government retains certain rights in this software.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Roger P. Pawlowski (rppawlo@sandia.gov) and
-// Eric C. Cyr (eccyr@sandia.gov)
-// ***********************************************************************
+// Copyright 2011 NTESS and the Panzer contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 #include "Panzer_STKConnManager.hpp"
@@ -204,23 +172,32 @@ STKConnManager::LocalOrdinal
 STKConnManager::addSubcellConnectivities(stk::mesh::Entity element,
                                          unsigned subcellRank,
                                          LocalOrdinal idCnt,
-                                         GlobalOrdinal offset)
+                                         GlobalOrdinal offset,
+                                         const unsigned maxIds)
 {
    if(idCnt<=0)
       return 0 ;
 
-   // loop over all relations of specified type
+   // loop over all relations of specified type, unless requested
    LocalOrdinal numIds = 0;
    stk::mesh::BulkData& bulkData = *stkMeshDB_->getBulkData();
    const stk::mesh::EntityRank rank = static_cast<stk::mesh::EntityRank>(subcellRank);
-   const size_t num_rels = bulkData.num_connectivity(element, rank);
+
+#ifdef PANZER_DEBUG
+   TEUCHOS_TEST_FOR_EXCEPTION(maxIds > bulkData.num_connectivity(element, rank),
+                              std::runtime_error,
+                              "ERROR: The maxIds (num vertices from basis cell topology) is greater than the num vertices in the stk mesh topology!");
+#endif
+
+   const size_t num_rels = (maxIds > 0) ? maxIds : bulkData.num_connectivity(element, rank);
    stk::mesh::Entity const* relations = bulkData.begin(element, rank);
    for(std::size_t sc=0; sc<num_rels; ++sc) {
      stk::mesh::Entity subcell = relations[sc];
 
      // add connectivities: adjust for STK indexing craziness
-     for(LocalOrdinal i=0;i<idCnt;i++)
+     for(LocalOrdinal i=0;i<idCnt;i++) {
        connectivity_.push_back(offset+idCnt*(bulkData.identifier(subcell)-1)+i);
+     }
 
      numIds += idCnt;
    }
@@ -269,6 +246,11 @@ void STKConnManager::buildConnectivity(const panzer::FieldPattern & fp)
     // std::cout << "face: count = " << faceIdCnt << ", offset = " << faceOffset << std::endl;
     // std::cout << "cell: count = " << cellIdCnt << ", offset = " << cellOffset << std::endl;
 
+   // Connectivity only requires lowest order mesh node information
+   // With the notion of extended topologies used by shards, it is 
+   // sufficient to take the first num_vertices nodes for connectivity purposes.
+   const unsigned num_vertices = fp.getCellTopology().getVertexCount();
+
    // loop over elements and build global connectivity
    for(std::size_t elmtLid=0;elmtLid!=elements_->size();++elmtLid) {
       GlobalOrdinal numIds = 0;
@@ -277,8 +259,11 @@ void STKConnManager::buildConnectivity(const panzer::FieldPattern & fp)
       // get index into connectivity array
       elmtLidToConn_[elmtLid] = connectivity_.size();
 
-      // add connecviities for sub cells
-      numIds += addSubcellConnectivities(element,stkMeshDB_->getNodeRank(),nodeIdCnt,nodeOffset);
+      // add connectivities for sub cells
+      // Second order or higher mesh nodes are only needed downstream by the FE bases
+      // The connection manager only expects first order nodes (vertices), so we subselect if necessary
+      // All edge and face IDs are stored
+      numIds += addSubcellConnectivities(element,stkMeshDB_->getNodeRank(),nodeIdCnt,nodeOffset,num_vertices);
       numIds += addSubcellConnectivities(element,stkMeshDB_->getEdgeRank(),edgeIdCnt,edgeOffset);
       numIds += addSubcellConnectivities(element,stkMeshDB_->getFaceRank(),faceIdCnt,faceOffset);
 
@@ -374,13 +359,13 @@ void STKConnManager::getDofCoords(const std::string & blockId,
    int dim = coordProvider.getDimension();
    int numIds = coordProvider.numberIds();
 
-   // grab element vertices
-   Kokkos::DynRankView<double,PHX::Device> vertices;
-   workset_utils::getIdsAndVertices(*stkMeshDB_,blockId,localCellIds,vertices);
+   // grab element nodes 
+   Kokkos::DynRankView<double,PHX::Device> nodes;
+   workset_utils::getIdsAndNodes(*stkMeshDB_,blockId,localCellIds,nodes);
 
    // setup output array
    points = Kokkos::DynRankView<double,PHX::Device>("points",localCellIds.size(),numIds,dim);
-   coordProvider.getInterpolatoryCoordinates(vertices,points);
+   coordProvider.getInterpolatoryCoordinates(nodes,points,stkMeshDB_->getCellTopology(blockId));
 }
 
 bool STKConnManager::hasAssociatedNeighbors() const

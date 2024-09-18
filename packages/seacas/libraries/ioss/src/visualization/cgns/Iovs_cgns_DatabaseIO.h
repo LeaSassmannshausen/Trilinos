@@ -1,4 +1,4 @@
-// Copyright(C) 1999-2021 National Technology & Engineering Solutions
+// Copyright(C) 1999-2021, 2023 National Technology & Engineering Solutions
 // of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 // NTESS, the U.S. Government retains certain rights in this software.
 //
@@ -7,7 +7,7 @@
 #ifndef Iovs_cgns_DatabaseIO_h
 #define Iovs_cgns_DatabaseIO_h
 
-#include <Ioss_DatabaseIO.h>
+#include "Ioss_DatabaseIO.h"
 #include <visualization/cgns/CatalystCGNSMeshBase.h>
 
 namespace Iovs_cgns {
@@ -20,7 +20,7 @@ namespace Iovs_cgns {
 
     ~DatabaseIO() override;
 
-    const std::string get_format() const override { return "Embedded CGNS Visualization"; }
+    std::string get_format() const override { return "Embedded CGNS Visualization"; }
 
     unsigned entity_field_support() const override { return Ioss::REGION; }
 
@@ -28,13 +28,13 @@ namespace Iovs_cgns {
     void write_meta_data();
 
   private:
-    bool begin__(Ioss::State state) override;
-    bool end__(Ioss::State state) override;
+    bool begin_nl(Ioss::State state) override;
+    bool end_nl(Ioss::State state) override;
 
-    bool begin_state__(int state, double time) override;
-    bool end_state__(int state, double time) override;
+    bool begin_state_nl(int state, double time) override;
+    bool end_state_nl(int state, double time) override;
 
-    void read_meta_data__() override;
+    void read_meta_data_nl() override;
 
     int64_t get_field_internal(const Ioss::Region * /*reg*/, const Ioss::Field & /*field*/,
                                void * /*data*/, size_t /*data_size*/) const override

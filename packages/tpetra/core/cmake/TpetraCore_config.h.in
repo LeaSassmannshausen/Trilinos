@@ -79,7 +79,7 @@
 #cmakedefine HAVE_TPETRA_MMM_TIMINGS
 #cmakedefine HAVE_TPETRA_DISTRIBUTOR_TIMINGS
 
-/* Define when enabling KokkosCore in Tpetra */
+/* Define when enabling Kokkos in Tpetra */
 #cmakedefine HAVE_TPETRACORE_KOKKOS
 #ifdef HAVE_TPETRACORE_KOKKOS
 // For backwards compatibility
@@ -94,13 +94,6 @@
 #  define HAVE_TPETRA_TEUCHOSKOKKOSCOMPAT
 #  define HAVE_TPETRA_KOKKOSCOMPAT
 #endif // HAVE_TPETRACORE_TEUCHOSKOKKOSCOMPAT
-
-/* Define when enabling KokkosContainers in TpetraCore */
-#cmakedefine HAVE_TPETRACORE_KOKKOS
-#ifdef HAVE_TPETRACORE_KOKKOS
-// For backwards compatibility
-#  define HAVE_TPETRA_KOKKOS
-#endif // HAVE_TPETRACORE_KOKKOS
 
 /* Define when enabling KokkosComm in TpetraCore */
 #cmakedefine HAVE_TPETRACORE_TEUCHOSKOKKOSCOMM
@@ -170,6 +163,8 @@
 #cmakedefine HAVE_TPETRA_HIP
 #cmakedefine HAVE_TPETRA_SYCL
 
+#cmakedefine HAVE_TPETRA_REDUCED_ETI
+
 #cmakedefine HAVE_TPETRA_THREADED_MKL
 
 #cmakedefine HAVE_TPETRA_BCRS_DO_POINT_IMPORT
@@ -180,8 +175,12 @@
 #endif
 
 
+#cmakedefine HAVE_TPETRA_SHARED_ALLOCS
+
 #cmakedefine HAVE_TPETRA_EXPERIMENTAL
 
 @TPETRA_DEPRECATED_DECLARATIONS@
+
+#cmakedefine TPETRA_DEPRECATED_DECLARATIONS
 
 #endif // TPETRACORE_CONFIG_H

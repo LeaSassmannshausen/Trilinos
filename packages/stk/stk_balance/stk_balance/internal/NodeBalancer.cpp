@@ -60,13 +60,10 @@ NodeBalancer::getInterfaceDescription(std::set<int>& neighborProcessors,
   stk::mesh::Selector sharedSelector(m_metaData.globally_shared_part());
   const stk::mesh::BucketVector& buckets = m_bulkData.get_buckets(stk::topology::NODE_RANK, sharedSelector);
 
-  int numInterfaceNodesOwned = 0;
-
   for (auto ib = buckets.begin(); ib != buckets.end(); ++ib) {
 
     const stk::mesh::Bucket& b = **ib;
     const size_t nnodes = b.size();
-    const bool isOwned = b.owned();
     for (size_t n = 0; n < nnodes; ++n) {
       stk::mesh::Entity node = b[n];
       std::vector<int> shared_procs;
@@ -75,9 +72,6 @@ NodeBalancer::getInterfaceDescription(std::set<int>& neighborProcessors,
       neighborProcessors.insert(shared_procs.begin(), shared_procs.end());
       std::pair<stk::mesh::Entity, std::vector<int>> item(node, shared_procs);
       interfaceNodesAndProcessors.insert(item);
-      if (isOwned) {
-        numInterfaceNodesOwned++;
-      }
     }
   }
 }
@@ -108,6 +102,8 @@ NodeBalancer::exchangeLocalSizes(const std::set<int>& neighborProcessors,
                                  std::map<int, int> &numLocallyOwnedByRank)
 {
   size_t numCommunications = neighborProcessors.size();
+  if (numCommunications == 0u) return;
+
   std::vector<int> recvBuffer(numCommunications);
   std::vector<MPI_Request> receiveRequests(numCommunications);
   std::vector<MPI_Request> sendRequests(numCommunications);
@@ -126,10 +122,10 @@ NodeBalancer::exchangeLocalSizes(const std::set<int>& neighborProcessors,
   }
 
   std::vector<MPI_Status> receiveStati(receiveRequests.size());
-  MPI_Waitall(receiveRequests.size(), &receiveRequests[0], &receiveStati[0]);
+  MPI_Waitall(receiveRequests.size(), receiveRequests.data(), receiveStati.data());
 
   std::vector<MPI_Status> sendStati(sendRequests.size());
-  MPI_Waitall(sendRequests.size(), &sendRequests[0], &sendStati[0]);
+  MPI_Waitall(sendRequests.size(), sendRequests.data(), sendStati.data());
 
   int i = 0;
   for (int p : neighborProcessors) {

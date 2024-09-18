@@ -70,8 +70,6 @@
 #include "Ioss_VariableType.h"                       // for VariableType
 #include "ProcessSetsOrBlocks.hpp"                   // for process_edge_blocks
 #include "StkIoUtils.hpp"                            // for IossBlockMembership
-#include "Teuchos_RCP.hpp"                           // for RCP::operator->
-#include "Teuchos_RCPStdSharedPtrConversions.hpp"
 #include "stk_io/DatabasePurpose.hpp"                // for DatabasePurpose
 #include "stk_io/Heartbeat.hpp"                      // for Heartbeat, Heart...
 #include "stk_io/MeshField.hpp"                      // for MeshField, MeshF...
@@ -97,6 +95,21 @@ namespace stk { namespace mesh { class FieldDataManager; } }
 
 namespace stk {
 namespace io {
+namespace impl {
+std::string basename( std::string const& pathname )
+{
+  struct MatchPathSeparator
+  {
+    bool operator()( char ch ) const
+    {
+      return ch == '\\' || ch == '/';
+    }
+  };
+
+  return std::string( std::find_if( pathname.rbegin(), pathname.rend(), MatchPathSeparator() ).base(),
+                      pathname.end() );
+}
+}
 
 template <typename T>
 bool is_index_valid(const std::vector<T> &file_vector, size_t input_file_index)
@@ -145,26 +158,28 @@ stk::mesh::FieldVector get_fields_by_name(const stk::mesh::MetaData &meta, const
 
 StkMeshIoBroker::StkMeshIoBroker()
 : m_communicator(MPI_COMM_NULL),
+  m_meshBuilder(std::make_shared<stk::mesh::MeshBuilder>()),
   m_activeMeshIndex(0),
   m_sidesetFaceCreationBehavior(STK_IO_SIDE_CREATION_USING_GRAPH_TEST),
   m_autoLoadAttributes(true),
   m_autoLoadDistributionFactorPerNodeSet(true),
   m_enableEdgeIO(false),
   m_cacheEntityListForTransientSteps(false),
-  m_useSimpleFields(false)
+  m_throwOnMissingInputFields(false)
 {
     Ioss::Init::Initializer::initialize_ioss();
 }
 
 StkMeshIoBroker::StkMeshIoBroker(stk::ParallelMachine comm)
 : m_communicator(comm),
+  m_meshBuilder(std::make_shared<stk::mesh::MeshBuilder>(comm)),
   m_activeMeshIndex(0),
   m_sidesetFaceCreationBehavior(STK_IO_SIDE_CREATION_USING_GRAPH_TEST),
   m_autoLoadAttributes(true),
   m_autoLoadDistributionFactorPerNodeSet(true),
   m_enableEdgeIO(false),
   m_cacheEntityListForTransientSteps(false),
-  m_useSimpleFields(false)
+  m_throwOnMissingInputFields(false)
 {
     Ioss::Init::Initializer::initialize_ioss();
 }
@@ -231,13 +246,6 @@ bool StkMeshIoBroker::get_filter_empty_input_entity_blocks(size_t input_file_ind
   return !retainEmptyBlocks;
 }
 
-#ifndef STK_HIDE_DEPRECATED_CODE //delete after May 2023
- STK_DEPRECATED_MSG("This function has been deprecated. Please pass in std::shared_ptr instead of Teuchos::rcp.")size_t StkMeshIoBroker::add_mesh_database(Teuchos::RCP<Ioss::Region> ioss_input_region)
-{
-    return add_mesh_database(Teuchos::get_shared_ptr(ioss_input_region));
-}
-#endif
-
 size_t StkMeshIoBroker::add_mesh_database(std::shared_ptr<Ioss::Region> ioss_input_region)
 {
     auto input_file = std::make_shared<InputFile>(ioss_input_region);
@@ -264,18 +272,27 @@ void StkMeshIoBroker::create_sideset_observer()
     }
 }
 
+void StkMeshIoBroker::set_mesh_builder(std::shared_ptr<stk::mesh::MeshBuilder> meshBuilder)
+{
+  STK_ThrowErrorMsgIf(m_metaData || m_bulkData,
+                      "Setting a MeshBuilder after as mesh has already been built has no effect.");
+  m_meshBuilder = meshBuilder;
+}
+
 void StkMeshIoBroker::set_bulk_data(std::shared_ptr<stk::mesh::BulkData> arg_bulk_data)
 {
-    STK_ThrowErrorMsgIf( m_bulkData != nullptr,
-                     "Bulk data already initialized" );
+    {
+      const bool sameBulkDataAlreadySet = m_bulkData.get() == arg_bulk_data.get();
+      if (sameBulkDataAlreadySet) {
+        return;
+      }
+    }
+
+    STK_ThrowErrorMsgIf(m_bulkData, "BulkData already initialized.");
     m_bulkData = arg_bulk_data;
 
     if (m_metaData == nullptr) {
         m_metaData = std::shared_ptr<stk::mesh::MetaData>(&(bulk_data().mesh_meta_data()), [](auto pointerWeWontDelete){});
-    }
-
-    if (m_useSimpleFields) {
-      m_metaData->use_simple_fields();
     }
 
     m_communicator = m_bulkData->parallel();
@@ -284,20 +301,14 @@ void StkMeshIoBroker::set_bulk_data(std::shared_ptr<stk::mesh::BulkData> arg_bul
 
 void StkMeshIoBroker::replace_bulk_data(std::shared_ptr<stk::mesh::BulkData> arg_bulk_data)
 {
-    STK_ThrowErrorMsgIf( m_bulkData == nullptr,
-                     "There is  no bulk data to replace." );
-    STK_ThrowErrorMsgIf( m_metaData == nullptr,
-                     "Meta data must be non-null when calling StkMeshIoBroker::replace_bulk_data." );
+    STK_ThrowRequireMsg(m_bulkData, "There is  no BulkData to replace.");
+    STK_ThrowRequireMsg(m_metaData, "MetaData must be non-null when calling StkMeshIoBroker::replace_bulk_data.");
 
     std::shared_ptr<stk::mesh::MetaData> new_meta_data(&(arg_bulk_data->mesh_meta_data()), [](auto pointerWeWontDelete){});
-    STK_ThrowErrorMsgIf( m_metaData.get() != new_meta_data.get(),
-                     "Meta data for both new and old bulk data must be the same." );
+    STK_ThrowErrorMsgIf(m_metaData.get() != new_meta_data.get(),
+                        "MetaData for both new and old BulkData must be the same.");
 
     m_bulkData = arg_bulk_data;
-
-    if (m_useSimpleFields) {
-      m_metaData->use_simple_fields();
-    }
 
     create_sideset_observer();
 }
@@ -349,17 +360,6 @@ size_t StkMeshIoBroker::add_mesh_database(const std::string &filename,
     copy_property_manager(properties);
     return add_mesh_database(filename, type,purpose);
 }
-
-#ifndef STK_HIDE_DEPRECATED_CODE //delete after May 2023
-STK_DEPRECATED_MSG("This function has been renamed get_input_ioss_region() and now returns a std::shared_ptr.") Teuchos::RCP<Ioss::Region> StkMeshIoBroker::get_input_io_region() const
-{
-    if (is_index_valid(m_inputFiles, m_activeMeshIndex)) {
-        return Teuchos::rcp(m_inputFiles[m_activeMeshIndex]->get_input_ioss_region());
-    } else {
-        return Teuchos::RCP<Ioss::Region>();
-    }
-}
-#endif
 
 std::shared_ptr<Ioss::Region> StkMeshIoBroker::get_input_ioss_region() const
 {
@@ -498,11 +498,7 @@ void StkMeshIoBroker::create_input_mesh()
 
     // See if meta data is null, if so, create a new one...
     if (is_meta_data_null()) {
-        m_metaData = std::shared_ptr<stk::mesh::MetaData>(new stk::mesh::MetaData());
-    }
-
-    if (m_useSimpleFields) {
-      m_metaData->use_simple_fields();
+        m_metaData = m_meshBuilder->create_meta_data();
     }
 
     size_t spatial_dimension = region->get_property("spatial_dimension").get_int();
@@ -646,17 +642,6 @@ int StkMeshIoBroker::write_defined_output_fields(size_t output_file_index, const
 {
     validate_output_file_index(output_file_index);
     int current_output_step = m_outputFiles[output_file_index]->write_defined_output_fields(*m_bulkData, state);
-    return current_output_step;
-}
-
-int StkMeshIoBroker::write_defined_output_fields_for_selected_subset(size_t output_file_index,
-                                                                     std::vector<stk::mesh::Part*>& selectOutputElementParts,
-                                                                     const stk::mesh::FieldState *state) const
-{
-    validate_output_file_index(output_file_index);
-    int current_output_step = m_outputFiles[output_file_index]->write_defined_output_fields_for_selected_subset(*m_bulkData,
-                                                                                                                 selectOutputElementParts,
-                                                                                                                 state);
     return current_output_step;
 }
 
@@ -846,9 +831,9 @@ void StkMeshIoBroker::create_bulk_data()
                      "INTERNAL ERROR: Mesh Input Region pointer is NULL in populate_mesh.");
 
     if (is_bulk_data_null()) {
-        set_bulk_data(stk::mesh::MeshBuilder(region->get_database()->util().communicator())
-                                          .set_aura_option(stk::mesh::BulkData::AUTO_AURA)
-                                          .create(meta_data_ptr()));
+        set_bulk_data(m_meshBuilder->set_communicator(region->get_database()->util().communicator())
+                                   .set_aura_option(stk::mesh::BulkData::AUTO_AURA)
+                                   .create(meta_data_ptr()));
     }
 }
 
@@ -1122,41 +1107,83 @@ void StkMeshIoBroker::add_all_mesh_fields_as_input_fields(MeshField::TimeMatchOp
     m_inputFiles[m_activeMeshIndex]->add_all_mesh_fields_as_input_fields(meta_data(), tmo);
 }
 
-bool StkMeshIoBroker::read_input_field(stk::io::MeshField &mf)
+bool StkMeshIoBroker::read_input_field(stk::io::MeshField &mf, stk::io::FieldReadStatus &readStatus)
 {
     validate_input_file_index(m_activeMeshIndex);
-    return m_inputFiles[m_activeMeshIndex]->read_input_field(mf, bulk_data());
+    bool status =  m_inputFiles[m_activeMeshIndex]->read_input_field(mf, bulk_data());
+
+    readStatus.fieldRead = mf.field_restored();
+    readStatus.timeRead = mf.time_restored();
+
+    double timeToRead = mf.get_read_time();
+    double lastTime = m_inputFiles[m_activeMeshIndex]->get_input_ioss_region()->get_max_time().second;
+
+    if(timeToRead > lastTime) {
+      readStatus.possiblyCorrupt = true;
+    }
+
+    return status;
+}
+
+bool StkMeshIoBroker::read_input_field(stk::io::MeshField &mf)
+{
+    stk::io::FieldReadStatus readStatus;
+    return read_input_field(mf, readStatus);
+}
+
+void StkMeshIoBroker::check_for_missing_input_fields(std::vector<stk::io::MeshField> *missingFields)
+{
+    if(nullptr != missingFields && missingFields->size() > 0 && m_throwOnMissingInputFields) {
+      std::ostringstream oss;
+      std::string fileName = m_inputFiles[m_activeMeshIndex]->get_ioss_input_database()->get_filename();
+
+      oss << "There are missing fields in input file: " << impl::basename(fileName) << std::endl;
+
+      for(const stk::io::MeshField& missingField : *missingFields) {
+        oss << "\t" << missingField.db_name() << " stk field: " << missingField.field()->name()
+                                << std::endl;
+      }
+
+      oss << "ERROR: Input field processing could not find " << missingFields->size() << " fields.\n";
+
+      STK_ThrowRequireMsg(false,oss.str());
+    }
 }
 
 double StkMeshIoBroker::read_defined_input_fields(double time,
                                                   std::vector<stk::io::MeshField> *missingFields)
 {
     validate_input_file_index(m_activeMeshIndex);
-    return m_inputFiles[m_activeMeshIndex]->read_defined_input_fields(time, missingFields, bulk_data());
+    double readTime = m_inputFiles[m_activeMeshIndex]->read_defined_input_fields(time, missingFields, bulk_data());
+    check_for_missing_input_fields(missingFields);
+    return readTime;
 }
 
 double StkMeshIoBroker::read_defined_input_fields(int step,
-                                                  std::vector<stk::io::MeshField> *missing)
+                                                  std::vector<stk::io::MeshField> *missingFields)
 {
     if (step <= 0) {
         return 0.0;
     }
 
     validate_input_file_index(m_activeMeshIndex);
-    return m_inputFiles[m_activeMeshIndex]->read_defined_input_fields(step, missing, bulk_data());
+    double readTime = m_inputFiles[m_activeMeshIndex]->read_defined_input_fields(step, missingFields, bulk_data());
+    check_for_missing_input_fields(missingFields);
+    return readTime;
 }
 
 double StkMeshIoBroker::read_defined_input_fields_at_step(int step,
-                                                          std::vector<stk::io::MeshField> *missing)
+                                                          std::vector<stk::io::MeshField> *missingFields)
 {
     if (step <= 0) {
         return 0.0;
     }
 
     validate_input_file_index(m_activeMeshIndex);
-
-    return m_inputFiles[m_activeMeshIndex]->read_defined_input_fields_at_step(step, missing, bulk_data(),
-                                                                              m_cacheEntityListForTransientSteps);
+    double readTime = m_inputFiles[m_activeMeshIndex]->read_defined_input_fields_at_step(step, missingFields, bulk_data(),
+                                                                                         m_cacheEntityListForTransientSteps);
+    check_for_missing_input_fields(missingFields);
+    return readTime;
 }
 
 bool StkMeshIoBroker::use_nodeset_for_block_nodes_fields(size_t output_file_index) const
@@ -1221,6 +1248,16 @@ void StkMeshIoBroker::use_part_id_for_output(size_t output_file_index, bool true
 {
     validate_output_file_index(output_file_index);
     m_outputFiles[output_file_index]->use_part_id_for_output(true_false);
+}
+
+void StkMeshIoBroker::set_throw_on_missing_input_fields(bool flag)
+{
+  m_throwOnMissingInputFields = flag;
+}
+
+bool StkMeshIoBroker::get_throw_on_missing_input_fields() const
+{
+  return m_throwOnMissingInputFields;
 }
 
 void StkMeshIoBroker::set_option_to_not_collapse_sequenced_fields()
@@ -1476,7 +1513,7 @@ void StkMeshIoBroker::set_reference_input_region(size_t outputIndex, const StkMe
 
 bool StkMeshIoBroker::create_named_suffix_field_type(const std::string& type_name, const std::vector<std::string>& suffices) const
 {
-    return Ioss::VariableType::create_named_suffix_field_type(type_name, suffices);
+    return Ioss::VariableType::create_named_suffix_type(type_name, suffices);
 }
 
 bool StkMeshIoBroker::add_field_type_mapping(const std::string& field, const std::string& type) const
@@ -1519,7 +1556,9 @@ std::vector<stk::mesh::Entity> StkMeshIoBroker::get_output_entities(size_t outpu
     return entities;
 }
 
-
+void StkMeshIoBroker::use_simple_fields()
+{
+}
 
 
 } // namespace io

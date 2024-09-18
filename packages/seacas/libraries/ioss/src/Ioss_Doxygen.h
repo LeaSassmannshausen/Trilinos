@@ -10,7 +10,7 @@ https://github.com/sandialabs/seacas
 
 For bug reports, documentation errors, and enhancement suggestions, contact:
 - Gregory D. Sjaardema
-- WEB:   https://github.com/sandialabs/seacas/issues
+- WEB:   https://github.com/sandialabs/seacas
 - EMAIL: gdsjaar@sandia.gov
 - EMAIL: gsjaardema@gmail.com
 - PHONE: (505) 844-2701 (office)
@@ -23,23 +23,22 @@ determined by running the `io_info --config` program.
 
 Type             | Input/Output  | Description
 -----------------|---------------|--------------------------
-catalyst_cgns    | Output        | Visualization pipeline, cgns-based
-catalyst_exodus  | Output        | Visualization pipeline, exodus-based
-cgns             | Input/Output  | CFD General Notation System (https://cgns.github.io/)
 exodus           | Input/Output  | Sandia-developed database system for unstructured mesh input/output (https://sandialabs.github.io/seacas-docs/sphinx/html/index.html#exodus-library)
-exodusII         | Input/Output  | alias for exodus
-exodusii         | Input/Output  | alias for exodus
-genesis          | Input/Output  | alias for exodus
-gen_struc        | Input         | Generate a structured mesh using a token string (IxJxK)
-generated        | Input         | Generate an unstructured hex/shell mesh using a token string
-heartbeat        | Output        | A text based output for global values
-exonull          | Output        | No data written to disk, but uses all of the exodus io database infrastructure/calculations
-null             | Output        | No data written to disk, no calculations done by ioss
-pamgen           | Input         | (https://trilinos.github.io/pamgen.html)
-par_cgns         | Input/Output  | alias for parallel CGNS 
+cgns             | Input/Output  | CFD General Notation System (https://cgns.github.io/)
+generated        | Input         | Generate an unstructured hex/shell mesh using a token string (Iogn::GeneratedMesh::GeneratedMesh)
 textmesh         | Input         | Generate an unstructured mesh using a token string
+heartbeat        | Output        | A text based output for global values
+pamgen           | Input         | (https://trilinos.github.io/pamgen.html)
+gen_struc        | Input         | Generate a structured mesh using a token string (IxJxK)
+catalyst_exodus  | Output        | Visualization pipeline, exodus-based
+catalyst_cgns    | Output        | Visualization pipeline, cgns-based
+null             | Output        | No data written to disk, no calculations done by ioss
+exonull          | Output        | No data written to disk, but uses all of the exodus io database infrastructure/calculations
 adios            | Input/Output  | Adaptable Input/Output system, (https://adios2.readthedocs.io/en/latest/)
 faodel           | Input/Output  | (https://github.com/faodel/faodel)
+exodusii         | Input/Output  | alias for exodus
+genesis          | Input/Output  | alias for exodus
+par_cgns         | Input/Output  | alias for parallel CGNS 
 
 \section properties Properties
 
@@ -182,12 +181,14 @@ file. Then, the first file will be reopened and steps 0.7, 0.8, and
 ## Properties for the heartbeat output
  Property              | Value  | Description
 -----------------------|:------:|-----------------------------------------------------------
-  FILE_FORMAT          | [default], spyhis, csv, ts_csv, text, ts_text | predefined formats for heartbeat output. `ts_` outputs timestamp.
-  FLUSH_INTERVAL       | int   | Minimum time interval between flushing heartbeat data to disk.  Default is 10 seconds
+  FILE_FORMAT          | [default], spyhis, csv, ts_csv, text, ts_text | predefined formats for heartbeat output. The ones starting with `ts_` output timestamps.
+  FLUSH_INTERVAL       | int   | Minimum time interval between flushing heartbeat data to disk.  Default is 10 seconds.  Set to 0 to flush every step (bad performance)
+  HEARTBEAT_FLUSH_INTERVAL | int   | Minimum time interval between flushing heartbeat data to disk.  Default is 10 seconds (Same as FLUSH_INTERVAL, but doesn't affect other database types)
   TIME_STAMP_FORMAT    | [%H:%M:%S] | Format used to format time stamp.  See strftime man page
   SHOW_TIME_STAMP      | on/off | Should the output lines be preceded by the timestamp
   FIELD_SEPARATOR      | [, ]   | separator to be used between output fields.
-  PRECISION            | 0..16 [5] | Precision used for floating point output.
+  FULL_PRECISION       | on/[off] | output will contain as many digits as needed to fully represent the doubles value.  FIELD_WIDTH will be ignored for doubles if this is specified.
+  PRECISION            | -1..16 [5] | Precision used for floating point output. If set to `-1`, then the output will contain as many digits as needed to fully represent the doubles value.  FIELD_WIDTH will be ignored for doubles if precision is set to -1.
   FIELD_WIDTH          | 0.. |  Width of an output field. If 0, then use natural width.
   SHOW_LABELS          | on/[off]  | Should each field be preceded by its name (ke=1.3e9, ie=2.0e9)
   SHOW_LEGEND          | [on]/off  | Should a legend be printed at the beginning of the output showing the field names for each column of data.
@@ -197,9 +198,9 @@ file. Then, the first file will be reopened and steps 0.7, 0.8, and
 
  Property              | Value  | Description
 -----------------------|:------:|-----------------------------------------------------------
-MEMORY_READ        | on/[off]   | experimental
-MEMORY_WRITE       | on/[off]   | experimental
-ENABLE_FILE_GROUPS | on/[off]   | experimental
+MEMORY_READ        | on/[off]   | experimental. Read a file into memory at open time, operate on it without disk accesses.
+MEMORY_WRITE       | on/[off]   | experimental. Open and read a file into memory or create and optionally write it back out to disk when nc_close() is called.
+ENABLE_FILE_GROUPS | on/[off]   | experimental.  Opens database in netcdf-4 non-classic mode which is what is required to support groups at netCDF level.
 MINIMAL_NEMESIS_INFO | on/[off] | special case, omit all nemesis data except for nodal communication map
 OMIT_EXODUS_NUM_MAPS | on/[off] | special case, do not output the node and element numbering map.
 EXODUS_CALL_GET_ALL_TIMES| [on] / off | special case -- should the `ex_get_all_times()` function be called.  See below.

@@ -1,44 +1,10 @@
 // @HEADER
-// ************************************************************************
-//
+// *****************************************************************************
 //                           Intrepid2 Package
-//                 Copyright (2007) Sandia Corporation
 //
-// Under terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-// license for use of this work by or on behalf of the U.S. Government.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Kyungjoo Kim  (kyukim@sandia.gov),
-//                    Mauro Perego  (mperego@sandia.gov), or
-//                    Nate Roberts  (nvrober@sandia.gov)
-//
-// ************************************************************************
+// Copyright 2007 NTESS and the Intrepid2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 /** \file   SubBasisInclusionTests.cpp
@@ -93,21 +59,19 @@ namespace
     bool isLine = cellTopo.getKey() == shards::Line<>::key;
     bool isQuad = cellTopo.getKey() == shards::Quadrilateral<>::key;
     bool isHex  = cellTopo.getKey() == shards::Hexahedron<>::key;
-    bool isTri  = cellTopo.getKey() == shards::Triangle<>::key;
-    bool isTet  = cellTopo.getKey() == shards::Tetrahedron<>::key;
     bool isWedge = cellTopo.getKey() == shards::Wedge<>::key;
     int polyOrderDim = -1; // the number of dimensions of p-anisotropy allowed
     if (isLine || isQuad || isHex)
     {
       polyOrderDim = spaceDim;
     }
-    else if (isTri || isTet)
-    {
-      polyOrderDim = 1;
-    }
     else if (isWedge)
     {
       polyOrderDim = 2; // line x tri
+    }
+    else
+    {
+      polyOrderDim = 1;
     }
     auto subBasisDegreeTestCases = getBasisTestCasesUpToDegree(polyOrderDim, minDegree, polyOrder_x, polyOrder_y, polyOrder_z);
     
@@ -358,15 +322,17 @@ namespace
     shards::CellTopology hexTopo = shards::CellTopology(shards::getCellTopologyData<shards::Hexahedron<> >() );
     runSubBasisTests(hexTopo, out, success);
   }
-  
-  TEUCHOS_UNIT_TEST( SubBasisInclusion, Tetrahedron )
+
+  TEUCHOS_UNIT_TEST( SubBasisInclusion, Pyramid )
   {
-    shards::CellTopology tetTopo = shards::CellTopology(shards::getCellTopologyData<shards::Tetrahedron<> >() );
+    shards::CellTopology pyrTopo = shards::CellTopology(shards::getCellTopologyData<shards::Pyramid<> >() );
+//    runSubBasisTests(pyrTopo, out, success);
     
-    // so far, only HGRAD implemented for hierarchical tetrahedron.  Once we have full exact sequence, we can
+    // so far, only HGRAD, HVOL implemented for hierarchical pyramid.  Once we have full exact sequence, we can
     // switch to calling runSubBasisTests(tetTopo, out, success).
-    std::vector<Intrepid2::EFunctionSpace> functionSpaces = {FUNCTION_SPACE_HGRAD};
-    auto cellTopo = tetTopo;
+    // NOTE: due to the way that lower-degree polynomials get added in the higher-degree bases as p increases (combined with the way that the bases are ordered), the strategy within runSubBasisTests for mapping basis ordinals from the "sub-basis" to the full basis WILL NOT WORK for H(curl) and H(div) pyramids.  We could specify the mapping in some fairly manual way (with awareness of implementation details).  Better still would be to provide a mapping within Basis that would specify how one basis is included in the other.  For now, we simply omit these tests.
+    std::vector<Intrepid2::EFunctionSpace> functionSpaces = {FUNCTION_SPACE_HGRAD, FUNCTION_SPACE_HVOL};
+    auto cellTopo = pyrTopo;
     
     const int maxDegree = 5;
     const double tol = TEST_TOLERANCE_TIGHT;
@@ -386,10 +352,16 @@ namespace
       {
         for (int degree=1; degree<=maxDegree; degree++)
         {
-          testSubBasis(cellTopo, fs, tol, out, success, degree, -1, -1,continuousBasis);
+          testSubBasis(cellTopo, fs, tol, out, success, degree, -1, -1, continuousBasis);
         }
       }
     }
+  }
+  
+  TEUCHOS_UNIT_TEST( SubBasisInclusion, Tetrahedron )
+  {
+    shards::CellTopology tetTopo = shards::CellTopology(shards::getCellTopologyData<shards::Tetrahedron<> >() );
+    runSubBasisTests(tetTopo, out, success);
   }
   
   TEUCHOS_UNIT_TEST( SubBasisInclusion, Triangle )

@@ -1,3 +1,12 @@
+// @HEADER
+// *****************************************************************************
+//               ShyLU: Scalable Hybrid LU Preconditioner and Solver
+//
+// Copyright 2011 NTESS and the ShyLU contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
+// @HEADER
+
 #include <assert.h>
 #include <iostream>
 #include <sstream>
@@ -147,7 +156,7 @@ int main(int argc, char** argv)
   EpetraExt::RowMatrixToMatlabFile("Epetra_Isorropia_Parmetis.mat", *AHat);
 
 
-   cout << "Done with graph - parmetis" << endl;
+   cout << "Done with graph - parmetis (Zoltan)" << endl;
 
    /*
 
@@ -178,7 +187,7 @@ int main(int argc, char** argv)
 
   //Zoltan2 Test
 
-#if defined(HAVE_SHYLU_ZOLTAN2) || defined(HAVE_SHYLU_ZOLTAN2)
+#if defined(HAVE_SHYLU_DDCORE_ZOLTAN2CORE) && (!defined(HAVE_SHYLU_DDCORE_TPETRA) || defined(HAVE_TPETRA_INST_INT_INT))
 
    //Isorropia Test - Graph/ParMetis
   pLUList->set("Partitioning Package","Zoltan2");
@@ -195,7 +204,7 @@ int main(int argc, char** argv)
   partI3.partition();
   AHat = partI3.reorderMatrix();
   bHat = partI3.reorderVector(b);
-  cout << "Done with graph - parmetis" << endl;
+  cout << "Done with graph - parmetis (Zoltan2)" << endl;
 
   EpetraExt::RowMatrixToMatlabFile("Epetra_Zoltan2_Parmetis.mat", *AHat);
 
@@ -266,5 +275,7 @@ int main(int argc, char** argv)
       cout << pass << endl;
     }
 
+  (void)bHat;
+  return 0;
 }
 

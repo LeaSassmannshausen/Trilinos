@@ -100,6 +100,7 @@ enum class FunctionType {
   UNIT_STEP,
   CYCLOIDAL_RAMP,
   COS_RAMP,
+  LINEAR_RAMP,
   HAVERSINE_PULSE,
   POINT2D,
   POINT3D,
@@ -119,6 +120,15 @@ enum class FunctionType {
 
   UNDEFINED
 };
+
+constexpr bool is_function_supported_on_device(FunctionType type)
+{
+  return type != FunctionType::RAND &&
+         type != FunctionType::SRAND &&
+         type != FunctionType::RANDOM &&
+         type != FunctionType::TIME &&
+         type != FunctionType::UNDEFINED;
+}
 
 KOKKOS_INLINE_FUNCTION
 double cycloidal_ramp(double t, double t1, double t2)
@@ -366,6 +376,20 @@ double cosine_ramp3(double t, double t1, double t2)
   }
   else if (t < t2) {
     return (1.0 - std::cos((t-t1)*pi() /(t2-t1)))/2.0;
+  }
+  else {
+    return 1.0;
+  }
+}
+
+KOKKOS_INLINE_FUNCTION
+double linear_ramp3(double t, double t1, double t2)
+{
+  if (t < t1) {
+    return 0.0;
+  }
+  else if (t < t2) {
+    return (t - t1)/(t2 - t1);
   }
   else {
     return 1.0;

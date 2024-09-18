@@ -1,14 +1,14 @@
-// Copyright(C) 1999-2022 National Technology & Engineering Solutions
+// Copyright(C) 1999-2023 National Technology & Engineering Solutions
 // of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 // NTESS, the U.S. Government retains certain rights in this software.
 //
 // See packages/seacas/LICENSE for details
 
-#include <Ioss_DatabaseIO.h>
-#include <Ioss_ElementTopology.h>
-#include <Ioss_EntityBlock.h>
-#include <Ioss_Field.h>
-#include <Ioss_Property.h>
+#include "Ioss_DatabaseIO.h"
+#include "Ioss_ElementTopology.h"
+#include "Ioss_EntityBlock.h"
+#include "Ioss_Field.h"
+#include "Ioss_Property.h"
 #include <cstddef>
 #include <fmt/ostream.h>
 #include <ostream>
@@ -61,7 +61,7 @@ Ioss::EntityBlock::EntityBlock(Ioss::DatabaseIO *io_database, const std::string 
 
 /** \brief Calculate and get an implicit property.
  *
- *  These are calcuated from data stored in the EntityBlock instead of having
+ *  These are calculated from data stored in the EntityBlock instead of having
  *  an explicit value assigned. An example would be 'topology_node_count' for an ElementBlock.
  *  Note that even though this is a pure virtual function, an implementation
  *  is provided to return properties that are common to all 'block'-type grouping entities.
@@ -71,16 +71,16 @@ Ioss::EntityBlock::EntityBlock(Ioss::DatabaseIO *io_database, const std::string 
 Ioss::Property Ioss::EntityBlock::get_implicit_property(const std::string &my_name) const
 {
   if (my_name == "topology_node_count") {
-    return Ioss::Property(my_name, topology()->number_nodes());
+    return {my_name, topology()->number_nodes()};
   }
   if (my_name == "topology_type") {
-    return Ioss::Property(my_name, topology()->name());
+    return {my_name, topology()->name()};
   }
 
   return Ioss::GroupingEntity::get_implicit_property(my_name);
 }
 
-bool Ioss::EntityBlock::equal_(const Ioss::EntityBlock &rhs, const bool quiet) const
+bool Ioss::EntityBlock::equal_(const Ioss::EntityBlock &rhs, bool quiet) const
 {
   bool same = true;
   /* COMPARE element topologies */

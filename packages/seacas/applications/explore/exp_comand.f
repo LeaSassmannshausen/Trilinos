@@ -1,4 +1,4 @@
-C    Copyright(C) 1999-2020 National Technology & Engineering Solutions
+C    Copyright(C) 1999-2020, 2023, 2024 National Technology & Engineering Solutions
 C    of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 C    NTESS, the U.S. Government retains certain rights in this software.
 C
@@ -99,7 +99,7 @@ C   --   Uses NOUT, NCRT, NPRT, ANYPRT of /OUTFIL/
       DIMENSION A(*)
       INTEGER IA(*)
       LOGICAL EXODUS, FFMATC, DO_CHECK
-      LOGICAL DOMAPN, DOMAPE, DOBLK, DOELE
+      LOGICAL DOMAPN, DOMAPE, DOBLK, DOELE, ADD
       CHARACTER*(*) DBNAME
       CHARACTER*(MXSTLN) QAREC(4,*)
       CHARACTER*(MXLNLN) INFO(*)
@@ -149,7 +149,7 @@ C   --   Uses NOUT, NCRT, NPRT, ANYPRT of /OUTFIL/
       CHARACTER*80 DUMLIN
       character*2048 OUTPUT, LCOUTPUT
 
-      CHARACTER*(MXSTLN) CMDTBL(15), SELTBL(15), LISTBL(38)
+      CHARACTER*(MXSTLN) CMDTBL(15), SELTBL(15), LISTBL(41)
       SAVE CMDTBL, SELTBL, LISTBL, KINVC, KINVS
 C      --CMDTBL - the valid commands table
 C      --SELTBL - the valid SELECT options table
@@ -170,7 +170,7 @@ C   --changing the table.
      4  'GVARS   ', 'NVARS   ', 'EVARS   ', 'NSVARS  ', 'SSVARS  ',
      5  '        ' /
       DATA LISTBL /
-     1  'TITLE   ', 'VARS    ',
+     1  'TITLE   ', 'VARS    ', 'QAINFO  ', 'QA', 'INFORMATION', 
      2  'COORDINA', 'MAP     ', 'NMAP    ', 'NODEMAP ',
      3  'BLOCKS  ', 'MATERIAL', 'LINK    ', 'CONNECTI', 'ATTRIBUT',
      4  'NSETS   ', 'NNODES  ', 'NFACTORS', 'INVCON  ',
@@ -251,7 +251,7 @@ C   --Read first time step variables
 
       WRITE (*, *)
       CALL PRTERR ('CMDREQ',
-     & 'Use "precision low|normal|high|#" to control" output precision')
+     & 'Use "precision low|normal|high|#" to control output precision')
 
       if (domape .and. domapn) then
         call PRTERR('CMDREQ',
@@ -319,7 +319,8 @@ C   --Read command line
         IF (LISTYP .EQ. ' ') THEN
           CALL ABRSTR (LISTYP, WORD, SELTBL)
           IF (LISTYP .NE. ' ') THEN
-            CALL PRTERR ('CMDREQ', 'Please use the SELECT command')
+            CALL PRTERR ('CMDREQ', 'Please use the SELECT '
+     $            // LISTYP(:LENSTR(LISTYP)) // ' command')
             VERB = 'SELECT'
           ELSE
             LISTYP = WORD
@@ -448,12 +449,20 @@ C *** GENESIS Print Commands ***
      *          idess, neess, ixeess, lteess, "elements")
             end if
           else
+            IA(KLEL) = 0
             CALL RMIXINT (DUMLIN, IFLD, INTYP, CFIELD, IFIELD,
      &        'element number', NUMEL, IA(KLEL), IA(KLEL+1), MAPEL,
      *        *270)
           end if
 
-          CALL DBSBEL (NELBLK, NUMEL, LENE, A(KLEL), NLISEL, LISEL)
+          add = .false.
+          if (intyp(3) .ge. 0) then
+             if (matstr(cfield(3), 'ADD', 3)) then
+                add = .true.
+             end if
+          end if
+
+          CALL DBSBEL (NELBLK, NUMEL, LENE, A(KLEL), NLISEL, LISEL, ADD)
 
           CALL MDDEL ('SCRSEL')
 
@@ -783,7 +792,15 @@ C *** EXODUS Print Commands ***
 
         ELSE IF (LISTYP .EQ. 'QA') THEN
 
+          CALL PRQA ('Q', NOUT, NQAREC, QAREC, NINFO, INFO)
+
+        ELSE IF (LISTYP .EQ. 'QAINFO') THEN
+
           CALL PRQA ('*', NOUT, NQAREC, QAREC, NINFO, INFO)
+
+        ELSE IF (LISTYP .EQ. 'INFORMATION') THEN
+
+          CALL PRQA ('I', NOUT, NQAREC, QAREC, NINFO, INFO)
 
 C *** EXODUS Print Commands ***
 

@@ -1,43 +1,10 @@
 // @HEADER
-// ************************************************************************
-//
+// *****************************************************************************
 //                           Intrepid2 Package
-//                 Copyright (2007) Sandia Corporation
 //
-// Under terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-// license for use of this work by or on behalf of the U.S. Government.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Kyungjoo Kim  (kyukim@sandia.gov), or
-//                    Mauro Perego  (mperego@sandia.gov)
-//
-// ************************************************************************
+// Copyright 2007 NTESS and the Intrepid2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 /** \file   Intrepid2_PointTools.hpp
@@ -308,6 +275,25 @@ public:
       const ordinal_type offset = 0 ,
       const EPointType pointType = POINTTYPE_EQUISPACED );
 
+  /** \brief Computes a lattice of points of a given order on a reference pyramid.
+        The output array is (P,D), where
+        \code
+        P - number of points per cell
+        D - is the spatial dimension
+        \endcode
+
+        \param  points      [out] - Output array of point coords
+        \param  order       [in]  - number of points per edge, minus 1
+        \param  offset      [in]  - Number of points on boundary to skip
+        \param  pointType   [in]  - flag for point distribution.  Currently equispaced points are supported.
+   */
+  template<typename pointValueType, class ...pointProperties>
+  static void
+  getLatticePyramid(     Kokkos::DynRankView<pointValueType,pointProperties...> points,
+      const ordinal_type order,
+      const ordinal_type offset = 0 ,
+      const EPointType pointType = POINTTYPE_EQUISPACED );
+
   /** Retrieves the Gauss-Legendre points from PolyLib, but lets us
 	do it in an arbitrary ArrayType.
 	\param  points      [out] - Output array of point coords (P,)
@@ -477,8 +463,7 @@ private:
        \endcode
 
        \param  points      [out] - Output Kokkos::DynRankView of point coords
-       \param  order       [in]  - The lattice has order + 1 points,
-       minus any skipped by offset
+       \param  order       [in]  - The lattice has (order + 1) * (order + 2) / 2 points, minus any skipped by offset
        \param  offset      [in]  - Number of points on boundary to skip coming
        in from boundary
    */
@@ -487,6 +472,25 @@ private:
   getEquispacedLatticeTetrahedron( Kokkos::DynRankView<pointValueType,pointProperties...> points,
                                    const ordinal_type order ,
                                    const ordinal_type offset = 0 );
+
+
+  /** \brief Computes an equispaced lattice of a given
+      order on the reference pyramid.  The output array is
+      (P,3), where
+      \code
+      P - number of points
+      \endcode
+
+      \param  points      [out] - Output Kokkos::DynRankView of point coords
+      \param  order       [in]  - The lattice has (order + 1) * (order + 2) * (2*order + 3) / 6 points, minus any skipped by offset
+      \param  offset      [in]  - Number of points on boundary to skip coming in from boundary
+
+  */
+ template<typename pointValueType, class ...pointProperties>
+ static void
+ getEquispacedLatticePyramid(       Kokkos::DynRankView<pointValueType,pointProperties...> points,
+     const ordinal_type order,
+     const ordinal_type offset = 0 );
 
 
    /** \brief interpolates Warburton's warp function on the line

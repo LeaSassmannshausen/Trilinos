@@ -43,10 +43,30 @@ namespace mesh {
 template <typename T> KOKKOS_FUNCTION
 void atomic_add(T *dest, const T src)
 {
-#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_OPENMP) || defined(KOKKOS_ENABLE_HIP)
+#if defined(STK_ENABLE_GPU) || defined(KOKKOS_ENABLE_OPENMP)
   Kokkos::atomic_add(dest, src);
 #else
   *dest += src;
+#endif
+}
+
+template <typename T> KOKKOS_FUNCTION
+void atomic_sub(T *dest, const T src)
+{
+#if defined(STK_ENABLE_GPU) || defined(KOKKOS_ENABLE_OPENMP)
+  Kokkos::atomic_sub(dest, src);
+#else
+  *dest -= src;
+#endif
+}
+
+template <typename T> KOKKOS_FUNCTION
+void atomic_mul(T *dest, const T src)
+{
+#if defined(STK_ENABLE_GPU) || defined(KOKKOS_ENABLE_OPENMP)
+  Kokkos::atomic_mul(dest, src);
+#else
+  *dest *= src;
 #endif
 }
 

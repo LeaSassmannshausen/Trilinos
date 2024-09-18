@@ -41,6 +41,7 @@
 #include <string>                   // for string
 #include <vector>                   // for vector
 #include "stk_mesh/base/Types.hpp"  // for EntityRank
+#include "stk_mesh/base/Entity.hpp"
 namespace Ioss { class GroupingEntity; }
 namespace Ioss { class Region; }
 namespace stk { namespace io { class DBStepTimeInterval; } }
@@ -126,6 +127,8 @@ public:
   MeshField& set_read_once(bool yesno);
   MeshField& set_classic_restart();
 
+  double get_read_time() const {return m_timeToRead;}
+
   // Limit the field to part(s) specified by this call.
   // Default is to restore field on all parts that it is defined on.
   MeshField &add_subset(const stk::mesh::Part &part);
@@ -159,6 +162,9 @@ public:
 
   bool operator==(const MeshField &other) const;
 
+  bool field_restored() const {return m_fieldRestored;}
+  double time_restored() const {return m_timeRestored;}
+
 private:
   MeshField();
 
@@ -174,6 +180,9 @@ private:
   bool m_oneTimeOnly;
   bool m_singleState;
   bool m_isActive;
+
+  bool m_fieldRestored;
+  double m_timeRestored;
 };
 }
 } 

@@ -1,3 +1,11 @@
+// @HEADER
+// *****************************************************************************
+//                           Intrepid2 Package
+//
+// Copyright 2007 NTESS and the Intrepid2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
+// @HEADER
 //
 //  HVOLStandardAssembly.hpp
 //  Trilinos
@@ -40,6 +48,9 @@ Intrepid2::ScalarView<Scalar,DeviceType> performStandardQuadratureHVOL(Intrepid2
   using namespace std;
   // dimensions of the returned view are (C,F,F)
   auto fs = FUNCTION_SPACE_HVOL;
+  
+  Intrepid2::ScalarView<Intrepid2::Orientation,DeviceType> orientations("orientations", geometry.numCells() );
+  geometry.orientations(orientations, 0, -1);
 
   shards::CellTopology cellTopo = geometry.cellTopology();
   
@@ -66,6 +77,7 @@ Intrepid2::ScalarView<Scalar,DeviceType> performStandardQuadratureHVOL(Intrepid2
   // Allocate some intermediate containers
   ScalarView<Scalar,DeviceType> basisValues    ("basis values", numFields, numPoints );
 
+  ScalarView<Scalar,DeviceType> unorientedTransformedBasisValues("unoriented transformed basis values", worksetSize, numFields, numPoints);
   ScalarView<Scalar,DeviceType> transformedBasisValues("transformed basis values", worksetSize, numFields, numPoints);
   ScalarView<Scalar,DeviceType> transformedWeightedBasisValues("transformed weighted basis values", worksetSize, numFields, numPoints);
   
@@ -103,14 +115,16 @@ Intrepid2::ScalarView<Scalar,DeviceType> performStandardQuadratureHVOL(Intrepid2
     
     std::pair<int,int> cellRange = {startCell, startCell+numCellsInWorkset};
     auto cellWorkset = Kokkos::subview(expandedCellNodes, cellRange, Kokkos::ALL(), Kokkos::ALL());
+    auto orientationsWorkset = Kokkos::subview(orientations, cellRange);
     
     if (numCellsInWorkset != worksetSize)
     {
-      Kokkos::resize(jacobian,                       numCellsInWorkset, numPoints, spaceDim, spaceDim);
-      Kokkos::resize(jacobianDeterminant,            numCellsInWorkset, numPoints);
-      Kokkos::resize(cellMeasures,                   numCellsInWorkset, numPoints);
-      Kokkos::resize(transformedBasisValues,         numCellsInWorkset, numFields, numPoints);
-      Kokkos::resize(transformedWeightedBasisValues, numCellsInWorkset, numFields, numPoints);
+      Kokkos::resize(jacobian,                         numCellsInWorkset, numPoints, spaceDim, spaceDim);
+      Kokkos::resize(jacobianDeterminant,              numCellsInWorkset, numPoints);
+      Kokkos::resize(cellMeasures,                     numCellsInWorkset, numPoints);
+      Kokkos::resize(unorientedTransformedBasisValues, numCellsInWorkset, numFields, numPoints);
+      Kokkos::resize(transformedBasisValues,           numCellsInWorkset, numFields, numPoints);
+      Kokkos::resize(transformedWeightedBasisValues,   numCellsInWorkset, numFields, numPoints);
     }
     jacobianAndCellMeasureTimer->start();
     CellTools::setJacobian(jacobian, cubaturePoints, cellWorkset, cellTopo); // accounted for outside loop, as numCells * flopsPerJacobianPerCell.
@@ -124,7 +138,12 @@ Intrepid2::ScalarView<Scalar,DeviceType> performStandardQuadratureHVOL(Intrepid2
     fstIntegrateCall->start();
     auto cellStiffnessSubview = Kokkos::subview(cellStiffness, cellRange, Kokkos::ALL(), Kokkos::ALL());
     
-    FunctionSpaceTools::HVOLtransformVALUE(transformedBasisValues, jacobianDeterminant, basisValues);
+    FunctionSpaceTools::HVOLtransformVALUE(unorientedTransformedBasisValues, jacobianDeterminant, basisValues);
+    // we want to exclude orientation application in the core integration timing -- this time gets reported as "Other"
+    fstIntegrateCall->stop();
+    OrientationTools<DeviceType>::modifyBasisByOrientation(transformedBasisValues, unorientedTransformedBasisValues,
+                                                           orientationsWorkset, basis.get());
+    fstIntegrateCall->start();
     FunctionSpaceTools::multiplyMeasure(transformedWeightedBasisValues, cellMeasures, transformedBasisValues);
     bool sumInto = true; // add the (value,value) integral to the (curl,curl) that we've already integrated
     FunctionSpaceTools::integrate(cellStiffnessSubview, transformedBasisValues, transformedWeightedBasisValues, sumInto);

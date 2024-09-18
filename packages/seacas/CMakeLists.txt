@@ -18,6 +18,7 @@ TRIBITS_ADD_OPTION_AND_DEFINE(
 set(${PROJECT_NAME}_C_Standard_DEFAULT c99)
 
 SET(${PROJECT_NAME}_CMAKE_CXX_STANDARD_DEFAULT 17)
+SET(CMAKE_CXX_STANDARD 17)
 SET(${PROJECT_NAME}_CMAKE_CXX_STANDARDS_ALLOWED "(14|17|20)")
 ADVANCED_SET(CMAKE_CXX_STANDARD ${${PROJECT_NAME}_CMAKE_CXX_STANDARD_DEFAULT}
   CACHE STRING
@@ -27,6 +28,11 @@ IF (NOT CMAKE_CXX_STANDARD MATCHES "^${${PROJECT_NAME}_CMAKE_CXX_STANDARDS_ALLOW
     "CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} is not in the allowed set "
     "${${PROJECT_NAME}_CMAKE_CXX_STANDARDS_ALLOWED}")
 ENDIF ()
+
+if ( CYGWIN )
+  # This seems to be needed to get `realpath` defined in the IOSS build...
+  set(CMAKE_CXX_EXTENSIONS ON)
+endif()
 
 set(SEACASExodus_ENABLE_STATIC_DEFAULT "OFF")
 set(SEACASExodus_ENABLE_SHARED_DEFAULT "OFF")
@@ -62,6 +68,9 @@ TRIBITS_ADD_OPTION_AND_DEFINE(
   "Enable thread-safe version of Ioss."
   OFF
   )
+
+ADVANCED_SET(${CMAKE_PROJECT_NAME}_ENABLE_SEACASIoss_Applications ON CACHE BOOL
+								  "Build the io_shell, io_info, io_modify and other ioss executables")
 
 IF (NOT ${PROJECT_NAME}_ENABLE_Fortran)
 # For some reason, this variable is undefined if fortran is disabled and it causes a cmake error.

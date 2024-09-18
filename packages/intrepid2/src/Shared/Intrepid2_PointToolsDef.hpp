@@ -1,43 +1,10 @@
 // @HEADER
-// ************************************************************************
-//
+// *****************************************************************************
 //                           Intrepid2 Package
-//                 Copyright (2007) Sandia Corporation
 //
-// Under terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-// license for use of this work by or on behalf of the U.S. Government.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Kyungjoo Kim  (kyukim@sandia.gov), or
-//                    Mauro Perego  (mperego@sandia.gov)
-//
-// ************************************************************************
+// Copyright 2007 NTESS and the Intrepid2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 /** \file   Intrepid2_PointToolsDef.hpp
@@ -100,6 +67,11 @@ getLatticeSize( const shards::CellTopology cellType,
     r_val = std::pow(effectiveOrder < 0 ? 0 : (effectiveOrder+1),3);
     break;
   }
+  case shards::Pyramid<>::key: {
+    const auto effectiveOrder = order - 2 * offset;
+    r_val = (effectiveOrder < 0 ? 0 : (effectiveOrder+1)*(effectiveOrder+2)*(2*effectiveOrder+3)/6);
+    break;
+  }
   default: {
     INTREPID2_TEST_FOR_EXCEPTION( true , std::invalid_argument ,
         ">>> ERROR (Intrepid2::PointTools::getLatticeSize): the specified cell type is not supported." );
@@ -135,6 +107,7 @@ getLattice(       Kokkos::DynRankView<pointValueType,pointProperties...> points,
 
   switch (cell.getBaseKey()) {
   case shards::Tetrahedron<>::key: getLatticeTetrahedron( points, order, offset, pointType );  break;
+  case shards::Pyramid<>::key:     getLatticePyramid    ( points, order, offset, pointType );  break;
   case shards::Triangle<>::key:    getLatticeTriangle   ( points, order, offset, pointType );  break;
   case shards::Line<>::key:        getLatticeLine       ( points, order, offset, pointType );  break;
   case shards::Quadrilateral<>::key:   {
@@ -260,13 +233,31 @@ getLatticeTetrahedron(       Kokkos::DynRankView<pointValueType,pointProperties.
     const ordinal_type         offset,
     const EPointType           pointType ) {
   switch (pointType) {
-  case POINTTYPE_EQUISPACED:  getEquispacedLatticeTetrahedron( points, order, offset ); break;
-  case POINTTYPE_WARPBLEND:   getWarpBlendLatticeTetrahedron ( points, order, offset ); break;
-  default: {
-    INTREPID2_TEST_FOR_EXCEPTION( true ,
-        std::invalid_argument ,
-        ">>> ERROR (PointTools::getLattice): invalid EPointType." );
+    case POINTTYPE_EQUISPACED:  getEquispacedLatticeTetrahedron( points, order, offset ); break;
+    case POINTTYPE_WARPBLEND:   getWarpBlendLatticeTetrahedron ( points, order, offset ); break;
+    default: {
+      INTREPID2_TEST_FOR_EXCEPTION( true ,
+          std::invalid_argument ,
+          ">>> ERROR (PointTools::getLattice): invalid EPointType." );
+    }
   }
+}
+
+template<typename pointValueType, class ...pointProperties>
+void
+PointTools::
+getLatticePyramid(     Kokkos::DynRankView<pointValueType,pointProperties...> points,
+                  const ordinal_type order,
+                  const ordinal_type offset,
+                  const EPointType pointType )
+{
+  switch (pointType) {
+    case POINTTYPE_EQUISPACED:  getEquispacedLatticePyramid( points, order, offset ); break;
+    default: {
+      INTREPID2_TEST_FOR_EXCEPTION( true ,
+          std::invalid_argument ,
+          ">>> ERROR (PointTools::getLattice): invalid EPointType." );
+    }
   }
 }
 
@@ -380,6 +371,34 @@ getEquispacedLatticeTetrahedron( Kokkos::DynRankView<pointValueType,pointPropert
   Kokkos::deep_copy(points, pointsHost);
 }
 
+template<typename pointValueType, class ...pointProperties>
+void
+PointTools::
+getEquispacedLatticePyramid( Kokkos::DynRankView<pointValueType,pointProperties...> points,
+                             const ordinal_type order ,
+                             const ordinal_type offset ) {
+  TEUCHOS_TEST_FOR_EXCEPTION( (order <= 0) ,
+    std::invalid_argument ,
+    ">>> ERROR (Intrepid2::PointTools::getEquispacedLatticePyramid): order must be positive" );
+
+  auto pointsHost = Kokkos::create_mirror_view(points);
+
+  const pointValueType h = 1.0 / order;
+  ordinal_type cur = 0;
+
+  for (ordinal_type i=offset;i<=order-offset;i++) { // z dimension (goes from 0 to 1)
+    pointValueType z = i * h;
+    for (ordinal_type j=offset;j<=order-i-offset;j++) { // y (goes from -(1-z) to 1-z)
+      for (ordinal_type k=offset;k<=order-i-offset;k++) { // x (goes from -(1-z) to 1-z)
+        pointsHost(cur,0) = (2 * k * h - 1.) * (1-z);
+        pointsHost(cur,1) = (2 * j * h - 1.) * (1-z);
+        pointsHost(cur,2) = z;
+        cur++;
+      }
+    }
+  }
+  Kokkos::deep_copy(points, pointsHost);
+}
 
 template<typename pointValueType, class ...pointProperties>
 void

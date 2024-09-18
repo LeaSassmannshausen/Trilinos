@@ -60,7 +60,7 @@ int GetPrintLevel();
 void SetPrintLevel(int Level);
 
 //! Initialize the MLAPI workspace.
-void Init();
+void Init(USR_COMM comm = USR_COMM_WORLD);
 
 //! Destroys the MLAPI workspace.
 void Finalize();
@@ -74,3 +74,10 @@ int GetMatrixType();
 } // namespace MLAPI
 
 #endif
+
+#if defined(ML_SHOW_DEPRECATED_WARNINGS)
+#ifdef __GNUC__
+#warning "The ML package is deprecated"
+#endif
+#endif
+

@@ -1,22 +1,22 @@
-// Copyright(C) 1999-2023 National Technology & Engineering Solutions
+// Copyright(C) 1999-2024 National Technology & Engineering Solutions
 // of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 // NTESS, the U.S. Government retains certain rights in this software.
 //
 // See packages/seacas/LICENSE for details
 
-#include <Ioss_CodeTypes.h>          // for IntVector
-#include <Ioss_ElementPermutation.h> // for ElementPermutation
-#include <Ioss_ElementTopology.h>
-#include <Ioss_Super.h> // for Super
-#include <Ioss_Utils.h>
+#include "Ioss_CodeTypes.h"          // for IntVector
+#include "Ioss_ElementPermutation.h" // for ElementPermutation
+#include "Ioss_ElementTopology.h"
+#include "Ioss_Super.h" // for Super
+#include "Ioss_Utils.h"
 
-#include <cassert> // for assert
-#include <cstddef> // for size_t
+#include <cassert>
+#include <cstddef>
 #include <fmt/ostream.h>
-#include <ostream> // for basic_ostream, etc
-#include <string>  // for string, char_traits, etc
-#include <utility> // for pair
-#include <vector>  // for vector
+#include <ostream>
+#include <string>
+#include <utility>
+#include <vector>
 
 void Ioss::ETRegistry::insert(const Ioss::ETM_VP &value, bool delete_me)
 {
@@ -60,8 +60,6 @@ Ioss::ETRegistry &Ioss::ElementTopology::registry()
   static ETRegistry registry_;
   return registry_;
 }
-
-Ioss::ElementTopology::~ElementTopology() = default;
 
 bool Ioss::ElementTopology::edges_similar() const { return true; }
 bool Ioss::ElementTopology::faces_similar() const { return true; }
@@ -284,10 +282,8 @@ Ioss::IntVector Ioss::ElementTopology::boundary_connectivity(int bnd_number) con
       if (number_edges() > 1) {
         return edge_connectivity(bnd_number);
       }
-      else {
-        // Spring-type element -- has node as boundary.
-        return Ioss::IntVector{bnd_number - 1};
-      }
+      // Spring-type element -- has node as boundary.
+      return Ioss::IntVector{bnd_number - 1};
     }
   }
   else {
@@ -300,7 +296,7 @@ Ioss::IntVector Ioss::ElementTopology::boundary_connectivity(int bnd_number) con
       return Ioss::IntVector{bnd_number - 1};
     }
   }
-  return Ioss::IntVector();
+  return {};
 }
 
 Ioss::ElementTopology *Ioss::ElementTopology::boundary_type(int bnd_number) const
@@ -330,10 +326,8 @@ Ioss::ElementTopology *Ioss::ElementTopology::boundary_type(int bnd_number) cons
       if (number_edges() > 1) {
         return edge_type(bnd_number);
       }
-      else {
-        // Spring-type element -- has node as boundary.
-        return Ioss::ElementTopology::factory("node");
-      }
+      // Spring-type element -- has node as boundary.
+      return Ioss::ElementTopology::factory("node");
     }
   }
   else {
@@ -351,7 +345,7 @@ Ioss::ElementTopology *Ioss::ElementTopology::boundary_type(int bnd_number) cons
 
 bool Ioss::ElementTopology::equal_(const Ioss::ElementTopology &rhs, bool quiet) const
 {
-  if (this->name_.compare(rhs.name_) != 0) {
+  if (this->name_ != rhs.name_) {
     if (!quiet) {
       fmt::print(Ioss::OUTPUT(), "Element Topology: NAME mismatch ({} vs. {})\n",
                  this->name_.c_str(), rhs.name_.c_str());
@@ -359,7 +353,7 @@ bool Ioss::ElementTopology::equal_(const Ioss::ElementTopology &rhs, bool quiet)
     return false;
   }
 
-  if (this->masterElementName_.compare(rhs.masterElementName_) != 0) {
+  if (this->masterElementName_ != rhs.masterElementName_) {
     if (!quiet) {
       fmt::print(Ioss::OUTPUT(), "Element Topology: MASTER ELEMENT NAME mismatch ({} vs. {})\n",
                  this->masterElementName_.c_str(), rhs.masterElementName_.c_str());
@@ -387,7 +381,7 @@ bool Ioss::ElementTopology::equal(const Ioss::ElementTopology &rhs) const
 
 Ioss::ElementPermutation *Ioss::ElementTopology::permutation() const
 {
-  auto perm = Ioss::ElementPermutation::factory(base_topology_permutation_name());
+  auto *perm = Ioss::ElementPermutation::factory(base_topology_permutation_name());
   assert(perm != nullptr);
   if (validate_permutation_nodes()) {
     if (static_cast<int>(perm->num_permutation_nodes()) != number_corner_nodes()) {

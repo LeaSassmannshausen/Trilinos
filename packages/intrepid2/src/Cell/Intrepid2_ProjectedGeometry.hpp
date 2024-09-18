@@ -1,44 +1,10 @@
 // @HEADER
-// ************************************************************************
-//
+// *****************************************************************************
 //                           Intrepid2 Package
-//                 Copyright (2007) Sandia Corporation
 //
-// Under terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-// license for use of this work by or on behalf of the U.S. Government.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Kyungjoo Kim  (kyukim@sandia.gov),
-//                    Mauro Perego  (mperego@sandia.gov), or
-//                    Nate Roberts  (nvrober@sandia.gov),
-//
-// ************************************************************************
+// Copyright 2007 NTESS and the Intrepid2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 /** \file   Intrepid2_ProjectedGeometry.hpp
@@ -93,21 +59,19 @@ namespace Intrepid2
       INTREPID2_TEST_FOR_EXCEPTION(projectedBasisNodes.extent_int(2) != spaceDim, std::invalid_argument, "projectedBasisNodes must have shape (C,F,D)");
       
       using ExecutionSpace = typename DeviceType::execution_space;
-      using ProjectionTools  = Experimental::ProjectionTools<ExecutionSpace>; // TODO: when ProjectionTools supports it, replace template argument with DeviceType
-      using ProjectionStruct = Experimental::ProjectionStruct<ExecutionSpace,PointScalar>; // TODO: when ProjectionTools supports it, replace template argument with DeviceType
+      using ProjectionTools  = ProjectionTools<DeviceType>; 
+      using ProjectionStruct = ProjectionStruct<DeviceType,PointScalar>;
       
       ProjectionStruct projectionStruct;
       ordinal_type targetQuadratureDegree(targetHGradBasis->getDegree()), targetDerivativeQuadratureDegree(targetHGradBasis->getDegree());
       projectionStruct.createHGradProjectionStruct(targetHGradBasis, targetQuadratureDegree, targetDerivativeQuadratureDegree);
-      
-      const ordinal_type numPoints     = projectionStruct.getNumTargetEvalPoints();
-      const ordinal_type numGradPoints = projectionStruct.getNumTargetDerivEvalPoints();
-      
-      ViewType evaluationPointsRefSpace    ("ProjectedGeometry evaluation points ref space (value)",    numCells, numPoints,     spaceDim);
-      ViewType evaluationGradPointsRefSpace("ProjectedGeometry evaluation points ref space (gradient)", numCells, numGradPoints, spaceDim);
-      
+    
+      auto evaluationPointsRefSpace = projectionStruct.getAllEvalPoints();
+      auto evaluationGradPointsRefSpace = projectionStruct.getAllDerivEvalPoints();
+      const ordinal_type numPoints     = evaluationPointsRefSpace.extent(0);
+      const ordinal_type numGradPoints = evaluationGradPointsRefSpace.extent(0);
+
       auto elementOrientations = flatCellGeometry.getOrientations();
-      ProjectionTools::getHGradEvaluationPoints(evaluationPointsRefSpace, evaluationGradPointsRefSpace, elementOrientations, targetHGradBasis.get(), &projectionStruct);
       
 //      printFunctor1(elementOrientations, std::cout);
       
@@ -179,8 +143,6 @@ namespace Intrepid2
         ProjectionTools::getHGradBasisCoeffs(projectedBasisNodesForComp,
                                              evaluationValues,
                                              transformedGradientData.getUnderlyingView(),
-                                             evaluationPointsRefSpace,
-                                             evaluationGradPointsRefSpace,
                                              elementOrientations,
                                              targetHGradBasis.get(),
                                              &projectionStruct);

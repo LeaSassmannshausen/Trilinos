@@ -41,7 +41,6 @@
 #include <stk_mesh/base/MetaData.hpp>   // for MetaData
 #include <utility>                      // for pair
 #include "stk_mesh/base/Types.hpp"      // for EntityRank, OrdinalVector, etc
-#include <stk_mesh/baseImpl/MeshImplUtils.hpp>
 #include "stk_topology/topology.hpp"    // for topology, etc
 #include "stk_util/util/ReportHandler.hpp"  // for ThrowAssertMsg, etc
 
@@ -56,94 +55,6 @@ Relation::RawRelationType & Relation::RawRelationType::operator =(const Relation
     return *this;
 }
 
-#ifndef STK_HIDE_DEPRECATED_CODE // Delete after October 2022
-//----------------------------------------------------------------------
-
-namespace {
-
-void get_entities_through_relations(
-  const BulkData &mesh,
-  Entity const *rels_begin,
-  Entity const *rels_end,
-  const Entity* i_beg ,
-  const Entity* i_end ,
-  std::vector<Entity> & entities_related )
-{
-  for (Entity const *rels_left = rels_begin ; rels_left != rels_end ; ++rels_left )
-  {
-    // Do all input entities have a relation to this entity ?
-
-    Entity const e = *rels_left;
-    EntityRank erank = mesh.entity_rank(e);
-
-    const Entity* i = i_beg ;
-    for ( ; i != i_end ; ++i )
-    {
-      const MeshIndex& meshIndex = mesh.mesh_index(*i);
-      const Bucket* bucket = meshIndex.bucket;
-      unsigned bucketOrd = meshIndex.bucket_ordinal;
-      int num_conn = bucket->num_connectivity(bucketOrd, erank);
-      const Entity* irels_j  = bucket->begin(bucketOrd, erank);
-      Entity const *irels_end = irels_j + num_conn;
-
-      while ( irels_j != irels_end && e != *irels_j) {
-        ++irels_j ;
-      }
-      if ( irels_j == irels_end ) {
-        // Entity *i does not have a relation to Entity e.
-        break ;
-      }
-    }
-
-    if ( i == i_end ) {
-      entities_related.push_back( e );
-    }
-  }
-}
-
-} // namespace
-
-STK_DEPRECATED void get_entities_through_relations(
-  const BulkData &mesh,
-  const std::vector<Entity> & entities ,
-        std::vector<Entity> & entities_related )
-{
-  entities_related.clear();
-
-  if ( ! entities.empty() ) {
-    const Entity* i = entities.data();
-    const Entity* j = i+entities.size();
-
-    const Bucket &ibucket = mesh.bucket(*i);
-    const Ordinal &ibordinal = mesh.bucket_ordinal(*i);
-    const EntityRank end_rank = static_cast<EntityRank>(mesh.mesh_meta_data().entity_rank_count());
-
-    const Entity* next_i = i + 1;
-    for (EntityRank rank = stk::topology::BEGIN_RANK; rank < end_rank; ++rank)
-    {
-      int num_conn   = mesh.num_connectivity(ibucket[ibordinal], rank);
-      const Entity* rels_begin = mesh.begin(ibucket[ibordinal], rank);
-
-      get_entities_through_relations(mesh, rels_begin, rels_begin + num_conn, next_i, j,
-                                     entities_related);
-    }
-  }
-}
-#endif
-
-void get_entities_through_relations(
-  const BulkData& mesh,
-  const std::vector<Entity> & entities ,
-        EntityRank              entities_related_rank ,
-        std::vector<Entity> & entities_related )
-{
-  impl::find_entities_these_nodes_have_in_common(mesh, entities_related_rank,
-                                                 entities.size(), entities.data(),
-                                                 entities_related);
-}
-
-//----------------------------------------------------------------------
-
 void induced_part_membership(const BulkData& mesh,
                              const Entity entity ,
                                    OrdinalVector & induced_parts)
@@ -155,16 +66,18 @@ void induced_part_membership(const BulkData& mesh,
 
   for (EntityRank irank = static_cast<EntityRank>(e_rank + 1); irank < end_rank; ++irank)
   {
-    int num_rels = mesh.num_connectivity(entity, irank);
-    Entity const* rels     = mesh.begin(entity, irank);
+    const int num_rels = mesh.num_connectivity(entity, irank);
+    if (num_rels > 0) {
+      const Entity * rels     = mesh.begin(entity, irank);
 
-    const Bucket* prevBucketPtr = nullptr;
-    for (int j = 0; j < num_rels; ++j)
-    {
-      const Bucket* curBucketPtr = mesh.bucket_ptr(rels[j]);
-      if (prevBucketPtr != curBucketPtr) {
-        prevBucketPtr = curBucketPtr;
-        impl::get_part_ordinals_to_induce_on_lower_ranks(mesh, *curBucketPtr, e_rank, induced_parts);
+      const Bucket* prevBucketPtr = nullptr;
+      for (int j = 0; j < num_rels; ++j)
+      {
+        const Bucket* curBucketPtr = mesh.bucket_ptr(rels[j]);
+        if (prevBucketPtr != curBucketPtr) {
+          prevBucketPtr = curBucketPtr;
+          impl::get_part_ordinals_to_induce_on_lower_ranks(mesh, *curBucketPtr, e_rank, induced_parts);
+        }
       }
     }
   }

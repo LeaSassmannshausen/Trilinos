@@ -54,9 +54,6 @@ class DeviceVariableMap;
 class NgpNode
 {
 public:
-  enum { MAXIMUM_NUMBER_OF_OVERLOADED_FUNCTION_NAMES = 5 };
-  enum { MAXIMUM_FUNCTION_NAME_LENGTH = 32 };
-
   KOKKOS_FUNCTION
   NgpNode()
   : m_opcode(OPCODE_UNDEFINED),
@@ -187,8 +184,9 @@ public:
     }
     case OPCODE_ASSIGN: {
       if (get_left_node()) {
-        deviceVariableMap[m_data.variable.variableIndex].getArrayValue(get_left_node()->getResult(resultBuffer),
-                                                                       deviceVariableMap.get_array_offset_type()) = get_right_node()->getResult(resultBuffer);
+        deviceVariableMap[m_data.variable.variableIndex].assignArrayValue(get_left_node()->getResult(resultBuffer),
+                                                                          deviceVariableMap.get_array_offset_type(),
+                                                                          get_right_node()->getResult(resultBuffer));
       }
       else {
         deviceVariableMap[m_data.variable.variableIndex] = get_right_node()->getResult(resultBuffer);
@@ -566,6 +564,13 @@ public:
       STK_NGP_ThrowErrorMsg("Incorrect number of arguments for cos_ramp or cosine_ramp function");
       break;
     }
+    case FunctionType::LINEAR_RAMP : {
+      if (argumentCount == 3) {
+        return linear_ramp3(arguments[0], arguments[1], arguments[2]);
+      }
+      STK_NGP_ThrowErrorMsg("Incorrect number of arguments for linear_ramp function");
+      break;
+    }
     case FunctionType::HAVERSINE_PULSE : {
       if (argumentCount == 3) {
         return haversine_pulse(arguments[0], arguments[1], arguments[2]);
@@ -676,7 +681,7 @@ public:
       break;
     }
     }
-  
+
     return 0.0;
   }
 };

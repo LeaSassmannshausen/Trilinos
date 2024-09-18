@@ -35,6 +35,7 @@
 #ifndef STK_MESH_BASE_FIELDBLAS_HPP
 #define STK_MESH_BASE_FIELDBLAS_HPP
 
+#include <stk_util/stk_config.h>
 #include <stk_mesh/base/Entity.hpp>
 #include <stk_mesh/base/Bucket.hpp>
 #include <stk_mesh/base/Selector.hpp>
@@ -42,6 +43,8 @@
 #include <stk_mesh/base/Field.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
 #include <stk_mesh/base/MetaData.hpp>
+#include <stk_mesh/base/Ngp.hpp>
+#include <stk_mesh/base/GetNgpField.hpp>
 
 #include <complex>
 #include <string>
@@ -430,7 +433,7 @@ template<class Scalar>
 inline
 void field_axpy(const Scalar alpha, const FieldBase& xField, const FieldBase& yField, const Selector& selector)
 {
-    STK_ThrowAssert(is_compatible(xField, yField));
+    STK_ThrowRequire(is_compatible(xField, yField));
 
     BucketVector const& buckets = xField.get_mesh().get_buckets( xField.entity_rank(), selector );
 
@@ -460,7 +463,7 @@ template<class Scalar>
 inline
 void field_axpby(const Scalar alpha, const FieldBase& xField, const Scalar beta, const FieldBase& yField, const Selector& selector)
 {
-    STK_ThrowAssert(is_compatible(xField, yField));
+    STK_ThrowRequire(is_compatible(xField, yField));
 
     BucketVector const& buckets = xField.get_mesh().get_buckets( xField.entity_rank(), selector );
 
@@ -521,8 +524,8 @@ void INTERNAL_field_product(const FieldBase& xField, const FieldBase& yField, co
 inline
 void field_product(const FieldBase& xField, const FieldBase& yField, const FieldBase& zField, const Selector& selector)
 {
-    STK_ThrowAssert(is_compatible(xField, yField));
-    STK_ThrowAssert(is_compatible(yField, zField));
+    STK_ThrowRequire(is_compatible(xField, yField));
+    STK_ThrowRequire(is_compatible(yField, zField));
 
     if (xField.data_traits().type_info == typeid(double)) {
         INTERNAL_field_product<double>(xField,yField,zField,selector);
@@ -552,23 +555,46 @@ void INTERNAL_field_copy(const FieldBase& xField, const FieldBase& yField, const
 {
   BucketVector const& buckets = xField.get_mesh().get_buckets(xField.entity_rank(), selector);
 
-  int orig_thread_count = fix_omp_threads();
+#ifdef STK_USE_DEVICE_MESH
+  const bool alreadySyncd_or_HostNewest = !xField.need_sync_to_host();
+
+  yField.clear_sync_state();
+
+  if (alreadySyncd_or_HostNewest) {
+#endif
+
+    int orig_thread_count = fix_omp_threads();
 #ifdef OPEN_MP_ACTIVE_FIELDBLAS_HPP
 #pragma omp parallel for schedule(static)
 #endif
-  for (size_t i = 0; i < buckets.size(); ++i) {
-      Bucket & b = *buckets[i];
-      BucketSpan<Scalar> x(xField, b);
-      BucketSpan<Scalar> y(yField, b);
-      y = x;
+    for (size_t i = 0; i < buckets.size(); ++i) {
+        Bucket & b = *buckets[i];
+        BucketSpan<Scalar> x(xField, b);
+        BucketSpan<Scalar> y(yField, b);
+        y = x;
+    }
+    unfix_omp_threads(orig_thread_count);
+    yField.clear_sync_state();
+    yField.modify_on_host();
+#ifdef STK_USE_DEVICE_MESH
   }
-  unfix_omp_threads(orig_thread_count);
+  else { // copy on device
+    auto ngpX = stk::mesh::get_updated_ngp_field<Scalar>(xField);
+    auto ngpY = stk::mesh::get_updated_ngp_field<Scalar>(yField);
+    auto ngpXview = impl::get_device_data(ngpX);
+    auto ngpYview = impl::get_device_data(ngpY);
+
+    Kokkos::deep_copy(ngpYview, ngpXview);
+    yField.modify_on_device();
+  }
+
+#endif
 }
 
 inline
 void field_copy(const FieldBase& xField, const FieldBase& yField, const Selector& selector)
 {
-    STK_ThrowAssert(is_compatible(xField, yField));
+    STK_ThrowRequire(is_compatible(xField, yField));
 
     if (xField.data_traits().type_info == typeid(double)) {
         INTERNAL_field_copy<double>(xField,yField,selector);
@@ -596,7 +622,7 @@ template<class Scalar,class T1,class T2,class T3,class T4,class T5,class T6,clas
 inline
 Scalar field_dot(const Field<Scalar,T1,T2,T3,T4,T5,T6,T7> & xField, const Field<Scalar,T1,T2,T3,T4,T5,T6,T7> & yField, const Selector& selector, const MPI_Comm comm)
 {
-    STK_ThrowAssert(is_compatible(xField, yField));
+    STK_ThrowRequire(is_compatible(xField, yField));
 
     BucketVector const& buckets = xField.get_mesh().get_buckets(xField.entity_rank(), selector & xField.mesh_meta_data().locally_owned_part());
 
@@ -624,7 +650,7 @@ template<class Scalar,class T1,class T2,class T3,class T4,class T5,class T6,clas
 inline
 std::complex<Scalar> field_dot(const Field<std::complex<Scalar>,T1,T2,T3,T4,T5,T6,T7>& xField, const Field<std::complex<Scalar>,T1,T2,T3,T4,T5,T6,T7>& yField, const Selector& selector, const MPI_Comm comm) 
 {
-    STK_ThrowAssert(is_compatible(xField, yField));
+    STK_ThrowRequire(is_compatible(xField, yField));
 
     BucketVector const& buckets = xField.get_mesh().get_buckets(xField.entity_rank(), selector & xField.mesh_meta_data().locally_owned_part());
 
@@ -674,7 +700,7 @@ template<class Scalar>
 inline
 void field_dot(std::complex<Scalar>& global_result, const FieldBase& xField, const FieldBase& yField, const Selector& selector, const MPI_Comm comm)
 {
-    STK_ThrowAssert(is_compatible(xField, yField));
+    STK_ThrowRequire(is_compatible(xField, yField));
 
     BucketVector const& buckets = xField.get_mesh().get_buckets(xField.entity_rank(), selector & xField.mesh_meta_data().locally_owned_part());
 
@@ -708,7 +734,7 @@ template<class Scalar>
 inline
 void field_dot(Scalar& glob_result, const FieldBase& xField, const FieldBase& yField, const Selector& selector, const MPI_Comm comm)
 {
-    STK_ThrowAssert(is_compatible(xField, yField));
+    STK_ThrowRequire(is_compatible(xField, yField));
 
     BucketVector const& buckets = xField.get_mesh().get_buckets(xField.entity_rank(), selector & xField.mesh_meta_data().locally_owned_part());
 
@@ -751,7 +777,7 @@ template<class Scalar>
 inline
 void field_scale(const Scalar alpha, const FieldBase& xField, const Selector& selector)
 {
-    STK_ThrowAssert( is_compatible<Scalar>(xField) );
+    STK_ThrowRequire( is_compatible<Scalar>(xField) );
 
     BucketVector const& buckets = xField.get_mesh().get_buckets(xField.entity_rank(),selector);
 
@@ -778,7 +804,7 @@ template<class Scalar>
 inline
 void field_fill_component(const Scalar* alpha, const FieldBase& xField, const Selector& selector)
 {
-    STK_ThrowAssert( is_compatible<Scalar>(xField) );
+    STK_ThrowRequire( is_compatible<Scalar>(xField) );
 
     BucketVector const& buckets = xField.get_mesh().get_buckets(xField.entity_rank(),selector);
 
@@ -811,7 +837,7 @@ template<class Scalar>
 inline
 void field_fill(const Scalar alpha, const FieldBase& xField, const Selector& selector)
 {
-    STK_ThrowAssert( is_compatible<Scalar>(xField) );
+    STK_ThrowRequire( is_compatible<Scalar>(xField) );
 
     BucketVector const& buckets = xField.get_mesh().get_buckets(xField.entity_rank(),selector);
 
@@ -830,7 +856,7 @@ template<class Scalar>
 inline
 void field_fill(const Scalar alpha, const std::vector<const FieldBase*>& xFields, const Selector& selector)
 {
-    STK_ThrowAssert(xFields.size() >= 1 );
+    STK_ThrowRequire(xFields.size() >= 1 );
 
     stk::mesh::EntityRank fieldEntityRank = xFields[0]->entity_rank();
     BucketVector const& buckets = xFields[0]->get_mesh().get_buckets(fieldEntityRank,selector);
@@ -838,8 +864,8 @@ void field_fill(const Scalar alpha, const std::vector<const FieldBase*>& xFields
     for (auto&& bucket : buckets){
         for (unsigned int i=0; i<xFields.size(); ++i){
             const FieldBase& xField = *xFields[i];
-            STK_ThrowAssert( is_compatible<Scalar>(xField) );
-            STK_ThrowAssert(fieldEntityRank == xField.entity_rank());
+            STK_ThrowRequire( is_compatible<Scalar>(xField) );
+            STK_ThrowRequire(fieldEntityRank == xField.entity_rank());
             BucketSpan<Scalar> x(xField, *bucket);
             FortranBLAS<Scalar>::fill(x.size(),alpha,x.data());
         }
@@ -885,7 +911,7 @@ void INTERNAL_field_swap(const FieldBase& xField, const FieldBase& yField, const
 inline
 void field_swap(const FieldBase& xField, const FieldBase& yField, const Selector& selector)
 {
-    STK_ThrowAssert(is_compatible(xField, yField));
+    STK_ThrowRequire(is_compatible(xField, yField));
 
     if (xField.data_traits().type_info == typeid(double)) {
         INTERNAL_field_swap<double>(xField,yField,selector);
@@ -975,7 +1001,7 @@ template<class Scalar>
 inline
 void field_nrm2(Scalar& glob_result, const FieldBase& xField, const Selector& selector, const MPI_Comm comm)
 {
-    STK_ThrowAssert( is_compatible<Scalar>(xField) );
+    STK_ThrowRequire( is_compatible<Scalar>(xField) );
 
     BucketVector const& buckets = xField.get_mesh().get_buckets(xField.entity_rank(), selector & xField.mesh_meta_data().locally_owned_part());
 
@@ -1000,7 +1026,7 @@ template<class Scalar>
 inline
 void field_nrm2(std::complex<Scalar>& result, const FieldBase& xField, const Selector& selector, const MPI_Comm comm)
 {
-    STK_ThrowAssert( is_compatible<std::complex<Scalar>>(xField) );
+    STK_ThrowRequire( is_compatible<std::complex<Scalar>>(xField) );
 
     BucketVector const& buckets = xField.get_mesh().get_buckets(xField.entity_rank(), selector & xField.mesh_meta_data().locally_owned_part());
 
@@ -1103,7 +1129,7 @@ template<class Scalar>
 inline
 void field_asum(Scalar& glob_result, const FieldBase& xField, const Selector& selector, const MPI_Comm comm)
 {
-    STK_ThrowAssert( is_compatible<Scalar>(xField) );
+    STK_ThrowRequire( is_compatible<Scalar>(xField) );
 
     BucketVector const& buckets = xField.get_mesh().get_buckets(xField.entity_rank(), selector & xField.mesh_meta_data().locally_owned_part());
 
@@ -1127,7 +1153,7 @@ template<class Scalar>
 inline
 void field_asum(std::complex<Scalar>& result, const FieldBase& xField, const Selector& selector, const MPI_Comm comm)
 {
-    STK_ThrowAssert( is_compatible<std::complex<Scalar>>(xField) );
+    STK_ThrowRequire( is_compatible<std::complex<Scalar>>(xField) );
 
     BucketVector const& buckets = xField.get_mesh().get_buckets(xField.entity_rank(), selector & xField.mesh_meta_data().locally_owned_part());
 
@@ -1382,7 +1408,7 @@ template<class Scalar>
 inline
 void field_amax(std::complex<Scalar>& result, const FieldBase& xField, const Selector& selector, const MPI_Comm comm)
 {
-    STK_ThrowAssert( is_compatible<std::complex<Scalar>>(xField) );
+    STK_ThrowRequire( is_compatible<std::complex<Scalar>>(xField) );
 
     BucketVector const& buckets = xField.get_mesh().get_buckets(xField.entity_rank(), selector & xField.mesh_meta_data().locally_owned_part());
 
@@ -1412,12 +1438,12 @@ template<class Scalar>
 inline
 void field_amax(Scalar& result, const FieldBase& xField, const Selector& selector, const MPI_Comm comm)
 {
-    STK_ThrowAssert( is_compatible<Scalar>(xField) );
+    STK_ThrowRequire( is_compatible<Scalar>(xField) );
 
     BucketVector const& buckets = xField.get_mesh().get_buckets(xField.entity_rank(), selector & xField.mesh_meta_data().locally_owned_part());
 
     Scalar priv_tmp;
-    Scalar local_amax(-1.0);
+    Scalar local_amax(0.0);
 
     int orig_thread_count = fix_omp_threads();
 #ifdef OPEN_MP_ACTIVE_FIELDBLAS_HPP
@@ -1425,9 +1451,10 @@ void field_amax(Scalar& result, const FieldBase& xField, const Selector& selecto
 #endif
     for(size_t i=0; i < buckets.size(); i++) {
         BucketSpan<Scalar> x(xField, *buckets[i]);
+        if (x.length == 0) continue;
         priv_tmp = std::abs(x[FortranBLAS<Scalar>::iamax(x.size(),x.data())]);
         if (local_amax < priv_tmp) {
-            local_amax = priv_tmp;
+          local_amax = priv_tmp;
         }
     }
 
@@ -1783,7 +1810,7 @@ template<class Scalar>
 inline
 void field_amin(std::complex<Scalar>& result, const FieldBase& xField, const Selector& selector, const MPI_Comm comm)
 {
-    STK_ThrowAssert( is_compatible<std::complex<Scalar>>(xField) );
+    STK_ThrowRequire( is_compatible<std::complex<Scalar>>(xField) );
 
     BucketVector const& buckets = xField.get_mesh().get_buckets(xField.entity_rank(), selector & xField.mesh_meta_data().locally_owned_part());
 
@@ -1813,7 +1840,7 @@ template<class Scalar>
 inline
 void field_amin(Scalar& result, const FieldBase& xField, const Selector& selector, const MPI_Comm comm)
 {
-    STK_ThrowAssert( is_compatible<Scalar>(xField) );
+    STK_ThrowRequire( is_compatible<Scalar>(xField) );
 
     BucketVector const& buckets = xField.get_mesh().get_buckets(xField.entity_rank(), selector & xField.mesh_meta_data().locally_owned_part());
 

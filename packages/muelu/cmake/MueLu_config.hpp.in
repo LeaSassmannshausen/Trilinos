@@ -13,8 +13,6 @@
 
 #cmakedefine HAVE_MUELU_EXPLICIT_INSTANTIATION
 
-#cmakedefine HAVE_MUELU_PROFILING
-
 #cmakedefine HAVE_MUELU_GOOGLE_PERFTOOLS
 
 #cmakedefine HAVE_MUELU_EXPERIMENTAL
@@ -125,5 +123,7 @@
  give it an empty definition.
 */
 @MUELU_DEPRECATED_DECLARATIONS@
+
+#cmakedefine MueLu_SHOW_DEPRECATED_WARNINGS
 
 #endif /* MUELU_CONFIG_HPP */

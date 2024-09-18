@@ -1,42 +1,10 @@
 // @HEADER
-// ***********************************************************************
-//
+// *****************************************************************************
 //                           Stokhos Package
-//                 Copyright (2009) Sandia Corporation
 //
-// Under terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-// license for use of this work by or on behalf of the U.S. Government.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Eric T. Phipps (etphipp@sandia.gov).
-//
-// ***********************************************************************
+// Copyright 2009 NTESS and the Stokhos contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 #ifndef KOKKOS_CRSMATRIX_UQ_PCE_HPP
@@ -54,6 +22,28 @@
 #include "Stokhos_CrsProductTensor.hpp"
 
 namespace Stokhos {
+
+namespace Impl {
+  // Remove MemoryRandomAccess memory trait from a given view
+  template <typename ViewType, typename Enabled = void>
+  class RemoveRandomAccess {
+  public:
+    typedef ViewType type;
+  };
+  template <typename ViewType>
+  class RemoveRandomAccess<
+    ViewType,
+    std::enable_if_t<ViewType::memory_traits::is_random_access> > {
+  public:
+    static constexpr unsigned M0 = ViewType::memory_traits::impl_value;
+    static constexpr unsigned M1 =
+      M0 & (Kokkos::Unmanaged | Kokkos::Atomic | Kokkos::Restrict | Kokkos::Aligned);
+    typedef Kokkos::View<typename ViewType::data_type,
+                         typename ViewType::array_layout,
+                         typename ViewType::device_type,
+                         Kokkos::MemoryTraits<M1> > type;
+  };
+}
 
 //----------------------------------------------------------------------------
 // Specialization of KokkosSparse::CrsMatrix for Sacado::UQ::PCE scalar type
@@ -107,8 +97,8 @@ private:
 
   typedef typename matrix_type::StaticCrsGraphType matrix_graph_type;
   typedef typename matrix_values_type::array_type matrix_array_type;
-  typedef typename input_vector_type::array_type input_array_type;
-  typedef typename output_vector_type::array_type output_array_type;
+  typedef typename Impl::RemoveRandomAccess< typename input_vector_type::array_type >::type input_array_type;
+  typedef typename Impl::RemoveRandomAccess< typename output_vector_type::array_type >::type output_array_type;
 
   typedef typename MatrixValue::value_type matrix_scalar;
   typedef typename InputVectorValue::value_type input_scalar;
@@ -504,8 +494,8 @@ private:
 
   typedef typename matrix_type::StaticCrsGraphType matrix_graph_type;
   typedef typename matrix_values_type::array_type matrix_array_type;
-  typedef typename input_vector_type::array_type input_array_type;
-  typedef typename output_vector_type::array_type output_array_type;
+  typedef typename Impl::RemoveRandomAccess< typename input_vector_type::array_type >::type input_array_type;
+  typedef typename Impl::RemoveRandomAccess< typename output_vector_type::array_type >::type output_array_type;
 
   typedef typename MatrixValue::value_type matrix_scalar;
   typedef typename InputVectorValue::value_type input_scalar;
@@ -1043,8 +1033,8 @@ public:
   struct BlockKernel {
     typedef typename MatrixDevice::execution_space execution_space;
     typedef typename Kokkos::FlatArrayType<matrix_values_type>::type matrix_array_type;
-    typedef typename input_vector_type::array_type input_array_type;
-    typedef typename output_vector_type::array_type output_array_type;
+    typedef typename Impl::RemoveRandomAccess< typename input_vector_type::array_type >::type input_array_type;
+    typedef typename Impl::RemoveRandomAccess< typename output_vector_type::array_type >::type output_array_type;
 
     const matrix_array_type   m_A_values ;
     const matrix_graph_type   m_A_graph ;
@@ -1166,8 +1156,8 @@ public:
   struct Kernel {
     typedef typename MatrixDevice::execution_space execution_space;
     typedef typename Kokkos::FlatArrayType<matrix_values_type>::type matrix_array_type;
-    typedef typename input_vector_type::array_type input_array_type;
-    typedef typename output_vector_type::array_type output_array_type;
+    typedef typename Impl::RemoveRandomAccess< typename input_vector_type::array_type >::type input_array_type;
+    typedef typename Impl::RemoveRandomAccess< typename output_vector_type::array_type >::type output_array_type;
 
     const matrix_array_type   m_A_values ;
     const matrix_graph_type   m_A_graph ;
@@ -1445,7 +1435,14 @@ public:
 
 namespace KokkosSparse {
 
-template <typename AlphaType,
+template <
+#if KOKKOSKERNELS_VERSION >= 40199
+          typename ExecutionSpace,
+#endif
+#if KOKKOSKERNELS_VERSION >= 40299
+          typename Handle,
+#endif
+          typename AlphaType,
           typename BetaType,
           typename MatrixType,
           typename InputType,
@@ -1455,15 +1452,30 @@ template <typename AlphaType,
 typename std::enable_if<
   Kokkos::is_view_uq_pce< Kokkos::View< InputType, InputP... > >::value &&
   Kokkos::is_view_uq_pce< Kokkos::View< OutputType, OutputP... > >::value
+#if KOKKOSKERNELS_VERSION >= 40299
+  && KokkosSparse::is_crs_matrix_v<MatrixType>
+  && (Kokkos::View< OutputType, OutputP... >::rank() == 1)
+#endif
   >::type
 spmv(
+#if KOKKOSKERNELS_VERSION >= 40199
+  const ExecutionSpace& space,
+#endif
+#if KOKKOSKERNELS_VERSION < 40299
+  KokkosKernels::Experimental::Controls,
+#else
+  Handle* handle,
+#endif
   const char mode[],
   const AlphaType& a,
   const MatrixType& A,
   const Kokkos::View< InputType, InputP... >& x,
   const BetaType& b,
-  const Kokkos::View< OutputType, OutputP... >& y,
-  const RANK_ONE)
+  const Kokkos::View< OutputType, OutputP... >& y
+#if KOKKOSKERNELS_VERSION < 40299
+  , const RANK_ONE
+#endif
+  )
 {
   typedef Kokkos::View< OutputType, OutputP... > OutputVectorType;
   typedef Kokkos::View< InputType, InputP... > InputVectorType;
@@ -1472,6 +1484,12 @@ spmv(
   typedef Stokhos::MeanMultiply<MatrixType, typename InputVectorType::const_type,
                                 OutputVectorType> mean_multiply_type;
 
+#if KOKKOSKERNELS_VERSION >= 40199
+  if(space != ExecutionSpace()) {
+    Kokkos::Impl::raise_error(
+      "Stokhos spmv not implemented for non-default execution space instance");
+  }
+#endif
   if(mode[0]!='N') {
     Kokkos::Impl::raise_error(
       "Stokhos spmv not implemented for transposed or conjugated matrix-vector multiplies");
@@ -1492,7 +1510,14 @@ spmv(
                           Sacado::Value<BetaType>::eval(b) );
 }
 
-template <typename AlphaType,
+template <
+#if KOKKOSKERNELS_VERSION >= 40199
+          typename ExecutionSpace,
+#endif
+#if KOKKOSKERNELS_VERSION >= 40299
+          typename Handle,
+#endif
+          typename AlphaType,
           typename BetaType,
           typename MatrixType,
           typename InputType,
@@ -1502,40 +1527,37 @@ template <typename AlphaType,
 typename std::enable_if<
   Kokkos::is_view_uq_pce< Kokkos::View< InputType, InputP... > >::value &&
   Kokkos::is_view_uq_pce< Kokkos::View< OutputType, OutputP... > >::value
+#if KOKKOSKERNELS_VERSION >= 40299
+  && KokkosSparse::is_crs_matrix_v<MatrixType>
+  && (Kokkos::View< OutputType, OutputP... >::rank() == 2)
+#endif
   >::type
 spmv(
+#if KOKKOSKERNELS_VERSION >= 40199
+  const ExecutionSpace& space,
+#endif
+#if KOKKOSKERNELS_VERSION < 40299
   KokkosKernels::Experimental::Controls,
+#else
+  Handle* handle,
+#endif
   const char mode[],
   const AlphaType& a,
   const MatrixType& A,
   const Kokkos::View< InputType, InputP... >& x,
   const BetaType& b,
-  const Kokkos::View< OutputType, OutputP... >& y,
-  const RANK_ONE)
+  const Kokkos::View< OutputType, OutputP... >& y
+#if KOKKOSKERNELS_VERSION < 40299
+  , const RANK_TWO
+#endif
+  )
 {
-  spmv(mode, a, A, x, b, y, RANK_ONE());
-}
-
-template <typename AlphaType,
-          typename BetaType,
-          typename MatrixType,
-          typename InputType,
-          typename ... InputP,
-          typename OutputType,
-          typename ... OutputP>
-typename std::enable_if<
-  Kokkos::is_view_uq_pce< Kokkos::View< InputType, InputP... > >::value &&
-  Kokkos::is_view_uq_pce< Kokkos::View< OutputType, OutputP... > >::value
-  >::type
-spmv(
-  const char mode[],
-  const AlphaType& a,
-  const MatrixType& A,
-  const Kokkos::View< InputType, InputP... >& x,
-  const BetaType& b,
-  const Kokkos::View< OutputType, OutputP... >& y,
-  const RANK_TWO)
-{
+#if KOKKOSKERNELS_VERSION >= 40199
+  if(space != ExecutionSpace()) {
+    Kokkos::Impl::raise_error(
+      "Stokhos spmv not implemented for non-default execution space instance");
+  }
+#endif
   if(mode[0]!='N') {
     Kokkos::Impl::raise_error(
       "Stokhos spmv not implemented for transposed or conjugated matrix-vector multiplies");
@@ -1543,7 +1565,13 @@ spmv(
   if (y.extent(1) == 1) {
     auto y_1D = subview(y, Kokkos::ALL(), 0);
     auto x_1D = subview(x, Kokkos::ALL(), 0);
-    spmv(mode, a, A, x_1D, b, y_1D, RANK_ONE());
+#if KOKKOSKERNELS_VERSION >= 40299
+    spmv(space, handle, mode, a, A, x_1D, b, y_1D);
+#elif (KOKKOSKERNELS_VERSION < 40299) && (KOKKOSKERNELS_VERSION >= 40199)
+    spmv(space, KokkosKernels::Experimental::Controls(), mode, a, A, x_1D, b, y_1D, RANK_ONE());
+#else
+    spmv(KokkosKernels::Experimental::Controls(), mode, a, A, x_1D, b, y_1D, RANK_ONE());
+#endif
   }
   else {
     typedef Kokkos::View< OutputType, OutputP... > OutputVectorType;
@@ -1571,30 +1599,6 @@ spmv(
                             Sacado::Value<AlphaType>::eval(a),
                             Sacado::Value<BetaType>::eval(b));
   }
-}
-
-template <typename AlphaType,
-          typename BetaType,
-          typename MatrixType,
-          typename InputType,
-          typename ... InputP,
-          typename OutputType,
-          typename ... OutputP>
-typename std::enable_if<
-  Kokkos::is_view_uq_pce< Kokkos::View< InputType, InputP... > >::value &&
-  Kokkos::is_view_uq_pce< Kokkos::View< OutputType, OutputP... > >::value
-  >::type
-spmv(
-  KokkosKernels::Experimental::Controls,
-  const char mode[],
-  const AlphaType& a,
-  const MatrixType& A,
-  const Kokkos::View< InputType, InputP... >& x,
-  const BetaType& b,
-  const Kokkos::View< OutputType, OutputP... >& y,
-  const RANK_TWO)
-{
-  spmv(mode, a, A, x, b, y, RANK_TWO());
 }
 
 }

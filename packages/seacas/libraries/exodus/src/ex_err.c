@@ -1,5 +1,5 @@
 /*
- * Copyright(C) 1999-2020 National Technology & Engineering Solutions
+ * Copyright(C) 1999-2020, 2023 National Technology & Engineering Solutions
  * of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
  * NTESS, the U.S. Government retains certain rights in this software.
  *
@@ -8,65 +8,6 @@
 
 #include "exodusII.h" // for exoptval, MAX_ERR_LENGTH, etc
 #include "exodusII_int.h"
-
-/*!
-\ingroup Utilities
-\fn{void ex_err_fn(exoid, const char *module_name, const char *message, int err_num)}
-
-The function ex_err_fn(exoid, ) logs an error to stderr. It is intended
-to provide explanatory messages for error codes returned from other
-exodus routines.
-
-The passed in error codes and corresponding messages are listed in
-???. The programmer may supplement the error message printed
-for standard errors by providing an error message. If the error code
-is provided with no error message, the predefined message will be
-used. The error code EX_MSG is available to log application
-specific messages.
-
-\param[in]  module_name  This is a string containing the name of the calling
-function.
-\param[in]  message      This is a string containing a message explaining the
-error
-                         or problem. If EX_VERBOSE (see ex_opts()) is true,
-                         this message will be printed to stderr. Otherwise,
-                         nothing will be printed. Maximum length is \c
-MAX_ERR_LENGTH.
-
-\param[in] err_num       This is an integer code identifying the error. exodus C
-functions
-                         place an error code value in exerrval, an external
-int. Negative
-                         values are considered fatal errors while positive
-values are
-                         warnings. There is a set of predefined values defined
-in
-                         \file{exodusII.h}. The predefined constant \c
-EX_PRTLASTMSG will
-                         cause the last error message to be output, regardless
-of the setting
-                         of the error reporting level (see ex_opts()).
-
-The following is an example of the use of this function:
-
-~~~{.c}
-int exoid, CPU_word_size, IO_word_size, errval;
-float version;
-char errmsg[MAX_ERR_LENGTH];
-
-CPU_word_size = sizeof(float);
-IO_word_size = 0;
-
-\comment{open exodus file}
-if (exoid = ex_open ("test.exo", EX_READ, &CPU_word_size,
-                     &IO_word_size, &version)) {
-   errval = 999;
-   snprintf(errmsg, MAX_ERR_LENGTH,"ERROR: cannot open file test.exo");
-   ex_err_fn(exoid, __func__, errmsg, errval);
-}
-~~~
-
-*/
 
 #if defined(EXODUS_THREADSAFE)
 EX_errval_t *ex_errval = NULL;
@@ -89,7 +30,7 @@ static int  last_err_num;
   \ingroup Utilities
   \undoc
 */
-void ex__reset_error_status()
+void exi_reset_error_status(void)
 {
 #if !defined(EXODUS_THREADSAFE)
   exerrval   = 0;
@@ -98,8 +39,53 @@ void ex__reset_error_status()
 }
 
 /*!
-  \ingroup Utilities
-  \undoc
+\ingroup Utilities
+The function ex_err(exoid, ...) logs an error to stderr. It is intended
+to provide explanatory messages for error codes returned from other
+exodus routines.
+
+The passed in error codes and corresponding messages are listed in
+\file{exodusII.h}. The programmer may supplement the error message printed
+for standard errors by providing an error message. If the error code
+is provided with no error message, the predefined message will be
+used. The error code \c EX_MSG is available to log application
+specific messages.
+
+\param[in]  module_name  This is a string containing the name of the calling function.
+\param[in]  message      This is a string containing a message explaining the error
+                         or problem. If \c EX_VERBOSE (see ex_opts()) is true,
+                         this message will be printed to stderr. Otherwise,
+                         nothing will be printed. Maximum length is \c MAX_ERR_LENGTH.
+
+\param[in] err_num       This is an integer code identifying the error. exodus C
+                         functions place an error code value in exerrval,
+                         an external integer. Negative values are considered
+                         fatal errors while positive values are warnings.
+                         There is a set of predefined values defined in
+                         \file{exodusII.h}. The predefined constant
+                         \c EX_PRTLASTMSG will cause the last error message
+                         to be output, regardless of the setting
+                         of the error reporting level (see ex_opts()).
+
+The following is an example of the use of this function:
+
+~~~{.c}
+int exoid, CPU_word_size, IO_word_size, errval;
+float version;
+char errmsg[MAX_ERR_LENGTH];
+
+CPU_word_size = sizeof(float);
+IO_word_size = 0;
+
+\comment{open exodus file}
+if (exoid = ex_open ("test.exo", EX_READ, &CPU_word_size,
+                     &IO_word_size, &version)) {
+   errval = 999;
+   snprintf(errmsg, MAX_ERR_LENGTH,"ERROR: cannot open file test.exo");
+   ex_err(__func__, errmsg, errval);
+}
+~~~
+
 */
 void ex_err(const char *module_name, const char *message, int err_num)
 {
@@ -120,9 +106,7 @@ void ex_err(const char *module_name, const char *message, int err_num)
   if (err_num == EX_PRTLASTMSG) {
     fprintf(stderr, "\n[%s] %s\n", EX_PNAME, EX_ERRMSG);
     fprintf(stderr, "    exerrval = %d\n", EX_ERR_NUM);
-    if (EX_ERR_NUM < 0) {
-      fprintf(stderr, "\t%s\n", ex_strerror(EX_ERR_NUM));
-    }
+    fprintf(stderr, "\t%s\n", ex_strerror(EX_ERR_NUM));
     EX_FUNC_VOID();
   }
 
@@ -142,9 +126,7 @@ void ex_err(const char *module_name, const char *message, int err_num)
 
   else if (exoptval & EX_VERBOSE) { /* check see if we really want to hear this */
     fprintf(stderr, "\nExodus Library Warning/Error: [%s]\n\t%s\n", module_name, message);
-    if (err_num < 0) {
-      fprintf(stderr, "\t%s\n", ex_strerror(err_num));
-    }
+    fprintf(stderr, "\t%s\n", ex_strerror(err_num));
   }
   fflush(stderr);
 
@@ -157,8 +139,55 @@ void ex_err(const char *module_name, const char *message, int err_num)
 }
 
 /*!
-  \ingroup Utilities
-  \undoc
+\ingroup Utilities
+The function ex_err_fn() logs an error to stderr. It is intended
+to provide explanatory messages for error codes returned from other
+exodus routines.  The main difference between ex_err_fn() and ex_err() is
+that ex_err_fn() will print the name of the exodus file that the error occurred on.
+
+The passed in error codes and corresponding messages are listed in
+\file{exodusII.h}. The programmer may supplement the error message printed
+for standard errors by providing an error message. If the error code
+is provided with no error message, the predefined message will be
+used. The error code \c EX_MSG is available to log application
+specific messages.
+
+\param[in]   exoid       exodus file ID returned from a previous call to ex_create() or ex_open().
+\param[in]  module_name  This is a string containing the name of the calling function.
+\param[in]  message      This is a string containing a message explaining the error
+                         or problem. If \c EX_VERBOSE (see ex_opts()) is true,
+                         this message will be printed to stderr. Otherwise,
+                         nothing will be printed. Maximum length is \c MAX_ERR_LENGTH.
+
+\param[in] err_num       This is an integer code identifying the error. exodus C
+                         functions place an error code value in exerrval,
+                         an external integer. Negative values are considered
+                         fatal errors while positive values are warnings.
+                         There is a set of predefined values defined in
+                         \file{exodusII.h}. The predefined constant
+                         \c EX_PRTLASTMSG will cause the last error message
+                         to be output, regardless of the setting
+                         of the error reporting level (see ex_opts()).
+
+The following is an example of the use of this function:
+
+~~~{.c}
+int exoid, CPU_word_size, IO_word_size, errval;
+float version;
+char errmsg[MAX_ERR_LENGTH];
+
+CPU_word_size = sizeof(float);
+IO_word_size = 0;
+
+\comment{open exodus file}
+if (exoid = ex_open ("test.exo", EX_READ, &CPU_word_size,
+                     &IO_word_size, &version)) {
+   errval = 999;
+   snprintf(errmsg, MAX_ERR_LENGTH,"ERROR: cannot open file test.exo");
+   ex_err_fn(exoid, __func__, errmsg, errval);
+}
+~~~
+
 */
 void ex_err_fn(int exoid, const char *module_name, const char *message, int err_num)
 {
@@ -179,7 +208,7 @@ void ex_err_fn(int exoid, const char *module_name, const char *message, int err_
   if (err_num == EX_PRTLASTMSG) {
     fprintf(stderr, "\n[%s] %s\n", EX_PNAME, EX_ERRMSG);
 
-    struct ex__file_item *file = ex__find_file_item(exoid);
+    struct exi_file_item *file = exi_find_file_item(exoid);
     if (file) {
       size_t pathlen = 0;
       nc_inq_path(exoid, &pathlen, NULL);
@@ -195,10 +224,7 @@ void ex_err_fn(int exoid, const char *module_name, const char *message, int err_
     }
 
     fprintf(stderr, "    exerrval = %d\n", EX_ERR_NUM);
-
-    if (EX_ERR_NUM < 0) {
-      fprintf(stderr, "\t%s\n", ex_strerror(EX_ERR_NUM));
-    }
+    fprintf(stderr, "\t%s\n", ex_strerror(EX_ERR_NUM));
     EX_FUNC_VOID();
   }
 
@@ -218,7 +244,7 @@ void ex_err_fn(int exoid, const char *module_name, const char *message, int err_
 
   else if (exoptval & EX_VERBOSE) { /* check see if we really want to hear this */
     char                 *path = NULL;
-    struct ex__file_item *file = ex__find_file_item(exoid);
+    struct exi_file_item *file = exi_find_file_item(exoid);
     if (file) {
       size_t pathlen = 0;
       nc_inq_path(exoid, &pathlen, NULL);
@@ -235,9 +261,7 @@ void ex_err_fn(int exoid, const char *module_name, const char *message, int err_
     else {
       fprintf(stderr, "\nExodus Library Warning/Error: [%s]\n\t%s\n", module_name, message);
     }
-    if (err_num < 0) {
-      fprintf(stderr, "\t%s\n", ex_strerror(err_num));
-    }
+    fprintf(stderr, "\t%s\n", ex_strerror(err_num));
   }
   fflush(stderr);
 
@@ -309,7 +333,8 @@ const char *ex_strerror(int err_num)
   case EX_MEMFAIL: return "Memory allocation failure";
   case EX_BADFILEMODE: return "Bad file mode -- cannot specify both EX_READ and EX_WRITE";
   case EX_BADFILEID: return "Bad file id. Could not find exodus file associated with file id.";
-  case EX_WRONGFILETYPE: return "Integer sizes must match for input and output file in ex_copy.";
+  case EX_WRONGFILETYPE:
+    return "File does not exist or is not of a supported type (netcdf3, netcdf4, netcdf5).";
   case EX_LOOKUPFAIL:
     return "Id lookup failed for specified entity type. Could not find entity with specified id.";
   case EX_BADFILENAME: return "Empty or null filename specified.";
@@ -320,6 +345,7 @@ const char *ex_strerror(int err_num)
   case EX_INTERNAL: return "Internal logic error in exodus library.";
   case EX_NOTROOTID: return "File id is not the root id; it is a subgroup id.";
   case EX_NULLENTITY: return "Null entity found.";
+  case EX_INTSIZEMISMATCH: return "Integer sizes must match for input and output file in ex_copy.";
   case EX_MSG: return "Message printed; no error implied.";
   default: return nc_strerror(err_num);
   }

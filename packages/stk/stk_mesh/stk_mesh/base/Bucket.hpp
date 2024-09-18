@@ -38,13 +38,13 @@
 #include <stddef.h>                     // for size_t, NULL
 #include <algorithm>                    // for lower_bound
 #include <iosfwd>                       // for ostream
+#include <stk_mesh/base/Types.hpp>
+#include <stk_mesh/baseImpl/BucketConnDynamic.hpp>
 #include <stk_mesh/base/BucketConnectivity.hpp>  // for BucketConnectivity
 #include <stk_mesh/base/Entity.hpp>     // for Entity
 #include <stk_mesh/base/Part.hpp>       // for contains_ordinal, Part
-#include <stk_mesh/base/Types.hpp>
 #include <stk_topology/topology.hpp>    // for topology, etc
-#include <stk_util/util/ReportHandler.hpp>  // for ThrowAssert, etc
-#include <stk_util/util/StridedArray.hpp>
+#include <stk_util/util/ReportHandler.hpp>  // for STK_ThrowAssert, etc
 #include <string>                       // for string
 #include <utility>                      // for pair
 #include <vector>                       // for vector, etc
@@ -201,7 +201,17 @@ public:
   bool member_all( const OrdinalVector & ) const ;
 
   /** \brief  Bucket is a subset of any of the given parts */
-  bool member_any( const PartVector & ) const ;
+  template<typename PARTVECTOR>
+  bool member_any(const PARTVECTOR & parts) const
+  {
+    for(const Part* part : parts) {
+      if (member(*part)) {
+        return true;
+      }
+    }
+    return false ;
+  }
+
   bool member_any( const OrdinalVector & ) const ;
 
   //--------------------------------
@@ -318,14 +328,13 @@ public:
   void debug_dump(std::ostream& out, unsigned ordinal = -1u) const;
 
   /* NGP Bucket methods */
-  using ConnectedNodes    = util::StridedArray<const stk::mesh::Entity>;
-  using ConnectedEntities = util::StridedArray<const stk::mesh::Entity>;
-  using ConnectedOrdinals = util::StridedArray<const stk::mesh::ConnectivityOrdinal>;
-  using Permutations      = util::StridedArray<const stk::mesh::Permutation>;
 
-  ConnectedEntities get_connected_entities(unsigned offsetIntoBucket, stk::mesh::EntityRank connectedRank) const {
-    return ConnectedEntities(begin(offsetIntoBucket, connectedRank),
-                             num_connectivity(offsetIntoBucket, connectedRank));
+  ConnectedEntities get_connected_entities(unsigned offsetIntoBucket, stk::mesh::EntityRank connectedRank) const
+  {
+    STK_ThrowAssertMsg(offsetIntoBucket < size(),"Bucket::get_connected_entities offsetIntoBucket="<<offsetIntoBucket<<", size()="<<size());
+    ConnectivityType connType = connectivity_type(connectedRank);
+    return connType == FIXED_CONNECTIVITY ? get_fixed_connectivity(offsetIntoBucket, connectedRank)
+                                          : get_dynamic_connectivity(offsetIntoBucket, connectedRank);
   }
 
   ConnectedOrdinals get_connected_ordinals(unsigned offsetIntoBucket, stk::mesh::EntityRank connectedRank) const {
@@ -349,9 +358,12 @@ public:
     return get_connected_entities(offsetIntoBucket, stk::topology::ELEM_RANK);
   }
 
+#ifndef STK_HIDE_DEPRECATED_CODE // Delete after 2024/06/26
+  STK_DEPRECATED
   stk::mesh::Entity host_get_entity(unsigned offsetIntoBucket) const {
     return (*this)[offsetIntoBucket];
   }
+#endif
 
   void set_ngp_field_bucket_id(unsigned fieldOrdinal, unsigned ngpFieldBucketId);
   unsigned get_ngp_field_bucket_id(unsigned fieldOrdinal) const;
@@ -377,6 +389,13 @@ private:
   bool destroy_relation(Entity e_from, Entity e_to, const RelationIdentifier local_id );
 
   bool declare_relation(unsigned bucket_ordinal, Entity e_to, const ConnectivityOrdinal ordinal, Permutation permutation);
+
+  bool replace_relations(unsigned bucketOrdinal,
+                         EntityRank rank,
+                         unsigned numConnectivity,
+                         const Entity* connectivity,
+                         const ConnectivityOrdinal* ordinals,
+                         const Permutation* permutations);
 
   // The following *_other* functions should not be made available externally, in
   // order to avoid external confusion with "constraint" and "other" connectivities.
@@ -427,6 +446,7 @@ private:
   }
 
   void initialize_ngp_field_bucket_ids();
+  void grow_ngp_field_bucket_ids();
 
   Bucket();
 
@@ -510,17 +530,38 @@ private:
   ConnectivityType m_face_kind;
   ConnectivityType m_element_kind;
 
+  ConnectedEntities get_fixed_connectivity(unsigned bucket_ordinal, EntityRank rank) const
+  {
+    switch(rank) {
+    case stk::topology::NODE_RANK: return m_fixed_node_connectivity.get_connected_entities(bucket_ordinal);
+    case stk::topology::EDGE_RANK: return m_fixed_edge_connectivity.get_connected_entities(bucket_ordinal);
+    case stk::topology::FACE_RANK: return m_fixed_face_connectivity.get_connected_entities(bucket_ordinal);
+    case stk::topology::ELEM_RANK: return m_fixed_element_connectivity.get_connected_entities(bucket_ordinal);
+    default: return m_dynamic_other_connectivity.get_connected_entities(bucket_ordinal);
+    }
+  }
+
+  ConnectedEntities get_dynamic_connectivity(unsigned bucket_ordinal, EntityRank rank) const
+  {
+    switch(rank) {
+    case stk::topology::NODE_RANK: return m_dynamic_node_connectivity.get_connected_entities(bucket_ordinal);
+    case stk::topology::EDGE_RANK: return m_dynamic_edge_connectivity.get_connected_entities(bucket_ordinal);
+    case stk::topology::FACE_RANK: return m_dynamic_face_connectivity.get_connected_entities(bucket_ordinal);
+    case stk::topology::ELEM_RANK: return m_dynamic_element_connectivity.get_connected_entities(bucket_ordinal);
+    default: return m_dynamic_other_connectivity.get_connected_entities(bucket_ordinal);
+    }
+  }
+
   impl::BucketConnectivity<stk::topology::NODE_RANK,    FIXED_CONNECTIVITY> m_fixed_node_connectivity;
   impl::BucketConnectivity<stk::topology::EDGE_RANK,    FIXED_CONNECTIVITY> m_fixed_edge_connectivity;
   impl::BucketConnectivity<stk::topology::FACE_RANK,    FIXED_CONNECTIVITY> m_fixed_face_connectivity;
   impl::BucketConnectivity<stk::topology::ELEMENT_RANK, FIXED_CONNECTIVITY> m_fixed_element_connectivity;
 
-  impl::BucketConnectivity<stk::topology::NODE_RANK,    DYNAMIC_CONNECTIVITY> m_dynamic_node_connectivity;
-  impl::BucketConnectivity<stk::topology::EDGE_RANK,    DYNAMIC_CONNECTIVITY> m_dynamic_edge_connectivity;
-  impl::BucketConnectivity<stk::topology::FACE_RANK,    DYNAMIC_CONNECTIVITY> m_dynamic_face_connectivity;
-  impl::BucketConnectivity<stk::topology::ELEMENT_RANK, DYNAMIC_CONNECTIVITY> m_dynamic_element_connectivity;
-
-  impl::BucketConnectivity<stk::topology::INVALID_RANK, DYNAMIC_CONNECTIVITY> m_dynamic_other_connectivity;
+  impl::BucketConnDynamic m_dynamic_node_connectivity;
+  impl::BucketConnDynamic m_dynamic_edge_connectivity;
+  impl::BucketConnDynamic m_dynamic_face_connectivity;
+  impl::BucketConnDynamic m_dynamic_element_connectivity;
+  impl::BucketConnDynamic m_dynamic_other_connectivity;
 
   bool m_owned;
   bool m_shared;
@@ -699,7 +740,6 @@ void Bucket::modify_connectivity(T& callable, EntityRank rank)
 {
   switch(rank) {
   case stk::topology::NODE_RANK:
-    STK_ThrowAssert(m_node_kind != INVALID_CONNECTIVITY_TYPE);
     mark_for_modification();
 
     switch(m_node_kind) {
@@ -709,7 +749,6 @@ void Bucket::modify_connectivity(T& callable, EntityRank rank)
     }
     break;
   case stk::topology::EDGE_RANK:
-    STK_ThrowAssert(m_edge_kind != INVALID_CONNECTIVITY_TYPE);
     switch(m_edge_kind) {
     case FIXED_CONNECTIVITY:   callable(*this, m_fixed_edge_connectivity);   break;
     case DYNAMIC_CONNECTIVITY: callable(*this, m_dynamic_edge_connectivity); break;
@@ -717,7 +756,6 @@ void Bucket::modify_connectivity(T& callable, EntityRank rank)
     }
     break;
   case stk::topology::FACE_RANK:
-    STK_ThrowAssert(m_face_kind != INVALID_CONNECTIVITY_TYPE);
     switch(m_face_kind) {
     case FIXED_CONNECTIVITY:   callable(*this, m_fixed_face_connectivity); break;
     case DYNAMIC_CONNECTIVITY: callable(*this, m_dynamic_face_connectivity); break;
@@ -725,7 +763,6 @@ void Bucket::modify_connectivity(T& callable, EntityRank rank)
     }
     break;
   case stk::topology::ELEMENT_RANK:
-    STK_ThrowAssert(m_element_kind != INVALID_CONNECTIVITY_TYPE);
     switch(m_element_kind) {
     case FIXED_CONNECTIVITY:   callable(*this, m_fixed_element_connectivity);   break;
     case DYNAMIC_CONNECTIVITY: callable(*this, m_dynamic_element_connectivity); break;

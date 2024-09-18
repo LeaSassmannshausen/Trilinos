@@ -1,47 +1,14 @@
-
-//@HEADER
-// ************************************************************************
-// 
-//               ShyLU: Hybrid preconditioner package
-//                 Copyright 2012 Sandia Corporation
-// 
-// Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-// the U.S. Government retains certain rights in this software.
+// @HEADER
+// *****************************************************************************
+//               ShyLU: Scalable Hybrid LU Preconditioner and Solver
 //
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Michael A. Heroux (maherou@sandia.gov) 
-// 
-// ************************************************************************
-//@HEADER
+// Copyright 2011 NTESS and the ShyLU contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
+// @HEADER
 
 /** \file shylu.h
-    
+
     \brief Main header file of ShyLU (Include main user calls)
 
     \author Siva Rajamanickam
@@ -50,10 +17,10 @@
 #define SHYLU_H
 
 // Epetra include
-#include "Epetra_CrsMatrix.h" 
-#include "Epetra_Map.h" 
-#include "Epetra_MultiVector.h" 
-#include "Epetra_LinearProblem.h" 
+#include "Epetra_CrsMatrix.h"
+#include "Epetra_Map.h"
+#include "Epetra_MultiVector.h"
+#include "Epetra_LinearProblem.h"
 #include "Epetra_SerialComm.h"
 
 // Amesos includes
@@ -81,7 +48,7 @@
 #endif
 
 // Zoltan2 includes
-#ifdef HAVE_SHYLU_DDCORE_ZOLTAN2
+#if defined(HAVE_SHYLU_DDCORE_ZOLTAN2CORE)
 #include <Zoltan2_XpetraCrsMatrixAdapter.hpp>
 #include <Zoltan2_XpetraMultiVectorAdapter.hpp>
 #include <Zoltan2_PartitioningProblem.hpp>
@@ -96,14 +63,13 @@
 
 #include <IQRSolver.h>
 
-//#include "shylu_debug_manager.hpp"
 
-#define MIN(a, b) (((a) < (b)) ? a : b)
-#define MAX(a, b) (((a) > (b)) ? a : b)
+#define SHYLU_CORE_MIN(a, b) (((a) < (b)) ? a : b)
+#define SHYLU_CORE_MAX(a, b) (((a) > (b)) ? a : b)
 
 /** \brief Main data structure holding needed offset and temp variables
  *
- * This structur contains ...  
+ * This structur contains ...
  */
 typedef struct
 {
@@ -190,7 +156,7 @@ int shylu_solve(shylu_symbolic *ssym, shylu_data *data, shylu_config *config,
 /** \brief Compute an approximate Schur Complement (Narrow Sep)
  *
  *  Computate an approximate Schur Complement either using ...
- */ 
+ */
 
 Teuchos::RCP<Epetra_CrsMatrix> computeApproxSchur(shylu_config *config,
     shylu_symbolic *ssym,
@@ -224,3 +190,10 @@ Teuchos::RCP<Epetra_CrsMatrix> computeSchur_GuidedProbing
     Epetra_Map *localDRowMap
 );
 #endif // SHYLU_H
+
+#if defined(ShyLU_DDCore_SHOW_DEPRECATED_WARNINGS)
+#ifdef __GNUC__
+#warning "The ShyLU_DDCore package is deprecated"
+#endif
+#endif
+

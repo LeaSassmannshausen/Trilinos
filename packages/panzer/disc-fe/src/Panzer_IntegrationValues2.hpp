@@ -1,45 +1,12 @@
 // @HEADER
-// ***********************************************************************
-//
+// *****************************************************************************
 //           Panzer: A partial differential equation assembly
 //       engine for strongly coupled complex multiphysics systems
-//                 Copyright (2011) Sandia Corporation
 //
-// Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-// the U.S. Government retains certain rights in this software.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Roger P. Pawlowski (rppawlo@sandia.gov) and
-// Eric C. Cyr (eccyr@sandia.gov)
-// ***********************************************************************
+// Copyright 2011 NTESS and the Panzer contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
-
 
 #ifndef PANZER_INTEGRATION_VALUES2_HPP
 #define PANZER_INTEGRATION_VALUES2_HPP
@@ -99,7 +66,7 @@ namespace panzer {
 
     /** \brief Evaluate basis values.
 
-        @param vertex_coordinates [in] Cell vertex coordinates, not
+        @param cell_node_coordinates [in] Cell node coordinates, not
         basis coordinates.
         @param num_cells [in] (optional) number of cells in the
         workset. This can be less than the workset size. If set to
@@ -108,7 +75,7 @@ namespace panzer {
         @param face_connectivity [in] (optional) connectivity used to
         enforce quadrature alignment for surface integration.
      */
-    void evaluateValues(const PHX::MDField<Scalar,Cell,NODE,Dim> & vertex_coordinates,
+    void evaluateValues(const PHX::MDField<Scalar,Cell,NODE,Dim> & cell_node_coordinates,
                         const int num_cells = -1,
                         const Teuchos::RCP<const SubcellConnectivity> & face_connectivity = Teuchos::null,
                         const int num_virtual_cells = -1);
@@ -127,7 +94,7 @@ namespace panzer {
         zero, extent(0) of the evaluated array is used which equates
         to the workset size.
     */
-    void evaluateValues(const PHX::MDField<Scalar,Cell,NODE,Dim> & vertex_coordinates,
+    void evaluateValues(const PHX::MDField<Scalar,Cell,NODE,Dim> & cell_node_coordinates,
                         const PHX::MDField<Scalar,Cell,IP,Dim> & other_ip_coordinates,
                         const int num_cells = -1);
 
@@ -173,9 +140,9 @@ namespace panzer {
      * The process for setting up one of these objects is to initialize the IntegrationValues2 class as follows:
      *
      * IntegrationValues2<double> values;   // Constructor
-     * values.setup(ir, node_coordinates);  // Required - must come before all other calls
-     * values.setupPermutations(...);       // Optional - only needed for surface integration and some side integration rules - must come before get*() calls
-     * auto array = values.get*();          // Lazy evaluate whatever field you need
+     * values.setup(ir, cell_node_coordinates);  // Required - must come before all other calls
+     * values.setupPermutations(...);            // Optional - only needed for surface integration and some side integration rules - must come before get*() calls
+     * auto array = values.get*();               // Lazy evaluate whatever field you need
      */
 
     /**
@@ -184,12 +151,12 @@ namespace panzer {
      * \todo Instead of IntegrationRule, we just need to load the integration descriptor and the cell topology
      *
      * \param[in] ir Integration rule descripting integration scheme
-     * \param[in] node_coordinates Node/Vertex <cell, node, dim> coordinates describing cell geometry
+     * \param[in] cell_node_coordinates Node/Vertex <cell, node, dim> coordinates describing cell geometry
      * \param[in] num_cells In case you need to only generate integration values for the first 'num_cells' of the node_coordinates - defaults to all cells
      */
     void
     setup(const Teuchos::RCP<const panzer::IntegrationRule>& ir,
-          const PHX::MDField<Scalar,Cell,NODE,Dim> & node_coordinates,
+          const PHX::MDField<Scalar,Cell,NODE,Dim> & cell_node_coordinates,
           const int num_cells = -1);
 
     /**
@@ -451,6 +418,15 @@ namespace panzer {
     ConstArray_CellIPDim
     getCubaturePointsRef(const bool cache = true,
                          const bool force = false) const;
+
+    /**
+     * \brief Returns the IntegrationRule
+     *
+     * \return panzer::IntegrationRule
+     */
+    Teuchos::RCP<const panzer::IntegrationRule>
+    getIntegrationRule() const
+    {return int_rule;}
 
     // =====================================================================================================
 

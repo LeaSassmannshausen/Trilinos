@@ -1,43 +1,10 @@
 // @HEADER
-// ************************************************************************
-//
+// *****************************************************************************
 //                           Intrepid2 Package
-//                 Copyright (2007) Sandia Corporation
 //
-// Under terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-// license for use of this work by or on behalf of the U.S. Government.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Kyungjoo Kim  (kyukim@sandia.gov), or
-//                    Mauro Perego  (mperego@sandia.gov)
-//
-// ************************************************************************
+// Copyright 2007 NTESS and the Intrepid2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 
@@ -70,8 +37,6 @@
 #include "Intrepid2_CellTools.hpp"
 #include "Intrepid2_FunctionSpaceTools.hpp"
 #include "struct_mesh_utils.hpp"
-
-#define Intrepid2_Experimental
 
 
 #include "Teuchos_oblackholestream.hpp"
@@ -225,11 +190,12 @@ int ConvergenceHex(const bool verbose) {
     }
   };
 
-  typedef CellTools<DeviceType> ct;
-  typedef OrientationTools<DeviceType> ots;
-  typedef Experimental::ProjectionTools<DeviceType> pts;
-  typedef RealSpaceTools<DeviceType> rst;
-  typedef FunctionSpaceTools<DeviceType> fst;
+  using ct = CellTools<DeviceType>;
+  using ots = OrientationTools<DeviceType>;
+  using pts = ProjectionTools<DeviceType>;
+  using ProjStruct = ProjectionStruct<DeviceType,ValueType>;
+  using rst = RealSpaceTools<DeviceType>;
+  using fst = FunctionSpaceTools<DeviceType>;
 
   constexpr ordinal_type dim = 3;
   const ordinal_type basisDegree = 3;
@@ -343,7 +309,6 @@ int ConvergenceHex(const bool verbose) {
           DynRankView ConstructWithLabel(linearBasisValuesAtRefCoords, numNodesPerElem, numRefCoords);
           linearBasis.getValues(linearBasisValuesAtRefCoords, refPoints);
           ExecSpaceType().fence();
-          DynRankView ConstructWithLabel(physVertexes, numElems, numNodesPerElem, dim);
           Kokkos::parallel_for(Kokkos::RangePolicy<ExecSpaceType>(0,numElems),
           KOKKOS_LAMBDA (const int &i) {
             for(ordinal_type d=0; d<dim; ++d)
@@ -374,30 +339,16 @@ int ConvergenceHex(const bool verbose) {
         {
           ordinal_type targetCubDegree(basis.getDegree()),targetDerivCubDegree(basis.getDegree());
 
-          Experimental::ProjectionStruct<DeviceType,ValueType> projStruct;
+          ProjStruct projStruct;
           if(useL2Projection) {
             projStruct.createL2ProjectionStruct(&basis, targetCubDegree);
           } else {
             projStruct.createHGradProjectionStruct(&basis, targetCubDegree, targetDerivCubDegree);
           }
-          ordinal_type numPoints = projStruct.getNumTargetEvalPoints(), numGradPoints = projStruct.getNumTargetDerivEvalPoints();
-
-          DynRankView ConstructWithLabel(evaluationPoints, numElems, numPoints, dim);
-          DynRankView ConstructWithLabel(evaluationGradPoints, numElems, numGradPoints, dim);
-
-          if(useL2Projection) {
-            pts::getL2EvaluationPoints(evaluationPoints,
-                elemOrts,
-                &basis,
-                &projStruct);
-          } else {
-          pts::getHGradEvaluationPoints(evaluationPoints,
-              evaluationGradPoints,
-              elemOrts,
-              &basis,
-              &projStruct);
-          }
-
+          
+          auto evaluationPoints = projStruct.getAllEvalPoints();
+          auto evaluationGradPoints = projStruct.getAllDerivEvalPoints();
+          ordinal_type numPoints = evaluationPoints.extent(0), numGradPoints = evaluationGradPoints.extent(0);
 
           DynRankView ConstructWithLabel(targetAtEvalPoints, numElems, numPoints);
           DynRankView ConstructWithLabel(targetGradAtEvalPoints, numElems, numGradPoints, dim);
@@ -412,7 +363,7 @@ int ConvergenceHex(const bool verbose) {
             KOKKOS_LAMBDA (const int &i) {
               auto basisValuesAtEvalPoint = Kokkos::subview(linearBasisValuesAtEvalPoint,i,Kokkos::ALL());
               for(ordinal_type j=0; j<numPoints; ++j){
-                auto evalPoint = Kokkos::subview(evaluationPoints,i,j,Kokkos::ALL());
+                auto evalPoint = Kokkos::subview(evaluationPoints,j,Kokkos::ALL());
                 Impl::Basis_HGRAD_HEX_C1_FEM::template Serial<OPERATOR_VALUE>::getValues(basisValuesAtEvalPoint, evalPoint);
                 for(ordinal_type k=0; k<numNodesPerElem; ++k)
                   for(ordinal_type d=0; d<dim; ++d)
@@ -421,7 +372,7 @@ int ConvergenceHex(const bool verbose) {
 
               auto basisValuesAtEvalGradPoint = Kokkos::subview(linearBasisValuesAtEvalGradPoint,i,Kokkos::ALL());
               for(ordinal_type j=0; j<numGradPoints; ++j) {
-                auto evalGradPoint = Kokkos::subview(evaluationGradPoints,i,j,Kokkos::ALL());
+                auto evalGradPoint = Kokkos::subview(evaluationGradPoints,j,Kokkos::ALL());
                 Impl::Basis_HGRAD_HEX_C1_FEM::template Serial<OPERATOR_VALUE>::getValues(basisValuesAtEvalGradPoint, evalGradPoint);
                 for(ordinal_type k=0; k<numNodesPerElem; ++k)
                   for(ordinal_type d=0; d<dim; ++d)
@@ -455,7 +406,6 @@ int ConvergenceHex(const bool verbose) {
           if(useL2Projection) {
             pts::getL2BasisCoeffs(basisCoeffsHGrad,
                 targetAtEvalPoints,
-                evaluationPoints,
                 elemOrts,
                 &basis,
                 &projStruct);
@@ -463,8 +413,6 @@ int ConvergenceHex(const bool verbose) {
             pts::getHGradBasisCoeffs(basisCoeffsHGrad,
                 targetAtEvalPoints,
                 targetGradAtEvalPoints,
-                evaluationPoints,
-                evaluationGradPoints,
                 elemOrts,
                 &basis,
                 &projStruct);
@@ -624,27 +572,16 @@ int ConvergenceHex(const bool verbose) {
         {
           ordinal_type targetCubDegree(cub_degree),targetDerivCubDegree(cub_degree-1);
 
-          Experimental::ProjectionStruct<DeviceType,ValueType> projStruct;
+          ProjStruct projStruct;
           if(useL2Projection) {
             projStruct.createL2ProjectionStruct(&basis, targetCubDegree);
           } else {
             projStruct.createHCurlProjectionStruct(&basis, targetCubDegree, targetDerivCubDegree);
           }
-          ordinal_type numPoints = projStruct.getNumTargetEvalPoints(), numCurlPoints = projStruct.getNumTargetDerivEvalPoints();
-          DynRankView ConstructWithLabel(evaluationPoints, numElems, numPoints, dim);
-          DynRankView ConstructWithLabel(evaluationCurlPoints, numElems, numCurlPoints, dim);
-          if(useL2Projection) {
-            pts::getL2EvaluationPoints(evaluationPoints,
-                elemOrts,
-                &basis,
-                &projStruct);
-          } else {
-            pts::getHCurlEvaluationPoints(evaluationPoints,
-                evaluationCurlPoints,
-                elemOrts,
-                &basis,
-                &projStruct);
-          }
+
+          auto evaluationPoints = projStruct.getAllEvalPoints();
+          auto evaluationCurlPoints = projStruct.getAllDerivEvalPoints();
+          ordinal_type numPoints = evaluationPoints.extent(0), numCurlPoints = evaluationCurlPoints.extent(0);
 
           DynRankView ConstructWithLabel(targetAtEvalPoints, numElems, numPoints, dim);
           DynRankView ConstructWithLabel(targetCurlAtEvalPoints, numElems, numCurlPoints, dim);
@@ -660,7 +597,7 @@ int ConvergenceHex(const bool verbose) {
             KOKKOS_LAMBDA (const int &i) {
               auto basisValuesAtEvalPoint = Kokkos::subview(linearBasisValuesAtEvalPoint,i,Kokkos::ALL());
               for(ordinal_type j=0; j<numPoints; ++j){
-                auto evalPoint = Kokkos::subview(evaluationPoints,i,j,Kokkos::ALL());
+                auto evalPoint = Kokkos::subview(evaluationPoints,j,Kokkos::ALL());
                 Impl::Basis_HGRAD_HEX_C1_FEM::template Serial<OPERATOR_VALUE>::getValues(basisValuesAtEvalPoint, evalPoint);
                 for(ordinal_type k=0; k<numNodesPerElem; ++k)
                   for(ordinal_type d=0; d<dim; ++d)
@@ -669,7 +606,7 @@ int ConvergenceHex(const bool verbose) {
 
               auto basisValuesAtEvalCurlPoint = Kokkos::subview(linearBasisValuesAtEvalCurlPoint,i,Kokkos::ALL());
               for(ordinal_type j=0; j<numCurlPoints; ++j) {
-                auto evalGradPoint = Kokkos::subview(evaluationCurlPoints,i,j,Kokkos::ALL());
+                auto evalGradPoint = Kokkos::subview(evaluationCurlPoints,j,Kokkos::ALL());
                 Impl::Basis_HGRAD_HEX_C1_FEM::template Serial<OPERATOR_VALUE>::getValues(basisValuesAtEvalCurlPoint, evalGradPoint);
                 for(ordinal_type k=0; k<numNodesPerElem; ++k)
                   for(ordinal_type d=0; d<dim; ++d)
@@ -715,7 +652,6 @@ int ConvergenceHex(const bool verbose) {
           if(useL2Projection) {
             pts::getL2BasisCoeffs(basisCoeffsHCurl,
                 targetAtEvalPoints,
-                evaluationPoints,
                 elemOrts,
                 &basis,
                 &projStruct);
@@ -723,8 +659,6 @@ int ConvergenceHex(const bool verbose) {
             pts::getHCurlBasisCoeffs(basisCoeffsHCurl,
                 targetAtEvalPoints,
                 targetCurlAtEvalPoints,
-                evaluationPoints,
-                evaluationCurlPoints,
                 elemOrts,
                 &basis,
                 &projStruct);
@@ -886,29 +820,16 @@ int ConvergenceHex(const bool verbose) {
         {
           ordinal_type targetCubDegree(basis.getDegree()),targetDerivCubDegree(basis.getDegree()-1);
 
-          Experimental::ProjectionStruct<DeviceType,ValueType> projStruct;
+          ProjStruct projStruct;
           if(useL2Projection) {
             projStruct.createL2ProjectionStruct(&basis, targetCubDegree);
           } else {
             projStruct.createHDivProjectionStruct(&basis, targetCubDegree, targetDerivCubDegree);
           }
 
-          ordinal_type numPoints = projStruct.getNumTargetEvalPoints(), numDivPoints = projStruct.getNumTargetDerivEvalPoints();
-
-          DynRankView ConstructWithLabel(evaluationPoints, numElems, numPoints, dim);
-          DynRankView ConstructWithLabel(evaluationDivPoints, numElems, numDivPoints, dim);
-          if(useL2Projection) {
-            pts::getL2EvaluationPoints(evaluationPoints,
-                elemOrts,
-                &basis,
-                &projStruct);
-          } else {
-            pts::getHDivEvaluationPoints(evaluationPoints,
-                evaluationDivPoints,
-                elemOrts,
-                &basis,
-                &projStruct);
-          }
+          auto evaluationPoints = projStruct.getAllEvalPoints();
+          auto evaluationDivPoints = projStruct.getAllDerivEvalPoints();
+          ordinal_type numPoints = evaluationPoints.extent(0), numDivPoints = evaluationDivPoints.extent(0);
 
           DynRankView ConstructWithLabel(targetAtEvalPoints, numElems, numPoints, dim);
           DynRankView ConstructWithLabel(targetDivAtEvalPoints, numElems, numDivPoints);
@@ -924,7 +845,7 @@ int ConvergenceHex(const bool verbose) {
             KOKKOS_LAMBDA (const int &i) {
               auto basisValuesAtEvalPoint = Kokkos::subview(linearBasisValuesAtEvalPoint,i,Kokkos::ALL());
               for(ordinal_type j=0; j<numPoints; ++j){
-                auto evalPoint = Kokkos::subview(evaluationPoints,i,j,Kokkos::ALL());
+                auto evalPoint = Kokkos::subview(evaluationPoints,j,Kokkos::ALL());
                 Impl::Basis_HGRAD_HEX_C1_FEM::template Serial<OPERATOR_VALUE>::getValues(basisValuesAtEvalPoint, evalPoint);
                 for(ordinal_type k=0; k<numNodesPerElem; ++k)
                   for(ordinal_type d=0; d<dim; ++d)
@@ -933,7 +854,7 @@ int ConvergenceHex(const bool verbose) {
 
               auto basisValuesAtEvalDivPoint = Kokkos::subview(linearBasisValuesAtEvalDivPoint,i,Kokkos::ALL());
               for(ordinal_type j=0; j<numDivPoints; ++j) {
-                auto evalGradPoint = Kokkos::subview(evaluationDivPoints,i,j,Kokkos::ALL());
+                auto evalGradPoint = Kokkos::subview(evaluationDivPoints,j,Kokkos::ALL());
                 Impl::Basis_HGRAD_HEX_C1_FEM::template Serial<OPERATOR_VALUE>::getValues(basisValuesAtEvalDivPoint, evalGradPoint);
                 for(ordinal_type k=0; k<numNodesPerElem; ++k)
                   for(ordinal_type d=0; d<dim; ++d)
@@ -978,7 +899,6 @@ int ConvergenceHex(const bool verbose) {
           if(useL2Projection) {
             pts::getL2BasisCoeffs(basisCoeffsHDiv,
                 targetAtEvalPoints,
-                evaluationPoints,
                 elemOrts,
                 &basis,
                 &projStruct);
@@ -986,8 +906,6 @@ int ConvergenceHex(const bool verbose) {
             pts::getHDivBasisCoeffs(basisCoeffsHDiv,
                 targetAtEvalPoints,
                 targetDivAtEvalPoints,
-                evaluationPoints,
-                evaluationDivPoints,
                 elemOrts,
                 &basis,
                 &projStruct);
@@ -1143,27 +1061,15 @@ int ConvergenceHex(const bool verbose) {
         {
           ordinal_type targetCubDegree(basis.getDegree());
 
-          Experimental::ProjectionStruct<DeviceType,ValueType> projStruct;
+          ProjStruct projStruct;
           if(useL2Projection) {
             projStruct.createL2ProjectionStruct(&basis, targetCubDegree);
           } else {
             projStruct.createHVolProjectionStruct(&basis, targetCubDegree);
           }
 
-          ordinal_type numPoints = projStruct.getNumTargetEvalPoints();
-
-          DynRankView ConstructWithLabel(evaluationPoints, numElems, numPoints, dim);
-          if(useL2Projection) {
-            pts::getL2EvaluationPoints(evaluationPoints,
-                elemOrts,
-                &basis,
-                &projStruct);
-          } else {
-            pts::getHVolEvaluationPoints(evaluationPoints,
-                elemOrts,
-                &basis,
-                &projStruct);
-          }
+          auto evaluationPoints = projStruct.getAllEvalPoints();
+          ordinal_type numPoints = evaluationPoints.extent(0);
 
           DynRankView ConstructWithLabel(targetAtEvalPoints, numElems, numPoints);
 
@@ -1176,7 +1082,7 @@ int ConvergenceHex(const bool verbose) {
             KOKKOS_LAMBDA (const int &i) {
               auto basisValuesAtEvalPoint = Kokkos::subview(linearBasisValuesAtEvalPoint,i,Kokkos::ALL());
               for(ordinal_type j=0; j<numPoints; ++j){
-                auto evalPoint = Kokkos::subview(evaluationPoints,i,j,Kokkos::ALL());
+                auto evalPoint = Kokkos::subview(evaluationPoints,j,Kokkos::ALL());
                 Impl::Basis_HGRAD_HEX_C1_FEM::template Serial<OPERATOR_VALUE>::getValues(basisValuesAtEvalPoint, evalPoint);
                 for(ordinal_type k=0; k<numNodesPerElem; ++k)
                   for(ordinal_type d=0; d<dim; ++d)
@@ -1203,14 +1109,12 @@ int ConvergenceHex(const bool verbose) {
           if(useL2Projection) {
             pts::getL2BasisCoeffs(basisCoeffsHVol,
                 targetAtEvalPoints,
-                evaluationPoints,
                 elemOrts,
                 &basis,
                 &projStruct);
           } else {
             pts::getHVolBasisCoeffs(basisCoeffsHVol,
                 targetAtEvalPoints,
-                evaluationPoints,
                 elemOrts,
                 &basis,
                 &projStruct);

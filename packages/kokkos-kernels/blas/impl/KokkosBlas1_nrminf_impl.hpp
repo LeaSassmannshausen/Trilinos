@@ -38,7 +38,7 @@ struct V_NrmInf_Functor {
   typedef SizeType size_type;
   typedef typename XV::non_const_value_type xvalue_type;
   typedef Kokkos::Details::InnerProductSpaceTraits<xvalue_type> IPT;
-  typedef Kokkos::Details::ArithTraits<typename IPT::mag_type> AT;
+  typedef Kokkos::ArithTraits<typename IPT::mag_type> AT;
   typedef typename IPT::mag_type value_type;
 
   typename XV::const_type m_x;
@@ -50,8 +50,7 @@ struct V_NrmInf_Functor {
     static_assert(Kokkos::is_view<XV>::value,
                   "KokkosBlas::Impl::V_NrmInf_Functor: "
                   "X is not a Kokkos::View.");
-    static_assert(std::is_same<typename RV::value_type,
-                               typename RV::non_const_value_type>::value,
+    static_assert(std::is_same<typename RV::value_type, typename RV::non_const_value_type>::value,
                   "KokkosBlas::Impl::V_NrmInf_Functor: R is const.  "
                   "It must be nonconst, because it is an output argument "
                   "(we have to be able to write to its entries).");
@@ -69,10 +68,9 @@ struct V_NrmInf_Functor {
 
 /// \brief Compute the 2-norm (or its square) of the single vector (1-D
 ///   View) X, and store the result in the 0-D View r.
-template <class RV, class XV, class SizeType>
-void V_NrmInf_Invoke(const RV& r, const XV& X) {
-  typedef typename XV::execution_space execution_space;
-  typedef Kokkos::Details::ArithTraits<typename RV::non_const_value_type> AT;
+template <class execution_space, class RV, class XV, class SizeType>
+void V_NrmInf_Invoke(const execution_space& space, const RV& r, const XV& X) {
+  typedef Kokkos::ArithTraits<typename RV::non_const_value_type> AT;
 
   const SizeType numRows = static_cast<SizeType>(X.extent(0));
 
@@ -82,22 +80,21 @@ void V_NrmInf_Invoke(const RV& r, const XV& X) {
     return;
   }
 
-  Kokkos::RangePolicy<execution_space, SizeType> policy(0, numRows);
+  Kokkos::RangePolicy<execution_space, SizeType> policy(space, 0, numRows);
 
   typedef V_NrmInf_Functor<RV, XV, SizeType> functor_type;
   functor_type op(X);
-  Kokkos::parallel_reduce("KokkosBlas::NrmInf::S0", policy, op,
-                          Kokkos::Max<typename RV::non_const_value_type>(r()));
+  Kokkos::parallel_reduce("KokkosBlas::NrmInf::S0", policy, op, Kokkos::Max<typename RV::non_const_value_type>(r()));
 }
 
 /// \brief Compute the 2-norms (or their square) of the columns of the
 ///   multivector (2-D View) X, and store result(s) in the 1-D View r.
-template <class RV, class XMV, class SizeType>
-void MV_NrmInf_Invoke(const RV& r, const XMV& X) {
+template <class execution_space, class RV, class XMV, class SizeType>
+void MV_NrmInf_Invoke(const execution_space& space, const RV& r, const XMV& X) {
   for (size_t i = 0; i < X.extent(1); i++) {
     auto ri = Kokkos::subview(r, i);
     auto Xi = Kokkos::subview(X, Kokkos::ALL(), i);
-    V_NrmInf_Invoke<decltype(ri), decltype(Xi), SizeType>(ri, Xi);
+    V_NrmInf_Invoke<execution_space, decltype(ri), decltype(Xi), SizeType>(space, ri, Xi);
   }
 }
 

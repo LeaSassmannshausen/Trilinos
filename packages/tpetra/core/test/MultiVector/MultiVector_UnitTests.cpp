@@ -1,48 +1,16 @@
-/*
 // @HEADER
-// ***********************************************************************
-//
+// *****************************************************************************
 //          Tpetra: Templated Linear Algebra Services Package
-//                 Copyright (2008) Sandia Corporation
 //
-// Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-// the U.S. Government retains certain rights in this software.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// ************************************************************************
+// Copyright 2008 NTESS and the Tpetra contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
-*/
 
 #include "Tpetra_TestingUtilities.hpp"
 #include "Tpetra_MultiVector.hpp"
 #include "Tpetra_Vector.hpp"
-#include "Tpetra_Details_DeepCopyCounter.hpp"
+#include "Tpetra_Details_KokkosCounter.hpp"
 #include "Kokkos_ArithTraits.hpp"
 #include "Teuchos_CommHelpers.hpp"
 #include "Teuchos_DefaultSerialComm.hpp"
@@ -1004,7 +972,7 @@ namespace {
     typedef Tpetra::Map<LO,GO,Node> map_type;
     typedef Tpetra::MultiVector<ST,LO,GO,Node> MV;
     typedef Tpetra::Vector<ST,LO,GO,Node> V;
-    typedef typename Kokkos::Details::ArithTraits<ST>::val_type IST;
+    typedef typename Kokkos::ArithTraits<ST>::val_type IST;
 
     out << "Tpetra::MultiVector::elementWiseMultiply test" << endl;
     Teuchos::OSTab tab0 (out);
@@ -1054,7 +1022,7 @@ namespace {
         B.putScalar (S1);
 
         // Prefill C with NaN, if NaN exists for ST.
-        const ST nan = static_cast<ST> (Kokkos::Details::ArithTraits<IST>::nan ());
+        const ST nan = static_cast<ST> (Kokkos::ArithTraits<IST>::nan ());
         C.putScalar (nan);
 
         C.elementWiseMultiply (S0, A, B, S0);
@@ -1074,7 +1042,7 @@ namespace {
         const ST S3 = S1 + S1 + S1;
 
         // Prefill A and B with NaN, if NaN exists for ST.
-        const ST nan = static_cast<ST> (Kokkos::Details::ArithTraits<IST>::nan ());
+        const ST nan = static_cast<ST> (Kokkos::ArithTraits<IST>::nan ());
         A.putScalar (nan);
         B.putScalar (nan);
         C.putScalar (S3);
@@ -1094,7 +1062,7 @@ namespace {
       // update rules.
       {
         // Prefill A and B with NaN, if NaN exists for ST.
-        const ST nan = static_cast<ST> (Kokkos::Details::ArithTraits<IST>::nan ());
+        const ST nan = static_cast<ST> (Kokkos::ArithTraits<IST>::nan ());
         A.putScalar (nan);
         B.putScalar (nan);
         C.putScalar (S1);
@@ -1116,7 +1084,7 @@ namespace {
         const ST S2 = S1 + S1;
 
         // Prefill A and B with NaN, if NaN exists for ST.
-        const ST nan = static_cast<ST> (Kokkos::Details::ArithTraits<IST>::nan ());
+        const ST nan = static_cast<ST> (Kokkos::ArithTraits<IST>::nan ());
         A.putScalar (nan);
         B.putScalar (nan);
         C.putScalar (S1);
@@ -1140,7 +1108,7 @@ namespace {
         B.putScalar (S1);
 
         // Prefill C with NaN, if NaN exists for ST.
-        const ST nan = static_cast<ST> (Kokkos::Details::ArithTraits<IST>::nan ());
+        const ST nan = static_cast<ST> (Kokkos::ArithTraits<IST>::nan ());
         C.putScalar (nan);
 
         C.elementWiseMultiply (S1, A, B, S0);
@@ -1162,7 +1130,7 @@ namespace {
         B.putScalar (S1);
 
         // Prefill C with NaN, if NaN exists for ST.
-        const ST nan = static_cast<ST> (Kokkos::Details::ArithTraits<IST>::nan ());
+        const ST nan = static_cast<ST> (Kokkos::ArithTraits<IST>::nan ());
         C.putScalar (nan);
 
         C.elementWiseMultiply (-S1, A, B, S0);
@@ -1267,7 +1235,7 @@ namespace {
         B.putScalar (S4);
 
         // Prefill C with NaN, if NaN exists for ST.
-        const ST nan = static_cast<ST> (Kokkos::Details::ArithTraits<IST>::nan ());
+        const ST nan = static_cast<ST> (Kokkos::ArithTraits<IST>::nan ());
         C.putScalar (nan);
 
         C.elementWiseMultiply (S2, A, B, S0);
@@ -1329,7 +1297,7 @@ namespace {
     typedef Tpetra::Map<LO,GO,Node> map_type;
     typedef Tpetra::MultiVector<ST,LO,GO,Node> MV;
     typedef Tpetra::Vector<ST,LO,GO,Node> V;
-    typedef typename Kokkos::Details::ArithTraits<ST>::val_type IST;
+    typedef typename Kokkos::ArithTraits<ST>::val_type IST;
 
     out << "Tpetra::MultiVector::elementWiseMultiplyLg test" << endl;
     Teuchos::OSTab tab0 (out);
@@ -1379,7 +1347,7 @@ namespace {
         B.putScalar (S1);
 
         // Prefill C with NaN, if NaN exists for ST.
-        const ST nan = static_cast<ST> (Kokkos::Details::ArithTraits<IST>::nan ());
+        const ST nan = static_cast<ST> (Kokkos::ArithTraits<IST>::nan ());
         C.putScalar (nan);
 
         C.elementWiseMultiply (S0, A, B, S0);
@@ -1399,7 +1367,7 @@ namespace {
         const ST S3 = S1 + S1 + S1;
 
         // Prefill A and B with NaN, if NaN exists for ST.
-        const ST nan = static_cast<ST> (Kokkos::Details::ArithTraits<IST>::nan ());
+        const ST nan = static_cast<ST> (Kokkos::ArithTraits<IST>::nan ());
         A.putScalar (nan);
         B.putScalar (nan);
         C.putScalar (S3);
@@ -1419,7 +1387,7 @@ namespace {
       // update rules.
       {
         // Prefill A and B with NaN, if NaN exists for ST.
-        const ST nan = static_cast<ST> (Kokkos::Details::ArithTraits<IST>::nan ());
+        const ST nan = static_cast<ST> (Kokkos::ArithTraits<IST>::nan ());
         A.putScalar (nan);
         B.putScalar (nan);
         C.putScalar (S1);
@@ -1441,7 +1409,7 @@ namespace {
         const ST S2 = S1 + S1;
 
         // Prefill A and B with NaN, if NaN exists for ST.
-        const ST nan = static_cast<ST> (Kokkos::Details::ArithTraits<IST>::nan ());
+        const ST nan = static_cast<ST> (Kokkos::ArithTraits<IST>::nan ());
         A.putScalar (nan);
         B.putScalar (nan);
         C.putScalar (S1);
@@ -1465,7 +1433,7 @@ namespace {
         B.putScalar (S1);
 
         // Prefill C with NaN, if NaN exists for ST.
-        const ST nan = static_cast<ST> (Kokkos::Details::ArithTraits<IST>::nan ());
+        const ST nan = static_cast<ST> (Kokkos::ArithTraits<IST>::nan ());
         C.putScalar (nan);
 
         C.elementWiseMultiply (S1, A, B, S0);
@@ -1487,7 +1455,7 @@ namespace {
         B.putScalar (S1);
 
         // Prefill C with NaN, if NaN exists for ST.
-        const ST nan = static_cast<ST> (Kokkos::Details::ArithTraits<IST>::nan ());
+        const ST nan = static_cast<ST> (Kokkos::ArithTraits<IST>::nan ());
         C.putScalar (nan);
 
         C.elementWiseMultiply (-S1, A, B, S0);
@@ -1592,7 +1560,7 @@ namespace {
         B.putScalar (S4);
 
         // Prefill C with NaN, if NaN exists for ST.
-        const ST nan = static_cast<ST> (Kokkos::Details::ArithTraits<IST>::nan ());
+        const ST nan = static_cast<ST> (Kokkos::ArithTraits<IST>::nan ());
         C.putScalar (nan);
 
         C.elementWiseMultiply (S2, A, B, S0);
@@ -5228,40 +5196,145 @@ namespace {
     }
 
 
-    // Stop / Start  (reset first to clear counts from previous unit test calls)
+    // Stop / Start  (reset first to clear counts from previous unit test calls)   
     Tpetra::Details::DeepCopyCounter::reset();   
     Tpetra::Details::DeepCopyCounter::start();
     Kokkos::deep_copy(y_h,x_d);
-    size_t count = Tpetra::Details::DeepCopyCounter::stop();   
+    Tpetra::Details::DeepCopyCounter::stop();   
+    size_t count = Tpetra::Details::DeepCopyCounter::get_count_different_space();   
     TEST_EQUALITY(count,correct_count);
 
 
     // Reset / get_count (should be zero now)
     Tpetra::Details::DeepCopyCounter::reset();   
-    count = Tpetra::Details::DeepCopyCounter::get_count();   
+    count = Tpetra::Details::DeepCopyCounter::get_count_different_space();   
     TEST_EQUALITY(count,0);
 
 
     // Second  Stop / Start (should have the original count)
     Tpetra::Details::DeepCopyCounter::start();
     Kokkos::deep_copy(y_h,x_d);
-    count = Tpetra::Details::DeepCopyCounter::stop();   
+    Tpetra::Details::DeepCopyCounter::stop();   
+    count = Tpetra::Details::DeepCopyCounter::get_count_different_space();   
     TEST_EQUALITY(count,correct_count);
 
 
     // This guy should not get counted, since the counter is stopped
     Kokkos::deep_copy(y_h,x_d);
-    count = Tpetra::Details::DeepCopyCounter::get_count();   
+    count = Tpetra::Details::DeepCopyCounter::get_count_different_space();   
     TEST_EQUALITY(count,correct_count);
 
 
     // Third Second  Stop / Start (should have double the original count)
     Tpetra::Details::DeepCopyCounter::start();
     Kokkos::deep_copy(y_h,x_d);
-    count = Tpetra::Details::DeepCopyCounter::stop();   
+    Tpetra::Details::DeepCopyCounter::stop();   
+    count = Tpetra::Details::DeepCopyCounter::get_count_different_space();   
     TEST_EQUALITY(count,2*correct_count);
           
   }
+
+
+  TEUCHOS_UNIT_TEST_TEMPLATE_4_DECL( MultiVector, FenceCounterCheck, LO , GO , Scalar , Node ) {
+    RCP<const Comm<int> > comm = Tpetra::getDefaultComm ();
+    auto exec_space = typename Node::execution_space();
+    const std::string space = exec_space.name();
+
+    /***********************************************************************/
+    // Global fences
+    size_t global_correct_count=1;
+
+    // Stop / Start  (reset first to clear counts from previous unit test calls)   
+    Tpetra::Details::FenceCounter::reset();   
+    Tpetra::Details::FenceCounter::start();
+    Kokkos::fence();
+    Tpetra::Details::FenceCounter::stop();   
+    size_t global_count = Tpetra::Details::FenceCounter::get_count_global(space);   
+    size_t instance_count = Tpetra::Details::FenceCounter::get_count_instance(space);   
+    TEST_EQUALITY(global_count,global_correct_count);
+    TEST_EQUALITY(instance_count,0);
+
+    // Reset / get_count (should be zero now)
+    Tpetra::Details::FenceCounter::reset();   
+    global_count =Tpetra::Details::FenceCounter::get_count_global(space);   
+    instance_count = Tpetra::Details::FenceCounter::get_count_instance(space);   
+    TEST_EQUALITY(global_count,0);
+    TEST_EQUALITY(instance_count,0);
+
+    // Second  Stop / Start (should have the original count)
+    Tpetra::Details::FenceCounter::start();
+    Kokkos::fence();
+    Tpetra::Details::FenceCounter::stop();   
+    global_count =Tpetra::Details::FenceCounter::get_count_global(space);   
+    instance_count = Tpetra::Details::FenceCounter::get_count_instance(space);   
+    TEST_EQUALITY(global_count,global_correct_count);
+    TEST_EQUALITY(instance_count,0);
+
+    // This guy should not get counted, since the counter is stopped
+    Kokkos::fence();
+    global_count =Tpetra::Details::FenceCounter::get_count_global(space);   
+    instance_count = Tpetra::Details::FenceCounter::get_count_instance(space);   
+    TEST_EQUALITY(global_count,global_correct_count);
+    TEST_EQUALITY(instance_count,0);
+
+    // Third Second  Stop / Start (should have double the original count)
+    Tpetra::Details::FenceCounter::start();
+    Kokkos::fence();
+    Tpetra::Details::FenceCounter::stop();   
+    global_count =Tpetra::Details::FenceCounter::get_count_global(space);   
+    instance_count = Tpetra::Details::FenceCounter::get_count_instance(space);   
+    TEST_EQUALITY(global_count,2*global_correct_count);
+    TEST_EQUALITY(instance_count,0);
+
+    /***********************************************************************/
+    // Instance Fences
+    size_t instance_correct_count = 1;
+
+    // Stop / Start  (reset first to clear counts from previous unit test calls)   
+    Tpetra::Details::FenceCounter::reset();   
+    Tpetra::Details::FenceCounter::start();
+    exec_space.fence();
+    Tpetra::Details::FenceCounter::stop();   
+    global_count =Tpetra::Details::FenceCounter::get_count_global(space);   
+    instance_count = Tpetra::Details::FenceCounter::get_count_instance(space);   
+    TEST_EQUALITY(global_count,0);
+    TEST_EQUALITY(instance_count,instance_correct_count);
+
+    // Reset / get_count (should be zero now)
+    Tpetra::Details::FenceCounter::reset();   
+    global_count =Tpetra::Details::FenceCounter::get_count_global(space);   
+    instance_count = Tpetra::Details::FenceCounter::get_count_instance(space);   
+    TEST_EQUALITY(global_count,0);
+    TEST_EQUALITY(instance_count,0);
+
+    // Second  Stop / Start (should have the original count)
+    Tpetra::Details::FenceCounter::start();
+    exec_space.fence();    
+    Tpetra::Details::FenceCounter::stop();   
+    global_count =Tpetra::Details::FenceCounter::get_count_global(space);   
+    instance_count = Tpetra::Details::FenceCounter::get_count_instance(space);   
+    TEST_EQUALITY(global_count,0);
+    TEST_EQUALITY(instance_count,instance_correct_count);
+
+    // This guy should not get counted, since the counter is stopped
+    exec_space.fence();        
+    global_count =Tpetra::Details::FenceCounter::get_count_global(space);   
+    instance_count = Tpetra::Details::FenceCounter::get_count_instance(space);   
+    TEST_EQUALITY(global_count,0);
+    TEST_EQUALITY(instance_count,instance_correct_count);
+
+    // Third Second  Stop / Start (should have double the original count)
+    Tpetra::Details::FenceCounter::start();
+    exec_space.fence();        
+    Tpetra::Details::FenceCounter::stop();   
+    global_count =Tpetra::Details::FenceCounter::get_count_global(space);   
+    instance_count = Tpetra::Details::FenceCounter::get_count_instance(space);   
+    TEST_EQUALITY(global_count,0);
+    TEST_EQUALITY(instance_count,2*instance_correct_count);      
+  }
+
+
+
 
 
 
@@ -5337,7 +5410,8 @@ namespace {
       TEUCHOS_UNIT_TEST_TEMPLATE_4_INSTANT( MultiVector, DimsWithAllZeroRows, LO, GO, SCALAR, NODE ) \
       TEUCHOS_UNIT_TEST_TEMPLATE_4_INSTANT( MultiVector, Swap, LO, GO, SCALAR, NODE ) \
       TEUCHOS_UNIT_TEST_TEMPLATE_4_INSTANT( MultiVector, DualViewRefcountCheck, LO, GO, SCALAR, NODE ) \
-      TEUCHOS_UNIT_TEST_TEMPLATE_4_INSTANT( MultiVector, CopyCounterCheck, LO, GO, SCALAR, NODE )
+      TEUCHOS_UNIT_TEST_TEMPLATE_4_INSTANT( MultiVector, CopyCounterCheck, LO, GO, SCALAR, NODE ) \
+      TEUCHOS_UNIT_TEST_TEMPLATE_4_INSTANT( MultiVector, FenceCounterCheck, LO, GO, SCALAR, NODE )
 
 #ifdef KOKKOS_ENABLE_OPENMP
   // Add special test for OpenMP

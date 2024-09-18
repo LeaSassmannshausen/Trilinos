@@ -25,73 +25,56 @@ namespace KokkosBlas {
 /// \brief Applies modified Givens rotation coefficients to vectors x and y.
 ///
 /// \tparam execution_space the execution space where the kernel will be
-/// executed, it can be used to specify a stream too.
+///         executed, it can be used to specify a stream too.
 /// \tparam VectorView a rank1 view type that hold non const data
 /// \tparam ParamView a rank1 view of static extent [5] type that
-/// holds const data
+///         holds const data
 ///
 /// \param space [in]  execution space used for parallel loops in this kernel
-/// \param x1 [in/out] vector to be rotated with param coefficients
-/// \param y1 [in/out] vector to be rotated with param coefficients
+/// \param X [in/out] vector to be rotated with param coefficients
+/// \param Y [in/out] vector to be rotated with param coefficients
 /// \param param [in]  output of rotmg contains rotation coefficients
 ///
 template <class execution_space, class VectorView, class ParamView>
-void rotm(execution_space const& space, VectorView const& X,
-          VectorView const& Y, ParamView const& param) {
+void rotm(execution_space const& space, VectorView const& X, VectorView const& Y, ParamView const& param) {
   static_assert(Kokkos::is_execution_space<execution_space>::value,
                 "rotm: execution_space template parameter is not a Kokkos "
                 "execution space.");
-  static_assert(
-      VectorView::rank == 1,
-      "rotm: VectorView template parameter needs to be a rank 1 view");
-  static_assert(ParamView::rank == 1,
-                "rotm: ParamView template parameter needs to be a rank 1 view");
-  static_assert(
-      Kokkos::SpaceAccessibility<execution_space,
-                                 typename VectorView::memory_space>::accessible,
-      "rotm: VectorView template parameter memory space needs to be accessible "
-      "from execution_space template parameter");
-  static_assert(
-      Kokkos::SpaceAccessibility<execution_space,
-                                 typename ParamView::memory_space>::accessible,
-      "rotm: ScalarView template parameter memory space needs to be accessible "
-      "from execution_space template parameter");
-  static_assert(
-      std::is_same<typename VectorView::non_const_value_type,
-                   typename VectorView::value_type>::value,
-      "rotm: VectorView template parameter needs to store non-const values");
-  static_assert(
-      !Kokkos::ArithTraits<typename VectorView::value_type>::is_complex,
-      "rotm: VectorView template parameter cannot use complex value_type");
-  static_assert(
-      !Kokkos::ArithTraits<typename ParamView::value_type>::is_complex,
-      "rotm: ParamView template parameter cannot use complex value_type");
+  static_assert(VectorView::rank == 1, "rotm: VectorView template parameter needs to be a rank 1 view");
+  static_assert(ParamView::rank == 1, "rotm: ParamView template parameter needs to be a rank 1 view");
+  static_assert(Kokkos::SpaceAccessibility<execution_space, typename VectorView::memory_space>::accessible,
+                "rotm: VectorView template parameter memory space needs to be accessible "
+                "from execution_space template parameter");
+  static_assert(Kokkos::SpaceAccessibility<execution_space, typename ParamView::memory_space>::accessible,
+                "rotm: ScalarView template parameter memory space needs to be accessible "
+                "from execution_space template parameter");
+  static_assert(std::is_same<typename VectorView::non_const_value_type, typename VectorView::value_type>::value,
+                "rotm: VectorView template parameter needs to store non-const values");
+  static_assert(!Kokkos::ArithTraits<typename VectorView::value_type>::is_complex,
+                "rotm: VectorView template parameter cannot use complex value_type");
+  static_assert(!Kokkos::ArithTraits<typename ParamView::value_type>::is_complex,
+                "rotm: ParamView template parameter cannot use complex value_type");
 
-  using VectorView_Internal = Kokkos::View<
-      typename VectorView::non_const_value_type*,
-      typename KokkosKernels::Impl::GetUnifiedLayout<VectorView>::array_layout,
-      Kokkos::Device<execution_space, typename VectorView::memory_space>,
-      Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
+  using VectorView_Internal = Kokkos::View<typename VectorView::non_const_value_type*,
+                                           typename KokkosKernels::Impl::GetUnifiedLayout<VectorView>::array_layout,
+                                           Kokkos::Device<execution_space, typename VectorView::memory_space>,
+                                           Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
 
   using ParamView_Internal = Kokkos::View<
-      typename ParamView::const_value_type[5],
-      typename KokkosKernels::Impl::GetUnifiedLayout<ParamView>::array_layout,
-      Kokkos::Device<execution_space, typename ParamView::memory_space>,
-      Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
+      typename ParamView::const_value_type[5], typename KokkosKernels::Impl::GetUnifiedLayout<ParamView>::array_layout,
+      Kokkos::Device<execution_space, typename ParamView::memory_space>, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
 
   VectorView_Internal X_(X), Y_(Y);
   ParamView_Internal param_(param);
 
   Kokkos::Profiling::pushRegion("KokkosBlas::rotm");
-  Impl::Rotm<execution_space, VectorView_Internal, ParamView_Internal>::rotm(
-      space, X_, Y_, param_);
+  Impl::Rotm<execution_space, VectorView_Internal, ParamView_Internal>::rotm(space, X_, Y_, param_);
   Kokkos::Profiling::popRegion();
 }
 
 template <class VectorView, class ParamView>
 void rotm(VectorView const& X, VectorView const& Y, ParamView const& param) {
-  const typename VectorView::execution_space space =
-      typename VectorView::execution_space();
+  const typename VectorView::execution_space space = typename VectorView::execution_space();
   rotm(space, X, Y, param);
 }
 

@@ -1,43 +1,10 @@
 // @HEADER
-// ************************************************************************
-//
+// *****************************************************************************
 //                           Intrepid2 Package
-//                 Copyright (2007) Sandia Corporation
 //
-// Under terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-// license for use of this work by or on behalf of the U.S. Government.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Kyungjoo Kim  (kyukim@sandia.gov), or
-//                    Mauro Perego  (mperego@sandia.gov)
-//
-// ************************************************************************
+// Copyright 2007 NTESS and the Intrepid2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 /** \file   Intrepid2_HVOL_TET_Cn_FEMDef.hpp
@@ -53,7 +20,7 @@
 namespace Intrepid2 {
 
   // -------------------------------------------------------------------------------------
-  
+
   namespace Impl {
 
     template<EOperator opType>
@@ -70,7 +37,7 @@ namespace Intrepid2 {
                const vinvViewType   vinv ) {
 
       constexpr ordinal_type spaceDim = 3;
-      const ordinal_type 
+      const ordinal_type
         card = vinv.extent(0),
         npts = input.extent(0);
 
@@ -82,7 +49,7 @@ namespace Intrepid2 {
           break;
         }
       }
-      
+
       typedef typename Kokkos::DynRankView<typename workViewType::value_type, typename workViewType::memory_space> viewType;
       auto vcprop = Kokkos::common_view_alloc_prop(work);
       auto ptr = work.data();
@@ -91,10 +58,10 @@ namespace Intrepid2 {
       case OPERATOR_VALUE: {
         const viewType phis(Kokkos::view_wrap(ptr, vcprop), card, npts);
         workViewType dummyView;
-        
+
         Impl::Basis_HGRAD_TET_Cn_FEM_ORTH::
           Serial<opType>::getValues(phis, input, dummyView, order);
-        
+
         for (ordinal_type i=0;i<card;++i)
           for (ordinal_type j=0;j<npts;++j) {
             output.access(i,j) = 0.0;
@@ -166,7 +133,7 @@ namespace Intrepid2 {
       typedef          Kokkos::DynRankView<inputPointValueType, inputPointProperties...>          inputPointViewType;
       typedef          Kokkos::DynRankView<vinvValueType,       vinvProperties...>                vinvViewType;
       typedef typename ExecSpace<typename inputPointViewType::execution_space,typename DT::execution_space>::ExecSpaceType ExecSpaceType;
-      
+
       // loopSize corresponds to cardinality
       const auto loopSizeTmp1 = (inputPoints.extent(0)/numPtsPerEval);
       const auto loopSizeTmp2 = (inputPoints.extent(0)%numPtsPerEval != 0);
@@ -194,7 +161,7 @@ namespace Intrepid2 {
       break;
       }
       case OPERATOR_GRAD:
-      case OPERATOR_D1: { 
+      case OPERATOR_D1: {
         auto bufferSize = Basis_HVOL_TET_Cn_FEM::Serial<OPERATOR_D1>::getWorkSizePerPoint(order);
         workViewType  work(Kokkos::view_alloc("Basis_HVOL_TET_Cn_FEM::getValues::work", vcprop), bufferSize, inputPoints.extent(0));
         typedef Functor<outputValueViewType,inputPointViewType,vinvViewType, workViewType,
@@ -224,7 +191,7 @@ namespace Intrepid2 {
       }
     }
   }
-  
+
   // -------------------------------------------------------------------------------------
   template<typename DT, typename OT, typename PT>
   Basis_HVOL_TET_Cn_FEM<DT,OT,PT>::
@@ -232,27 +199,28 @@ namespace Intrepid2 {
                           const EPointType   pointType ) {
     constexpr ordinal_type spaceDim = 3;
 
-    this->pointType_         = pointType;
-    this->basisCardinality_  = Intrepid2::getPnCardinality<spaceDim>(order); // bigN
-    this->basisDegree_       = order; // small n
-    this->basisCellTopology_ = shards::CellTopology(shards::getCellTopologyData<shards::Tetrahedron<4> >() );
-    this->basisType_         = BASIS_FEM_LAGRANGIAN;
-    this->basisCoordinates_  = COORDINATES_CARTESIAN;
-    this->functionSpace_     = FUNCTION_SPACE_HVOL;
+    this->pointType_            = pointType;
+    this->basisCardinality_     = Intrepid2::getPnCardinality<spaceDim>(order); // bigN
+    this->basisDegree_          = order; // small n
+    this->basisCellTopologyKey_ = shards::Tetrahedron<4>::key;
+    this->basisType_            = BASIS_FEM_LAGRANGIAN;
+    this->basisCoordinates_     = COORDINATES_CARTESIAN;
+    this->functionSpace_        = FUNCTION_SPACE_HVOL;
 
     const ordinal_type card = this->basisCardinality_;
 
     // points are computed in the host and will be copied
     Kokkos::DynRankView<scalarType,typename DT::execution_space::array_layout,Kokkos::HostSpace>
       dofCoords("HVOL::Tet::Cn::dofCoords", card, spaceDim);
-    
+
     // construct lattice (only internal nodes for HVOL element)
     const ordinal_type offset = 1;
+    const shards::CellTopology cellTopo(shards::getCellTopologyData<shards::Tetrahedron<4> >());
     PointTools::getLattice( dofCoords,
-                            this->basisCellTopology_,
+                            cellTopo,
                             order+spaceDim+offset, offset,
                             pointType );
-    
+
     this->dofCoords_ = Kokkos::create_mirror_view(typename DT::memory_space(), dofCoords);
     Kokkos::deep_copy(this->dofCoords_, dofCoords);
 
@@ -263,12 +231,16 @@ namespace Intrepid2 {
       vmat("HVOL::Tet::Cn::vmat", card, card),
       work("HVOL::Tet::Cn::work", lwork),
       ipiv("HVOL::Tet::Cn::ipiv", card);
-  
-    Impl::Basis_HGRAD_TET_Cn_FEM_ORTH::getValues<Kokkos::HostSpace::execution_space,Parameters::MaxNumPtsPerBasisEval>(vmat, dofCoords, order, OPERATOR_VALUE);
+
+    Impl::Basis_HGRAD_TET_Cn_FEM_ORTH::getValues<Kokkos::HostSpace::execution_space,Parameters::MaxNumPtsPerBasisEval>(typename Kokkos::HostSpace::execution_space{},
+                                                                                                                       vmat,
+                                                                                                                       dofCoords,
+                                                                                                                       order,
+                                                                                                                       OPERATOR_VALUE);
 
     ordinal_type info = 0;
     Teuchos::LAPACK<ordinal_type,scalarType> lapack;
-    
+
     lapack.GETRF(card, card,
                  vmat.data(), vmat.stride_1(),
                  (ordinal_type*)ipiv.data(),
@@ -303,14 +275,14 @@ namespace Intrepid2 {
     {
       // Basis-dependent initializations
       constexpr ordinal_type tagSize  = 4;        // size of DoF tag, i.e., number of fields in the tag
-      const ordinal_type posScDim = 0;        // position in the tag, counting from 0, of the subcell dim 
+      const ordinal_type posScDim = 0;        // position in the tag, counting from 0, of the subcell dim
       const ordinal_type posScOrd = 1;        // position in the tag, counting from 0, of the subcell ordinal
       const ordinal_type posDfOrd = 2;        // position in the tag, counting from 0, of DoF ordinal relative to the subcell
-      
+
       constexpr ordinal_type maxCard = Intrepid2::getPnCardinality<spaceDim, Parameters::MaxOrder>();
       ordinal_type tags[maxCard][tagSize];
 
-      const ordinal_type 
+      const ordinal_type
         numElemDof = this->basisCardinality_; //all the degrees of freedom are internal.
 
 
@@ -324,7 +296,7 @@ namespace Intrepid2 {
       }
 
       OrdinalTypeArray1DHost tagView(&tags[0][0], card*tagSize);
-      
+
       // Basis-independent function sets tag and enum data in tagToOrdinal_ and ordinalToTag_ arrays:
       // tags are constructed on host
       this->setOrdinalTagData(this->tagToOrdinal_,

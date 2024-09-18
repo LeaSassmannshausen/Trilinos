@@ -30,6 +30,7 @@ endif()
 
 SET(HEADERS
   aprepro.h
+  apr_symrec.h
   apr_tokenize.h
 )
 
@@ -77,7 +78,7 @@ if(GENERATE_BISON_FILES)
 
   add_custom_command(OUTPUT  apr_parser.cc
                      COMMAND ${BISON_EXE}
-                     ARGS --defines=aprepro_parser.h --output apr_parser.cc
+                     ARGS --no-lines --defines=aprepro_parser.h --output apr_parser.cc
                         ${CMAKE_CURRENT_SOURCE_DIR}/aprepro.yy
                      MAIN_DEPENDENCY aprepro.yy
                      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
@@ -107,11 +108,12 @@ endif()
 
 if (${PACKAGE_NAME}_ENABLE_TESTS)
   TRIBITS_ADD_EXECUTABLE(aprepro_lib_test NOEXEPREFIX NOEXESUFFIX INSTALLABLE SOURCES apr_test.cc LINKER_LANGUAGE CXX)
+  TRIBITS_ADD_EXECUTABLE(aprepro_strings_test NOEXEPREFIX NOEXESUFFIX INSTALLABLE SOURCES strings.cc LINKER_LANGUAGE CXX)
 
 TRIBITS_ADD_ADVANCED_TEST(
  aprepro_lib_unit_test
  TEST_0 EXEC aprepro_lib_test
-        ARGS -o test.output ${CMAKE_CURRENT_SOURCE_DIR}/test.inp_app
+        ARGS -o test.output ${CMAKE_CURRENT_SOURCE_DIR}/test.inp_app 
   NOEXEPREFIX NOEXESUFFIX
   PASS_ANY
  TEST_1 CMND diff ARGS -w
@@ -126,8 +128,7 @@ TRIBITS_ADD_ADVANCED_TEST(
 TRIBITS_ADD_ADVANCED_TEST(
  aprepro_lib_array_test
  TEST_0 EXEC aprepro_lib_test
-	ARGS --info=test-array.dump --include=${CMAKE_CURRENT_SOURCE_DIR} -o test-array.out
-	     ${CMAKE_CURRENT_SOURCE_DIR}/test-array.i
+	ARGS --info=test-array.dump --include=${CMAKE_CURRENT_SOURCE_DIR} -o test-array.out test-array.i
   NOEXEPREFIX NOEXESUFFIX
   PASS_ANY
  TEST_1 CMND diff ARGS -w
@@ -141,6 +142,41 @@ TRIBITS_ADD_ADVANCED_TEST(
  FINAL_PASS_REGULAR_EXPRESSION
  XHOSTTYPE Windows
 )
+
+TRIBITS_ADD_ADVANCED_TEST(
+ aprepro_lib_array_test_short_opt
+ TEST_0 EXEC aprepro_lib_test
+	ARGS --info=test-short-array.dump -I=${CMAKE_CURRENT_SOURCE_DIR} -o test-short-array.out
+	     test-array.i
+  NOEXEPREFIX NOEXESUFFIX
+  PASS_ANY
+ TEST_1 CMND diff ARGS -w
+		       ${CMAKE_CURRENT_SOURCE_DIR}/test-array.gold
+		       ${CMAKE_CURRENT_BINARY_DIR}/test-short-array.out
+ TEST_2 CMND diff ARGS -w
+		       ${CMAKE_CURRENT_SOURCE_DIR}/test-array.stderr.gold
+		       ${CMAKE_CURRENT_BINARY_DIR}/test-short-array.dump
+ COMM mpi serial
+ OVERALL_NUM_MPI_PROCS 1
+ FINAL_PASS_REGULAR_EXPRESSION
+ XHOSTTYPE Windows
+)
+
+TRIBITS_ADD_ADVANCED_TEST(
+ aprepro_lib_unit_test_strings
+ TEST_0 EXEC aprepro_strings_test
+ OUTPUT_FILE test-strings.output
+  NOEXEPREFIX NOEXESUFFIX
+  PASS_ANY
+ TEST_1 CMND diff ARGS -w
+		       ${CMAKE_CURRENT_SOURCE_DIR}/test_standard.out
+		       ${CMAKE_CURRENT_BINARY_DIR}/test-strings.output
+ COMM mpi serial
+ OVERALL_NUM_MPI_PROCS 1
+ FINAL_PASS_REGULAR_EXPRESSION
+ XHOSTTYPE Windows
+)
+
 endif()
 
   TRIBITS_SUBPACKAGE_POSTPROCESS()

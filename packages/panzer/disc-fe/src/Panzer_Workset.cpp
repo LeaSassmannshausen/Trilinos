@@ -1,43 +1,11 @@
 // @HEADER
-// ***********************************************************************
-//
+// *****************************************************************************
 //           Panzer: A partial differential equation assembly
 //       engine for strongly coupled complex multiphysics systems
-//                 Copyright (2011) Sandia Corporation
 //
-// Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-// the U.S. Government retains certain rights in this software.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Roger P. Pawlowski (rppawlo@sandia.gov) and
-// Eric C. Cyr (eccyr@sandia.gov)
-// ***********************************************************************
+// Copyright 2011 NTESS and the Panzer contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 #include "Panzer_Workset.hpp"
@@ -161,32 +129,32 @@ setup(const panzer::LocalMeshPartition & partition,
     }
   }
 
-  // Allocate and fill the cell vertices
+  // Allocate and fill the cell nodes
   {
     // Double check this
-    TEUCHOS_ASSERT(partition.cell_vertices.Rank == 3);
+    TEUCHOS_ASSERT(partition.cell_nodes.rank == 3);
 
-    // Grab the size of the cell vertices array
-    const int num_partition_cells = partition.cell_vertices.extent(0);
-    const int num_vertices_per_cell = partition.cell_vertices.extent(1);
-    const int num_dims_per_vertex = partition.cell_vertices.extent(2);
+    // Grab the size of the cell node array
+    const int num_partition_cells = partition.cell_nodes.extent(0);
+    const int num_nodes_per_cell = partition.cell_nodes.extent(1);
+    const int num_dims_per_node = partition.cell_nodes.extent(2);
 
     // Make sure there isn't some strange problem going on
     TEUCHOS_ASSERT(num_partition_cells == num_cells);
-    TEUCHOS_ASSERT(num_vertices_per_cell > 0);
-    TEUCHOS_ASSERT(num_dims_per_vertex > 0);
+    TEUCHOS_ASSERT(num_nodes_per_cell > 0);
+    TEUCHOS_ASSERT(num_dims_per_node > 0);
 
-    // Allocate the worksets copy of the cell vertices
+    // Allocate the worksets copy of the cell nodes 
     MDFieldArrayFactory af("",true);
-    cell_vertex_coordinates = af.buildStaticArray<double, Cell, NODE, Dim>("cell vertices", num_partition_cells, num_vertices_per_cell, num_dims_per_vertex);
+    cell_node_coordinates = af.buildStaticArray<double, Cell, NODE, Dim>("cell nodes", num_partition_cells, num_nodes_per_cell, num_dims_per_node);
 
-    // Copy vertices over
-    const auto partition_vertices = partition.cell_vertices;
-    auto cvc = cell_vertex_coordinates.get_view();
+    // Copy nodes over
+    const auto partition_nodes = partition.cell_nodes;
+    auto cnc = cell_node_coordinates.get_view();
     Kokkos::parallel_for(num_cells, KOKKOS_LAMBDA (int i) {
-      for(int j=0;j<num_vertices_per_cell;++j)
-        for(int k=0;k<num_dims_per_vertex;++k)
-          cvc(i,j,k) = partition_vertices(i,j,k);
+      for(int j=0;j<num_nodes_per_cell;++j)
+        for(int k=0;k<num_dims_per_node;++k)
+          cnc(i,j,k) = partition_nodes(i,j,k);
       });
     Kokkos::fence();
   }
@@ -264,7 +232,7 @@ getIntegrationValues(const panzer::IntegrationDescriptor & description,
   if(lazy_version){
     iv = Teuchos::rcp(new IntegrationValues2<double>());
 
-    iv->setup(ir,getCellVertices(),numCells());
+    iv->setup(ir,getCellNodes(),numCells());
 
     // Surface integration schemes need to properly "permute" their entries to line up the surface points between cells
     if(description.getType() == panzer::IntegrationDescriptor::SURFACE)
@@ -274,7 +242,7 @@ getIntegrationValues(const panzer::IntegrationDescriptor & description,
 
     iv = Teuchos::rcp(new IntegrationValues2<double>("",true));
     iv->setupArrays(ir);
-    iv->evaluateValues(getCellVertices(), numCells(), face_connectivity_, numVirtualCells());
+    iv->evaluateValues(getCellNodes(), numCells(), face_connectivity_, numVirtualCells());
 
     // This is an advanced feature that requires changes to the workset construction
     // Basically there needs to be a way to grab the side assembly for both "details" belonging to the same workset, which requires a refactor
@@ -373,7 +341,7 @@ getBasisValues(const panzer::BasisDescriptor & basis_description,
 
     biv->setOrientations(workset_orientations, numOwnedCells()+numGhostCells());
     biv->setWeightedMeasure(iv.getWeightedMeasure(false));
-    biv->setCellVertexCoordinates(cell_vertex_coordinates);
+    biv->setCellNodeCoordinates(cell_node_coordinates);
 
   } else {
 
@@ -389,7 +357,7 @@ getBasisValues(const panzer::BasisDescriptor & basis_description,
                             iv.jac,
                             iv.jac_det,
                             iv.jac_inv,
-                            getCellVertices(),
+                            getCellNodes(),
                             true,
                             numCells());
     } else {
@@ -403,7 +371,7 @@ getBasisValues(const panzer::BasisDescriptor & basis_description,
                             iv.jac_det,
                             iv.jac_inv,
                             iv.weighted_measure,
-                            getCellVertices(),
+                            getCellNodes(),
                             true,
                             numCells());
 
@@ -414,7 +382,7 @@ getBasisValues(const panzer::BasisDescriptor & basis_description,
                             iv.jac_det,
                             iv.jac_inv,
                             iv.weighted_measure,
-                            getCellVertices(),
+                            getCellNodes(),
                             true,
                             numCells());
       }
@@ -457,7 +425,7 @@ getPointValues(const panzer::PointDescriptor & description) const
   // Point values are not necessarily set at the workset level, but can be set by evaluators
   if(description.hasGenerator())
     if(description.getGenerator().hasPoints(*cell_topology_))
-      pv->evaluateValues(getCellVertices(), description.getGenerator().getPoints(*cell_topology_),false, numCells());
+      pv->evaluateValues(getCellNodes(), description.getGenerator().getPoints(*cell_topology_),false, numCells());
 
   point_values_map_[description.getKey()] = pv;
 
@@ -508,7 +476,7 @@ getBasisValues(const panzer::BasisDescriptor & basis_description,
     buildLocalOrientations(numOwnedCells()+numGhostCells(),getLocalCellIDs(),options_.orientations_, workset_orientations);
 
     bpv->setOrientations(workset_orientations, numOwnedCells()+numGhostCells());
-    bpv->setCellVertexCoordinates(cell_vertex_coordinates);
+    bpv->setCellNodeCoordinates(cell_node_coordinates);
 
   } else {
 
@@ -523,7 +491,7 @@ getBasisValues(const panzer::BasisDescriptor & basis_description,
                         numCells());
 
     // TODO: We call this separately due to how BasisValues2 is structured - needs to be streamlined
-    bpv->evaluateBasisCoordinates(getCellVertices(),numCells());
+    bpv->evaluateBasisCoordinates(getCellNodes(),numCells());
 
     applyBV2Orientations(numOwnedCells()+numGhostCells(),*bpv, getLocalCellIDs(), options_.orientations_);
 

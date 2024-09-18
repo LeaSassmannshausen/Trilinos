@@ -36,6 +36,8 @@
 #define STK_UTIL_DIAG_STRING_H
 
 #include <string.h>
+#include <iostream>
+#include <type_traits>
 
 #ifdef USE_CISTRING
 
@@ -56,10 +58,9 @@ typedef cistring ParamId;
 
 namespace sierra {
 
-///
-/// @addtogroup StringDetail
-/// @{
-///
+template <typename T>
+using If_String_View = std::enable_if_t<std::is_convertible_v<const T &, std::string_view> &&
+                                        !std::is_convertible_v<const T &, const char *> >;
 
 struct char_simple_traits ;
 
@@ -119,79 +120,40 @@ bool operator>= ( const StringBase<CT1> &, const StringBase<CT2> & );
 
 
 template<class CT1>
-bool operator== ( const StringBase<CT1> &, const std::string & );
+bool operator== ( const StringBase<CT1> &, std::string_view );
 
 template<class CT1>
-bool operator!= ( const StringBase<CT1> &, const std::string & );
+bool operator!= ( const StringBase<CT1> &, std::string_view );
 
 template<class CT1>
-bool operator<  ( const StringBase<CT1> &, const std::string & );
+bool operator<  ( const StringBase<CT1> &, std::string_view );
 
 template<class CT1>
-bool operator>  ( const StringBase<CT1> &, const std::string & );
+bool operator>  ( const StringBase<CT1> &, std::string_view );
 
 template<class CT1>
-bool operator<= ( const StringBase<CT1> &, const std::string & );
+bool operator<= ( const StringBase<CT1> &, std::string_view );
 
 template<class CT1>
-bool operator>= ( const StringBase<CT1> &, const std::string & );
-
-
-template<class CT1>
-bool operator== ( const StringBase<CT1> &, const char * );
+bool operator>= ( const StringBase<CT1> &, std::string_view );
 
 template<class CT1>
-bool operator!= ( const StringBase<CT1> &, const char * );
+bool operator== (std::string_view, const StringBase<CT1> &);
 
 template<class CT1>
-bool operator<  ( const StringBase<CT1> &, const char * );
+bool operator!= (std::string_view, const StringBase<CT1> &);
 
 template<class CT1>
-bool operator>  ( const StringBase<CT1> &, const char * );
+bool operator<  (std::string_view, const StringBase<CT1> &);
 
 template<class CT1>
-bool operator<= ( const StringBase<CT1> &, const char * );
+bool operator>  (std::string_view, const StringBase<CT1> &);
 
 template<class CT1>
-bool operator>= ( const StringBase<CT1> &, const char * );
-
-
-template<class CT1>
-bool operator== (const char *, const StringBase<CT1> & );
+bool operator<= (std::string_view, const StringBase<CT1> &);
 
 template<class CT1>
-bool operator!= (const char *, const StringBase<CT1> & );
-
-template<class CT1>
-bool operator<  (const char *, const StringBase<CT1> & );
-
-template<class CT1>
-bool operator>  (const char *, const StringBase<CT1> & );
-
-template<class CT1>
-bool operator<= (const char *, const StringBase<CT1> & );
-
-template<class CT1>
-bool operator>= (const char *, const StringBase<CT1> & );
-
-
-template<class CT1>
-bool operator== (const std::string &, const StringBase<CT1> &);
-
-template<class CT1>
-bool operator!= (const std::string &, const StringBase<CT1> &);
-
-template<class CT1>
-bool operator<  (const std::string &, const StringBase<CT1> &);
-
-template<class CT1>
-bool operator>  (const std::string &, const StringBase<CT1> &);
-
-template<class CT1>
-bool operator<= (const std::string &, const StringBase<CT1> &);
-
-template<class CT1>
-bool operator>= (const std::string &, const StringBase<CT1> &);
+bool operator>= (std::string_view, const StringBase<CT1> &);
 
 
 
@@ -209,36 +171,7 @@ operator>>( std::istream & is, sierra::Identifier &s );
 
 }
 
-//----------------------------------------------------------------------
-
 namespace sierra {
-
-namespace implementation {
-
-class StringData {
-public:
-
-  size_t len() const { return m_data.length(); }
-
-  //
-  //  NKC, Hmm, should really get rid of this entirely, non constant access to internal data really bad idea.
-  //
-  char * data() { return &*m_data.begin(); }
-
-  const char * c_str() const { return m_data.c_str(); }
-
-  /** Assigns memory and copy contents */
-  char * mem( const char* c, size_t n ) {
-    m_data.assign(c, n);
-    return data();
-  }
-private:
-  std::string m_data;
-};
-
-}
-
-//----------------------------------------------------------------------
 
 template<class CT>
 class StringBase {
@@ -246,45 +179,76 @@ public:
   typedef const char * const_iterator;
   typedef char * iterator;
 
-  // Types:
   typedef CT     traits_type ;
   typedef char   value_type ;
   typedef size_t size_type ;
 
-  // Construct/copy/destroy:
+  StringBase() {}
+  ~StringBase() = default;
+  StringBase(StringBase &&) = default;
+  StringBase(const StringBase &) = default;
+  StringBase &operator=(const StringBase &) = default;
+  StringBase &operator=(StringBase &&) = default;
 
-  ~StringBase();
+  //Allow construction from things implicitly convertable to std::string_view
+  template <typename StringViewLike, typename = If_String_View<StringViewLike>> 
+  explicit StringBase(const StringViewLike &sv) : data_(std::string_view(sv)) 
+  { 
+    traits_type::convert(begin(), length()); 
+  }
 
-  StringBase();
-  StringBase( const std::string &);
+  //Now we allow implicit conversion from std::string to StrinBase anywhere in code
+  //This can silently create copy and potential heap allocations
+  //This code path should be deprecated!!!
+  StringBase(const std::string & s) : data_(s) 
+  { 
+    traits_type::convert(begin(), length()); 
+  }
+
+  StringBase(std::string && cs) : data_(std::move(cs)) 
+  {
+    traits_type::convert(begin(), length()); 
+  }
 
   StringBase( const_iterator );
   template <class It>
   StringBase( It, It );
   StringBase( const char *, size_type );
 
-  StringBase( const StringBase & );
-  StringBase & operator= ( const StringBase & );
+  operator std::string_view() const noexcept {return data_;}
 
   template<class CT2>
   StringBase( const StringBase<CT2> & );
 
-  StringBase<CT> & operator= ( const char * );
-  StringBase<CT> & operator= ( const std::string & );
+  template <class CT2>
+  StringBase(StringBase<CT2> &&);
 
-  template<class CT2>
-  StringBase<CT> & operator= ( const StringBase<CT2> & );
+  StringBase<CT> & operator= ( const char * );
+
+  template <typename StringViewLike, typename = If_String_View<StringViewLike>> 
+  StringBase<CT> & operator= ( const StringViewLike & cs)
+  { 
+    return assign( cs.data(), cs.length() ); 
+  }
+  StringBase<CT> &operator=(std::string &&);
+
+  template <class CT2>
+  StringBase<CT> &operator=(StringBase<CT2> &&);
 
   StringBase<CT> & operator+= ( const char * );
-  StringBase<CT> & operator+= ( const std::string & );
 
-  template<class CT2>
-  StringBase<CT> & operator+= ( const StringBase<CT2> & );
+  template <typename StringViewLike, typename = If_String_View<StringViewLike>> 
+  StringBase<CT> & operator+= ( const StringViewLike & cs)
+  { 
+    return append( cs.data(), cs.length() ); 
+  }
 
   // Capacity:
-  size_type size() const;
-  size_type length() const;
-  bool      empty() const ;
+  constexpr size_type size() const noexcept { return data_.size();}
+  constexpr size_type length() const noexcept { return data_.length();}
+  constexpr bool empty() const noexcept { return data_.empty();}
+  char * data() noexcept { return data_.data();}
+  const char * data() const noexcept { return data_.data();}
 
   const_iterator begin() const;
   iterator begin();
@@ -292,35 +256,93 @@ public:
   iterator end();
 
   // Modifiers:
+  StringBase<CT> & assign( const char * cs)
+  {
+    if (cs == nullptr) {
+      data_ = std::string();
+      return *this;
+    }
+    return assign(cs, strlen(cs));
+  }
 
-  StringBase<CT> & assign( const char * );
-  StringBase<CT> & assign( const char *, const size_type );
-  StringBase<CT> & assign( const std::string& );
+  StringBase<CT> & assign( const char * cs, const size_type n)
+  {
+    //cs must be non-null to prevent undefined behavior
+    data_.assign(cs, n);
+    traits_type::convert(begin(), length());
+    return *this ;
 
-  template<class CT2>
-  StringBase<CT> & assign( const StringBase<CT2> & );
+  }
+
+  template <typename StringViewLike, typename = If_String_View<StringViewLike>> 
+  StringBase<CT> &assign(const StringViewLike & cs)
+  {
+    data_ = std::string_view(cs);
+    traits_type::convert(begin(), length());
+    return *this;
+  }
+  StringBase<CT> &assign(std::string && cs)
+  {
+    data_ = std::move(cs);
+    traits_type::convert(begin(), length());
+    return *this;
+  }
+
+  template <class CT2>
+  StringBase<CT> &assign(StringBase<CT2> && cs)
+  {
+    data_ = std::move(cs).s_str();
+    traits_type::convert(begin(), length());
+    return *this;
+  }
 
   StringBase<CT> & append( const char * );
   StringBase<CT> & append( const char *, const typename StringBase<CT>::size_type );
-  StringBase<CT> & append( const std::string& );
 
-  template<class CT2>
-  StringBase<CT> & append( const StringBase<CT2> & );
+  template <typename StringViewLike, typename = If_String_View<StringViewLike>> 
+  StringBase<CT> & append( const StringViewLike & cs)
+  { 
+    return append( cs.data(), cs.length() ); 
+  }
 
   void swap( StringBase<CT> & );
 
   // string operations
   const char* c_str() const;
-  std::string s_str() const ;
+  const std::string &s_str() const &;
+  std::string &&s_str() &&;
 
-  int compare( const char * ) const ;
-  int compare( const std::string & ) const ;
+  int compare(const char *cs) const 
+  { 
+    const auto lhs_size = length();
+    if (cs == nullptr)
+    {
+      if(lhs_size) return -1;
+      return 0;
+    }
+    const auto rhs_size = strlen(cs);
+    const auto result = CT::compare(c_str(), cs, std::min(lhs_size, rhs_size));
+    if (result != 0) return result;
+    if (lhs_size < rhs_size) return -1;
+    if (lhs_size > rhs_size) return 1;
 
-  template<class CT2>
-  int compare( const StringBase<CT2> & ) const ;
+    return 0;
+  }
+
+  int compare( std::string_view str ) const
+  {
+    const auto lhs_size = length();
+    const auto rhs_size = str.length();
+    const auto result = CT::compare(c_str(), str.data(), std::min(lhs_size, rhs_size));
+    if (result != 0) return result;
+    if (lhs_size < rhs_size) return -1;
+    if (lhs_size > rhs_size) return 1;
+
+    return 0;
+  }
 
 private:
-  implementation::StringData data ;
+  std::string data_;
 };
 
 /** @class char_simple_traits
@@ -333,7 +355,8 @@ public:
   {}
 
   /** Compare null-terminated strings */
-  static int compare( const char * c1, const char * c2 );
+  // len is min of two string lengths
+  static int compare( const char * c1, const char * c2, size_t len ) noexcept;
 };
 
 /** @class char_label_traits
@@ -346,244 +369,149 @@ public:
   static void convert( char * c, size_t n );
 
   /** Compare null-terminated strings as per conversion */
-  static int compare( const char * c1, const char * c2 );
+  // len is min of two string lengths
+  static int compare( const char * c1, const char * c2, size_t len ) noexcept;
 };
 
-//----------------------------------------------------------------------
-
-template<class CT>
-bool StringBase<CT>::empty() const
-{ return data.len() == 0 ; }
-
-template<class CT>
-typename StringBase<CT>::size_type StringBase<CT>::length() const
-{ return data.len(); }
-
-template<class CT>
-typename StringBase<CT>::size_type StringBase<CT>::size() const
-{ return data.len(); }
 
 template<class CT>
 typename StringBase<CT>::iterator
 StringBase<CT>::begin()
-{ return data.data(); }
+{ return data_.data(); }
 
 template<class CT>
 typename StringBase<CT>::const_iterator
 StringBase<CT>::begin() const
-{ return data.c_str(); }
+{ return data_.c_str(); }
 
 template<class CT>
 typename StringBase<CT>::iterator
 StringBase<CT>::end()
-{ return data.data() + data.len(); }
+{
+  return begin() + size();
+}
 
 template<class CT>
 typename StringBase<CT>::const_iterator
 StringBase<CT>::end() const
-{ return data.c_str() + data.len(); }
-
+{
+  return begin() + size();
+}
 
 template<class CT>
 const char* StringBase<CT>::c_str() const
-{ return data.c_str(); }
+{ return data_.c_str(); }
 
-template<class CT>
-std::string StringBase<CT>::s_str() const
-{ return std::string(c_str()) ; }
+template <class CT>
+const std::string &StringBase<CT>::s_str() const &
+{
+  return data_;
+}
 
-template<class CT>
-StringBase<CT>::~StringBase()
-{}
+template <class CT>
+std::string &&StringBase<CT>::s_str() &&
+{
+  return std::move(data_);
+}
 
 //----------------------------------------------------------------------
 
-template<class CT>
-StringBase<CT>::StringBase() {}
-
-template<class CT>
-template<class CT2>
-StringBase<CT>::StringBase( const StringBase<CT2> & cs )
+template <class CT>
+template <class CT2>
+StringBase<CT>::StringBase(const StringBase<CT2> &cs) : data_(cs.s_str())
 {
-  const size_type n = cs.length();
-  traits_type::convert( data.mem(cs.c_str(), n), n );
+  traits_type::convert(begin(), length());
 }
 
-template<class CT>
-StringBase<CT>::StringBase( const std::string& cs )
+template <class CT>
+template <class CT2>
+StringBase<CT>::StringBase(StringBase<CT2> &&cs) : data_(std::move(cs).s_str())
 {
-  const size_type n = cs.length();
-  traits_type::convert( data.mem(cs.c_str(), n), n );
+  traits_type::convert(begin(), length());
 }
 
-template<class CT>
-StringBase<CT>::StringBase( const char * cs, typename StringBase<CT>::size_type n )
+template <class CT>
+StringBase<CT>::StringBase(const char *cs, typename StringBase<CT>::size_type n) : data_(cs, n)
 {
-  traits_type::convert( data.mem(cs, n), n );
+  traits_type::convert(begin(), length());
 }
 
-template<class CT>
-template<class It>
-StringBase<CT>::StringBase( It l_begin, It l_end )
+template <class CT>
+template <class It>
+StringBase<CT>::StringBase(It l_begin, It l_end) : data_(l_begin, l_end)
 {
-  traits_type::convert( data.mem(&(*l_begin), l_end - l_begin), l_end - l_begin );
+  traits_type::convert(begin(), length());
 }
 
-template<class CT>
-StringBase<CT>::StringBase( const char * cs )
+template <class CT>
+StringBase<CT>::StringBase(const char *cs)
 {
   if (cs != nullptr) {
-    const size_type n = strlen(cs);
-    traits_type::convert( data.mem(cs, n), n );
+    data_ = std::string(cs);
+    traits_type::convert(begin(), length());
   }
 }
 
-template<class CT>
-StringBase<CT>::StringBase( const StringBase & cs )
+template <class CT>
+template <class CT2>
+StringBase<CT> &StringBase<CT>::operator=(StringBase<CT2> &&cs)
 {
-  data.mem(cs.c_str(), cs.size());
-}
-
-//----------------------------------------------------------------------
-
-template<class CT>
-StringBase<CT> &
-StringBase<CT>::assign( const char * cs, const typename StringBase<CT>::size_type n )
-{
-  traits_type::convert( data.mem(cs, n), n );
-  return *this ;
-}
-
-template<class CT>
-StringBase<CT> & StringBase<CT>::assign( const char * cs ) { 
-  if ( cs == nullptr ) {
-    return assign( nullptr, 0 ); 
-  }
-  return assign( cs, strlen(cs) ); 
-}
-
-template<class CT>
-StringBase<CT> & StringBase<CT>::assign( const std::string & cs )
-{ return assign( cs.c_str(), cs.length() ); }
-
-template<class CT>
-template<class CT2>
-StringBase<CT> & StringBase<CT>::assign( const StringBase<CT2> & cs )
-{ return assign( cs.c_str(), cs.length() ); }
-
-template<class CT>
-StringBase<CT>&
-StringBase<CT>::operator= ( const StringBase & cs ) {
-  if (this == &cs)
-    return *this;
-  return assign( cs.c_str(), cs.length() );
-}
-
-template<class CT>
-template<class CT2>
-StringBase<CT>&
-StringBase<CT>::operator= ( const StringBase<CT2> & cs ) {
-  return assign( cs.c_str(), cs.length() );
+  return assign(std::move(cs));
 }
 
 template<class CT>
 StringBase<CT>&
 StringBase<CT>::operator= ( const char * cs ) { 
   if (cs == nullptr) {
-    return assign( nullptr, 0 ); 
+    data_ = std::string();
+    return *this;
   }
   return assign( cs, strlen(cs) ); 
 }
 
-template<class CT>
-StringBase<CT>&
-StringBase<CT>::operator= ( const std::string& cs )
-{ return assign( cs.c_str(), cs.length() ); }
+template <class CT>
+StringBase<CT> &StringBase<CT>::operator=(std::string &&cs)
+{
+  data_ = std::move(cs);
+  traits_type::convert(begin(), length());
 
-//----------------------------------------------------------------------
+  return *this;
+}
 
 template<class CT>
 StringBase<CT> &
 StringBase<CT>::append( const char * cs, const typename StringBase<CT>::size_type n )
 {
-  std::string t;
-
-  t.reserve(data.len() + n);
-  t.append(data.c_str())
-   .append(cs, n);
-  traits_type::convert( data.mem(t.data(), t.length()), t.length());
+  auto orig_len = length();
+  data_.append(cs, n);
+  traits_type::convert(begin() + orig_len, length() - orig_len);
   return *this ;
 }
 
-template<>
-inline
-StringBase<char_label_traits> &
-StringBase<char_label_traits>::append( const char * cs, const StringBase<char_label_traits>::size_type n )
+template <>
+inline StringBase<char_label_traits> &StringBase<char_label_traits>::append(
+    const char *cs, const typename StringBase<char_label_traits>::size_type n)
 {
-  if (n != 0) {
-    std::string t;
-    t.reserve(data.len() + n + 1);
-    t.append(data.c_str())
-     .append(data.len() == 0 ? "" : "_")
-     .append(cs, n);
-    traits_type::convert( data.mem(t.data(), t.length()), t.length());
+  if (n > 0) {
+    auto orig_len = length();
+    data_.reserve(orig_len + n + 1);
+    if (orig_len != 0) data_.append("_");
+    data_.append(cs, n);
+    traits_type::convert(begin() + orig_len, length() - orig_len);
   }
-  return *this ;
+  return *this;
 }
 
 template<class CT>
 StringBase<CT> & StringBase<CT>::append( const char * cs ) {
   return ( cs == nullptr ) ? *this : append( cs, strlen(cs) );
 }
-
-template<class CT>
-StringBase<CT> & StringBase<CT>::append( const std::string & cs )
-{ return append( cs.data(), cs.length() ); }
-
-template<class CT>
-template<class CT2>
-StringBase<CT> & StringBase<CT>::append( const StringBase<CT2> & cs )
-{ return append( cs.c_str(), cs.length() ); }
-
-
-template<class CT>
-template<class CT2>
-StringBase<CT>&
-StringBase<CT>::operator+= ( const StringBase<CT2> & cs )
-{ return append( cs.c_str(), cs.length() ); }
-
 template<class CT>
 StringBase<CT>&
 StringBase<CT>::operator+= ( const char * cs ) {
   return (cs == nullptr) ? *this : append( cs, strlen(cs) ); 
 }
 
-template<class CT>
-StringBase<CT>&
-StringBase<CT>::operator+= ( const std::string& cs )
-{ return append( cs.data(), cs.length() ); }
-
-//----------------------------------------------------------------------
-
-template<class CT>
-template<class CT2>
-int StringBase<CT>::compare( const StringBase<CT2> & cs ) const
-{
-  typedef typename Precedence<CT, CT2>::Type Traits ;
-  return Traits::compare( c_str(), cs.c_str() );
-}
-
-template<class CT>
-int StringBase<CT>::compare( const std::string & cs ) const
-{
-  return CT::compare( c_str(), cs.c_str() );
-}
-
-template<class CT>
-int StringBase<CT>::compare( const char * cs ) const
-{
-  return CT::compare( c_str(), cs );
-}
 
 template<class CT, class CT2>
 bool operator== ( const StringBase<CT> & lhs,
@@ -618,128 +546,63 @@ bool operator>= ( const StringBase<CT> & lhs,
 
 template<class CT>
 bool operator== ( const StringBase<CT> & lhs,
-		   const std::string & rhs )
+		   std::string_view rhs )
 { return lhs.compare(rhs) == 0 ; }
 
 template<class CT>
 bool operator!= ( const StringBase<CT> & lhs,
-		   const std::string & rhs )
+		   std::string_view rhs )
 { return lhs.compare(rhs) != 0 ; }
 
 template<class CT>
 bool operator< ( const StringBase<CT> & lhs,
-		  const std::string & rhs )
+		  std::string_view rhs )
 { return lhs.compare(rhs) < 0 ; }
 
 template<class CT>
 bool operator<= ( const StringBase<CT> & lhs,
-		   const std::string & rhs )
+		   std::string_view rhs )
 { return lhs.compare(rhs) <= 0 ; }
 
 template<class CT>
 bool operator> ( const StringBase<CT> & lhs,
-		  const std::string & rhs )
+		  std::string_view rhs )
 { return lhs.compare(rhs) > 0 ; }
 
 template<class CT>
 bool operator>= ( const StringBase<CT> & lhs,
-		   const std::string & rhs )
+		   std::string_view rhs )
 { return lhs.compare(rhs) >= 0 ; }
 
-
 template<class CT>
-bool operator== ( const StringBase<CT> & lhs,
-		   const char * rhs )
-{ return lhs.compare(rhs) == 0 ; }
-
-template<class CT>
-bool operator!= ( const StringBase<CT> & lhs,
-		   const char * rhs )
-{ return lhs.compare(rhs) != 0 ; }
-
-template<class CT>
-bool operator< ( const StringBase<CT> & lhs,
-		  const char * rhs )
-{ return lhs.compare(rhs) < 0 ; }
-
-template<class CT>
-bool operator<= ( const StringBase<CT> & lhs,
-		   const char * rhs )
-{ return lhs.compare(rhs) <= 0 ; }
-
-template<class CT>
-bool operator> ( const StringBase<CT> & lhs,
-		  const char * rhs )
-{ return lhs.compare(rhs) > 0 ; }
-
-template<class CT>
-bool operator>= ( const StringBase<CT> & lhs,
-		   const char * rhs )
-{ return lhs.compare(rhs) >= 0 ; }
-
-
-template<class CT>
-bool operator== ( const std::string & lhs,
+bool operator== ( std::string_view lhs,
 		   const StringBase<CT> & rhs)
 { return rhs.compare(lhs) == 0 ; }
 
 template<class CT>
-bool operator!= ( const std::string & lhs,
+bool operator!= ( std::string_view lhs,
 		   const StringBase<CT> & rhs)
 { return rhs.compare(lhs) != 0 ; }
 
 template<class CT>
-bool operator< ( const std::string & lhs,
+bool operator< ( std::string_view lhs,
 		  const StringBase<CT> & rhs)
 { return rhs.compare(lhs) > 0 ; }
 
 template<class CT>
-bool operator<= ( const std::string & lhs,
+bool operator<= ( std::string_view lhs,
 		   const StringBase<CT> & rhs)
 { return rhs.compare(lhs) >= 0 ; }
 
 template<class CT>
-bool operator> ( const std::string & lhs,
+bool operator> ( std::string_view lhs,
 		  const StringBase<CT> & rhs)
 { return rhs.compare(lhs) < 0 ; }
 
 template<class CT>
-bool operator>= ( const std::string & lhs,
+bool operator>= ( std::string_view lhs,
 		   const StringBase<CT> & rhs)
 { return rhs.compare(lhs) <= 0 ; }
-
-
-template<class CT>
-bool operator== ( const char * lhs,
-		   const StringBase<CT> & rhs)
-{ return rhs.compare(lhs) == 0 ; }
-
-template<class CT>
-bool operator!= ( const char * lhs,
-		   const StringBase<CT> & rhs)
-{ return rhs.compare(lhs) != 0 ; }
-
-template<class CT>
-bool operator< ( const char * lhs,
-		  const StringBase<CT> & rhs)
-{ return rhs.compare(lhs) > 0 ; }
-
-template<class CT>
-bool operator<= ( const char * lhs,
-		   const StringBase<CT> & rhs)
-{ return rhs.compare(lhs) >= 0 ; }
-
-template<class CT>
-bool operator> ( const char * lhs,
-		  const StringBase<CT> & rhs)
-{ return rhs.compare(lhs) < 0 ; }
-
-template<class CT>
-bool operator>= ( const char * lhs,
-		   const StringBase<CT> & rhs)
-{ return rhs.compare(lhs) <= 0 ; }
-
-//----------------------------------------------------------------------
 
 template<class CT, class CT2>
 StringBase<CT>
@@ -751,31 +614,15 @@ operator+( const StringBase<CT> &cs1, const StringBase<CT2> &cs2) {
 
 template<class CT>
 StringBase<CT>
-operator+( const StringBase<CT> &cs1, const char *cs2) {
+operator+( const StringBase<CT> &cs1, std::string_view cs2) {
   StringBase<CT> t(cs1);
-  t.append(cs2);
+  t.append(cs2.data(), cs2.length());
   return t;
 }
 
 template<class CT>
 StringBase<CT>
-operator+( const StringBase<CT> &cs1, const std::string &cs2) {
-  StringBase<CT> t(cs1);
-  t.append(cs2.c_str(), cs2.length());
-  return t;
-}
-
-template<class CT>
-StringBase<CT>
-operator+ ( const char *cs1, const StringBase<CT> &cs2 ) {
-  StringBase<CT> t(cs1);
-  t.append(cs2.c_str(), cs2.length());
-  return t;
-}
-
-template<class CT>
-StringBase<CT>
-operator+(const std::string & cs1, const StringBase<CT> & cs2 ) {
+operator+(std::string_view cs1, const StringBase<CT> & cs2 ) {
   StringBase<CT> t(cs1);
   t.append(cs2.c_str(), cs2.length());
   return t;

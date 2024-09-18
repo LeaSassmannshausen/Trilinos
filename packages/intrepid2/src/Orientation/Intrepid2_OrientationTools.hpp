@@ -1,43 +1,10 @@
 // @HEADER
-// ************************************************************************
-//
+// *****************************************************************************
 //                           Intrepid2 Package
-//                 Copyright (2007) Sandia Corporation
 //
-// Under terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-// license for use of this work by or on behalf of the U.S. Government.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Kyungjoo Kim  (kyukim@sandia.gov), or
-//                    Mauro Perego  (mperego@sandia.gov)
-//
-// ************************************************************************
+// Copyright 2007 NTESS and the Intrepid2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 /** \file   Intrepid2_OrientationTools.hpp
@@ -292,7 +259,7 @@ namespace Intrepid2 {
                                               const ordinal_type ort);
 
 
-      /** \brief  Maps points defined on the subCell manifold into the parent Cell
+      /** \brief  Maps points defined on the subCell manifold into the parent Cell accounting for orientation
 
           \param  cellCoords        [out] - rank-2 (P, D), P points mapped in the parent cell manifold.
           \param  subCellCoords     [in]  - rank-2 (P, scD), P points defined on the subCell manifold, scD: subCell dimension
@@ -323,6 +290,7 @@ namespace Intrepid2 {
           \param  cellBasis    [in]  - cell basis function
           \param  subcellId    [in]  - subcell Id in the cell topology
           \param  subcellOrt   [in]  - orientation number between 0 and 1
+          \param  inverse      [in]  - boolean, when true the inverse of the orintation matrix is computed
 
       */
       template<typename OutputViewType,
@@ -334,7 +302,8 @@ namespace Intrepid2 {
                            const subcellBasisHostType& subcellBasis,
                            const cellBasisHostType& cellBasis,
                            const ordinal_type subcellId,
-                           const ordinal_type subcellOrt);
+                           const ordinal_type subcellOrt,
+                           const bool inverse = false);
 
       /** \brief  Compute orientation matrix for HCURL basis for a given subcell
           and its reference basis
@@ -344,7 +313,7 @@ namespace Intrepid2 {
           \param  cellBasis    [in]  - cell basis function
           \param  subcellId    [in]  - subcell Id in the cell topology
           \param  subcellOrt   [in]  - orientation number between 0 and 1
-
+          \param  inverse      [in]  - boolean, when true the inverse of the orintation matrix is computed
       */
       template<typename OutputViewType,
                typename subcellBasisHostType,
@@ -355,7 +324,8 @@ namespace Intrepid2 {
                            const subcellBasisHostType& subcellBasis,
                            const cellBasisHostType& cellBasis,
                            const ordinal_type subcellId,
-                           const ordinal_type subcellOrt);
+                           const ordinal_type subcellOrt,
+                           const bool inverse = false);
 
 
       /** \brief  Compute orientation matrix for HDIV basis for a given subcell
@@ -366,7 +336,7 @@ namespace Intrepid2 {
           \param  cellBasis    [in]  - cell basis function
           \param  subcellId    [in]  - subcell Id in the cell topology
           \param  subcellOrt   [in]  - orientation number between 0 and 1
-
+          \param  inverse      [in]  - boolean, when true the inverse of the orintation matrix is computed
       */
       template<typename OutputViewType,
                typename subcellBasisHostType,
@@ -377,7 +347,8 @@ namespace Intrepid2 {
                           const subcellBasisHostType& subcellBasis,
                           const cellBasisHostType& cellBasis,
                           const ordinal_type subcellId,
-                          const ordinal_type subcellOrt);
+                          const ordinal_type subcellOrt,
+                           const bool inverse = false);
 
 
       /** \brief  Compute orientation matrix for HVOL basis for a given (2D or 1D) cell
@@ -386,7 +357,7 @@ namespace Intrepid2 {
           \param  output      [out]  - rank 2 coefficient matrix
           \param  cellBasis    [in]  - cell basis function
           \param  subcellOrt   [in]  - orientation number between 0 and 1
-
+          \param  inverse      [in]  - boolean, when true the inverse of the orintation matrix is computed
       */
       template<typename OutputViewType,
                typename cellBasisHostType>
@@ -394,7 +365,8 @@ namespace Intrepid2 {
       static void
       getCoeffMatrix_HVOL(OutputViewType &output,
                            const cellBasisHostType& cellBasis,
-                           const ordinal_type cellOrt);
+                           const ordinal_type cellOrt,
+                           const bool inverse = false);
 
     };
   }
@@ -414,12 +386,13 @@ namespace Intrepid2 {
     /** \brief  key :: basis name, order, value :: matrix data view type 
      */
     static std::map<std::pair<std::string,ordinal_type>,CoeffMatrixDataViewType> ortCoeffData;
+    static std::map<std::pair<std::string,ordinal_type>,CoeffMatrixDataViewType> ortInvCoeffData;
     
   private:
 
     template<typename BasisHostType>
     inline 
-    static CoeffMatrixDataViewType createCoeffMatrixInternal(const BasisHostType* basis);
+    static CoeffMatrixDataViewType createCoeffMatrixInternal(const BasisHostType* basis, const bool invTrans = false);
     
 
     /** \brief  Compute orientation matrix for HGRAD basis
@@ -427,28 +400,32 @@ namespace Intrepid2 {
     template<typename BasisHostType>
     inline
     static void init_HGRAD(CoeffMatrixDataViewType matData,
-                           BasisHostType const *cellBasis);
+                           BasisHostType const *cellBasis,
+                           const bool inverse = false);
 
     /** \brief  Compute orientation matrix for HCURL basis
      */
     template<typename BasisHostType>
     inline
     static void init_HCURL(CoeffMatrixDataViewType matData,
-                           BasisHostType const *cellBasis);
+                           BasisHostType const *cellBasis,
+                           const bool inverse = false);
 
     /** \brief  Compute orientation matrix for HDIV basis
      */
     template<typename BasisHostType>
     inline
     static void init_HDIV(CoeffMatrixDataViewType matData,
-                          BasisHostType const *cellBasis);
+                          BasisHostType const *cellBasis,
+                           const bool inverse = false);
     
     /** \brief  Compute orientation matrix for HVOL basis
      */
     template<typename BasisHostType>
     inline
     static void init_HVOL(CoeffMatrixDataViewType matData,
-                           BasisHostType const *cellBasis);
+                           BasisHostType const *cellBasis,
+                           const bool inverse = false);
 
   public:
 
@@ -458,6 +435,13 @@ namespace Intrepid2 {
     template<typename BasisType>
     inline 
     static CoeffMatrixDataViewType createCoeffMatrix(const BasisType* basis);
+
+    /** \brief  Create inverse of coefficient matrix.
+        \param  basis      [in]  - basis type
+    */
+    template<typename BasisType>
+    inline 
+    static CoeffMatrixDataViewType createInvCoeffMatrix(const BasisType* basis);
 
     /** \brief  Clear coefficient matrix
      */
@@ -481,10 +465,11 @@ namespace Intrepid2 {
 
 
     /** \brief  Modify basis due to orientation
-        \param  output        [out]  - output array
-        \param  input          [in]  - input array
-        \param  orts           [in]  - orientations
-        \param  basis          [in]  - basis type
+        \param  output        [out]  - output array, of shape (C,F,P[,D])
+        \param  input          [in]  - input array, of shape (C,F,P[,D]) or (F,P[,D])
+        \param  orts           [in]  - orientations, of shape (C)
+        \param  basis          [in]  - basis of cardinality F
+        \param  transpose      [in]  - boolean, when true the transpose of the orintation matrix is applied
     */
     template<typename outputValueType, class ...outputProperties,
              typename inputValueType,  class ...inputProperties,
@@ -495,12 +480,75 @@ namespace Intrepid2 {
     modifyBasisByOrientation(Kokkos::DynRankView<outputValueType,outputProperties...> output,
                              const Kokkos::DynRankView<inputValueType, inputProperties...>  input,
                              const OrientationViewType orts,
-                             const BasisType * basis);
+                             const BasisType * basis,
+                             const bool transpose = false);
+    
+    /** \brief  Modify basis due to orientation, applying the transpose of the operator applied in modifyBasisByOrientation().  If the input provided represents basis coefficents in the global orientation, then this method will appropriately transform them to the local orientation.
+        \param  output        [out]  - output array, of shape (C,F,P[,D])
+        \param  input          [in]  - input array, of shape (C,F,P[,D]) or (F,P[,D])
+        \param  orts           [in]  - orientations, of shape (C)
+        \param  basis          [in]  - basis of cardinality F
+    */
+    template<typename outputValueType, class ...outputProperties,
+             typename inputValueType,  class ...inputProperties,
+             typename OrientationViewType,
+             typename BasisType>
+    inline
+    static void
+    modifyBasisByOrientationTranspose(Kokkos::DynRankView<outputValueType,outputProperties...> output,
+                                      const Kokkos::DynRankView<inputValueType, inputProperties...>  input,
+                                      const OrientationViewType orts,
+                                      const BasisType * basis);
+
+
+    /** \brief  Modify basis due to orientation, applying the inverse of the operator applied in modifyBasisByOrientation().
+        \param  output        [out]  - output array, of shape (C,F,P[,D])
+        \param  input          [in]  - input array, of shape (C,F,P[,D]) or (F,P[,D])
+        \param  orts           [in]  - orientations, of shape (C)
+        \param  basis          [in]  - basis of cardinality F
+        \param  transpose      [in]  - boolean, when true the transpose of the inverse of the operatore applied
+    */
+    template<typename outputValueType, class ...outputProperties,
+             typename inputValueType,  class ...inputProperties,
+             typename OrientationViewType,
+             typename BasisType>
+    inline
+    static void
+    modifyBasisByOrientationInverse(Kokkos::DynRankView<outputValueType,outputProperties...> output,
+                                      const Kokkos::DynRankView<inputValueType, inputProperties...>  input,
+                                      const OrientationViewType orts,
+                                      const BasisType * basis,
+                                      const bool transpose = false);
+    
+    
+    /** \brief  Modify an assembled (C,F1,F2) matrix according to orientation of the cells.
+        \param  output           [out]  - output array, shape (C,F1,F2)
+        \param  input             [in]  - input array, shape (C,F1,F2)
+        \param  orts               [in]  - orientations, shape (C)
+        \param  basisLeft    [in]  - basis with cardinality F1
+        \param  basisRight  [in]  - basis with cardinality F2
+    */
+    template<typename outputValueType, class ...outputProperties,
+             typename inputValueType,  class ...inputProperties,
+             typename OrientationViewType,
+             typename BasisTypeLeft,
+             typename BasisTypeRight>
+    inline
+    static void
+    modifyMatrixByOrientation(Kokkos::DynRankView<outputValueType,outputProperties...> output,
+                              const Kokkos::DynRankView<inputValueType, inputProperties...>  input,
+                              const OrientationViewType orts,
+                              const BasisTypeLeft* basisLeft,
+                              const BasisTypeRight* basisRight);
   };
   
   template<typename T> 
   std::map<std::pair<std::string,ordinal_type>, typename OrientationTools<T>::CoeffMatrixDataViewType>
   OrientationTools<T>::ortCoeffData;
+
+  template<typename T> 
+  std::map<std::pair<std::string,ordinal_type>, typename OrientationTools<T>::CoeffMatrixDataViewType>
+  OrientationTools<T>::ortInvCoeffData;
 }
 
 // include templated function definitions

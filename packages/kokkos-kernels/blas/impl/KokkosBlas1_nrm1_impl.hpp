@@ -35,12 +35,11 @@ namespace Impl {
 /// \tparam SizeType Index type.  Use int (32 bits) if possible.
 template <class RV, class XV, class SizeType = typename XV::size_type>
 struct V_Nrm1_Functor {
-  typedef typename XV::execution_space execution_space;
-  typedef SizeType size_type;
-  typedef typename XV::non_const_value_type xvalue_type;
-  typedef Kokkos::ArithTraits<xvalue_type> XAT;
-  typedef typename XAT::mag_type value_type;
-  typedef Kokkos::ArithTraits<value_type> MAT;
+  using size_type   = SizeType;
+  using xvalue_type = typename XV::non_const_value_type;
+  using XAT         = Kokkos::ArithTraits<xvalue_type>;
+  using value_type  = typename XAT::mag_type;
+  using MAT         = Kokkos::ArithTraits<value_type>;
 
   typename XV::const_type m_x;
 
@@ -51,8 +50,7 @@ struct V_Nrm1_Functor {
     static_assert(Kokkos::is_view<XV>::value,
                   "KokkosBlas::Impl::V_Nrm1_Functor: "
                   "X is not a Kokkos::View.");
-    static_assert(std::is_same<typename RV::value_type,
-                               typename RV::non_const_value_type>::value,
+    static_assert(std::is_same<typename RV::value_type, typename RV::non_const_value_type>::value,
                   "KokkosBlas::Impl::V_Nrm1_Functor: R is const.  "
                   "It must be nonconst, because it is an output argument "
                   "(we have to be able to write to its entries).");
@@ -70,22 +68,20 @@ struct V_Nrm1_Functor {
 
 template <class ExecSpace, class RV, class XV, class size_type>
 struct Nrm1_MV_Functor {
-  typedef typename RV::non_const_value_type rvalue_type;
-  typedef typename XV::non_const_value_type xvalue_type;
-  typedef Kokkos::ArithTraits<xvalue_type> XAT;
-  typedef typename XAT::mag_type value_type;
-  typedef Kokkos::ArithTraits<value_type> MAT;
+  using rvalue_type = typename RV::non_const_value_type;
+  using xvalue_type = typename XV::non_const_value_type;
+  using XAT         = Kokkos::ArithTraits<xvalue_type>;
+  using value_type  = typename XAT::mag_type;
+  using MAT         = Kokkos::ArithTraits<value_type>;
 
   using TeamMem = typename Kokkos::TeamPolicy<ExecSpace>::member_type;
 
   RV r;
   XV x;
 
-  size_type
-      teamsPerVec;  // number of teams collectively performing a dot product
+  size_type teamsPerVec;  // number of teams collectively performing a dot product
 
-  Nrm1_MV_Functor(const RV& r_, const XV& x_, int teamsPerVec_)
-      : r(r_), x(x_), teamsPerVec(teamsPerVec_) {}
+  Nrm1_MV_Functor(const RV& r_, const XV& x_, int teamsPerVec_) : r(r_), x(x_), teamsPerVec(teamsPerVec_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const TeamMem& t) const {
@@ -104,19 +100,16 @@ struct Nrm1_MV_Functor {
         },
         localResult);
 
-    Kokkos::single(Kokkos::PerTeam(t), [&]() {
-      Kokkos::atomic_add(&r(i), rvalue_type(localResult));
-    });
+    Kokkos::single(Kokkos::PerTeam(t), [&]() { Kokkos::atomic_add(&r(i), rvalue_type(localResult)); });
   }
 };
 
 /// \brief Compute the 2-norm (or its square) of the single vector (1-D
 ///   View) X, and store the result in the 0-D View r.
-template <class RV, class XV, class SizeType>
-void V_Nrm1_Invoke(const RV& r, const XV& X) {
-  typedef typename XV::execution_space execution_space;
+template <class execution_space, class RV, class XV, class SizeType>
+void V_Nrm1_Invoke(const execution_space& space, const RV& r, const XV& X) {
   const SizeType numRows = static_cast<SizeType>(X.extent(0));
-  Kokkos::RangePolicy<execution_space, SizeType> policy(0, numRows);
+  Kokkos::RangePolicy<execution_space, SizeType> policy(space, 0, numRows);
 
   typedef V_Nrm1_Functor<RV, XV, SizeType> functor_type;
   functor_type op(X);
@@ -127,48 +120,43 @@ void V_Nrm1_Invoke(const RV& r, const XV& X) {
 ///   multivector (2-D View) X, and store result(s) in the 1-D View r.
 // Main version: the result view is accessible from execution space, so it can
 // be computed in-place
-template <class RV, class XV, class size_type>
+template <class execution_space, class RV, class XV, class size_type>
 void MV_Nrm1_Invoke(
-    const RV& r, const XV& x,
-    typename std::enable_if<Kokkos::SpaceAccessibility<
-        typename XV::execution_space,
-        typename RV::memory_space>::accessible>::type* = nullptr) {
-  using execution_space = typename XV::execution_space;
+    const execution_space& space, const RV& r, const XV& x,
+    typename std::enable_if<Kokkos::SpaceAccessibility<execution_space, typename RV::memory_space>::accessible>::type* =
+        nullptr) {
   if (r.extent(0) != x.extent(1)) {
     std::ostringstream oss;
-    oss << "KokkosBlas::nrm1 (rank-2): result vector has wrong length ("
-        << r.extent(0) << ", but x has " << x.extent(1) << " columns)";
+    oss << "KokkosBlas::nrm1 (rank-2): result vector has wrong length (" << r.extent(0) << ", but x has " << x.extent(1)
+        << " columns)";
     throw std::runtime_error(oss.str());
   }
   // Zero out the result vector
-  Kokkos::deep_copy(
-      execution_space(), r,
-      Kokkos::ArithTraits<typename RV::non_const_value_type>::zero());
+  Kokkos::deep_copy(space, r, Kokkos::ArithTraits<typename RV::non_const_value_type>::zero());
   size_type teamsPerVec;
-  KokkosBlas::Impl::multipleReductionWorkDistribution<execution_space,
-                                                      size_type>(
-      x.extent(0), x.extent(1), teamsPerVec);
+  KokkosBlas::Impl::multipleReductionWorkDistribution<execution_space, size_type>(x.extent(0), x.extent(1),
+                                                                                  teamsPerVec);
   size_type numTeams = x.extent(1) * teamsPerVec;
-  Kokkos::TeamPolicy<execution_space> pol(numTeams, Kokkos::AUTO);
-  Kokkos::parallel_for(
-      "KokkosBlas1::Nrm1::S1", pol,
-      Nrm1_MV_Functor<execution_space, RV, XV, size_type>(r, x, teamsPerVec));
+  Kokkos::TeamPolicy<execution_space> pol(space, numTeams, Kokkos::AUTO);
+  Kokkos::parallel_for("KokkosBlas1::Nrm1::S1", pol,
+                       Nrm1_MV_Functor<execution_space, RV, XV, size_type>(r, x, teamsPerVec));
 }
 
 // Version for when a temporary result view is needed (implemented in terms of
 // the other version)
-template <class RV, class XV, class size_type>
+template <class execution_space, class RV, class XV, class size_type>
 void MV_Nrm1_Invoke(
-    const RV& r, const XV& x,
-    typename std::enable_if<!Kokkos::SpaceAccessibility<
-        typename XV::execution_space,
-        typename RV::memory_space>::accessible>::type* = nullptr) {
-  Kokkos::View<typename RV::non_const_value_type*, typename XV::memory_space>
-      tempResult(
-          Kokkos::view_alloc(Kokkos::WithoutInitializing, "Nrm1 temp result"),
-          r.extent(0));
-  MV_Nrm1_Invoke<decltype(tempResult), XV, size_type>(tempResult, x);
-  Kokkos::deep_copy(typename XV::execution_space(), r, tempResult);
+    const execution_space& space, const RV& r, const XV& x,
+    typename std::enable_if<
+        !Kokkos::SpaceAccessibility<execution_space, typename RV::memory_space>::accessible>::type* = nullptr) {
+  Kokkos::View<typename RV::non_const_value_type*, typename XV::memory_space> tempResult(
+      Kokkos::view_alloc(Kokkos::WithoutInitializing, "Nrm1 temp result"), r.extent(0));
+  MV_Nrm1_Invoke<execution_space, decltype(tempResult), XV, size_type>(space, tempResult, x);
+  Kokkos::deep_copy(space, r, tempResult);
+  // Fence needed to ensure that the deep_copy
+  // above finishes before we exit this function
+  // and tempResult runs out of scope...
+  space.fence();
 }
 
 }  // namespace Impl

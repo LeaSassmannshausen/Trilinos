@@ -43,7 +43,8 @@ if $(RTenv-arg) = "user" {
 project votd
   : requirements
     $(sierra-warnings)
-    <define>STK_BUILT_IN_SIERRA
+    <define>STK_BUILT_FOR_SIERRA
+    <define>STK_BUILT_WITH_BJAM
     <include>$(stk_transfer-root-inc)
   : usage-requirements
     <include>$(stk_transfer-root-inc)
@@ -65,13 +66,14 @@ local installed-developer-files =
   stk_transfer_integration_tests
   stk_transfer_doc_tests
   stk_transfer_utest
+  stk_transfer_test_lib
   ;
 
 #
 # SECTION 2: Development install
 #
-explicit install-serial-targets ;
-alias install-serial-targets ;
+
+
 
 # Dependencies listed in this target are installed in the developer's project.
 # This should include all executables and any other files needed for developer use.
@@ -167,6 +169,28 @@ lib stk_transfer
     ]
   ;
 
+lib stk_transfer_test_lib
+  :
+    [ ifdevbuild
+      [ glob 
+        $(stk_transfer-root)/../stk_unit_tests/stk_transfer/fixtures/*.cpp 
+      ]
+    ]
+    stk_transfer
+    /sierra/stk_unit_test_utils//stk_unit_test_utils
+    /sierra/stk_unit_test_utils//stk_transfer_fixtures
+  :
+    [ ifuserbuild
+        <file>$(stk_transfer-root)/lib/libstk_transfer_test.a
+    ]
+    [ ifdevbuild
+        # Any parameters within this 'ifdevbuild' block apply to development
+        # builds only and will not be present for user builds.
+        <toolset>gcc:<cflags>"-Wextra -Wpedantic -Wshadow -Wno-unused-parameter"
+    ]
+  ;
+
+
 exe stk_transfer_integration_tests
   :
     [ glob 
@@ -186,6 +210,7 @@ exe stk_transfer_doc_tests
      ]
     /sierra/stk_unit_test_utils//stk_unit_main
     /sierra/stk_transfer_util//stk_transfer_util_base
+    /sierra/stk_coupling//stk_coupling
     stk_transfer
   : <tag>@sierra-exec-tag
     <include>$(stk_transfer-root-inc)
@@ -198,6 +223,8 @@ exe stk_transfer_utest
      ]
     /sierra/stk_unit_test_utils//stk_unit_main
     stk_transfer
+    stk_transfer_test_lib
+    /sierra/stk_unit_test_utils//stk_transfer_fixtures
   : <tag>@sierra-exec-tag
     <include>$(stk_transfer-root-inc)
   ;

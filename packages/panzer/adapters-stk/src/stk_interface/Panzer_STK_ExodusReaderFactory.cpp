@@ -1,47 +1,16 @@
 // @HEADER
-// ***********************************************************************
-//
+// *****************************************************************************
 //           Panzer: A partial differential equation assembly
 //       engine for strongly coupled complex multiphysics systems
-//                 Copyright (2011) Sandia Corporation
 //
-// Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-// the U.S. Government retains certain rights in this software.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Roger P. Pawlowski (rppawlo@sandia.gov) and
-// Eric C. Cyr (eccyr@sandia.gov)
-// ***********************************************************************
+// Copyright 2011 NTESS and the Panzer contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
-
 #include <Teuchos_TimeMonitor.hpp>
+#include <Teuchos_RCP.hpp>
+#include <Teuchos_RCPStdSharedPtrConversions.hpp>
 #include <PanzerAdaptersSTK_config.hpp>
 
 #include "Panzer_STK_ExodusReaderFactory.hpp"
@@ -72,6 +41,7 @@ int getMeshDimension(const std::string & meshStr,
                      const std::string & typeStr)
 {
   stk::io::StkMeshIoBroker meshData(parallelMach);
+  meshData.use_simple_fields();
   meshData.property_add(Ioss::Property("LOWER_CASE_VARIABLE_NAMES", false));
   meshData.add_mesh_database(meshStr, fileTypeToIOSSType(typeStr), stk::io::READ_MESH);
   meshData.create_input_mesh();
@@ -140,6 +110,7 @@ Teuchos::RCP<STK_Interface> STK_ExodusReaderFactory::buildUncommitedMesh(stk::Pa
 
    // read in meta data
    stk::io::StkMeshIoBroker* meshData = new stk::io::StkMeshIoBroker(parallelMach);
+   meshData->use_simple_fields();
    meshData->property_add(Ioss::Property("LOWER_CASE_VARIABLE_NAMES", false));
 
    // add in "FAMILY_TREE" entity for doing refinement
@@ -228,8 +199,7 @@ void STK_ExodusReaderFactory::completeMeshConstruction(STK_Interface & mesh,stk:
    // turned on from the input file.
    if (userMeshScaling_)
    {
-     stk::mesh::Field<double,stk::mesh::Cartesian>* coord_field =
-       metaData.get_field<stk::mesh::Field<double, stk::mesh::Cartesian> >(stk::topology::NODE_RANK, "coordinates");
+     stk::mesh::Field<double>* coord_field = metaData.get_field<double>(stk::topology::NODE_RANK, "coordinates");
 
      stk::mesh::Selector select_all_local = metaData.locally_owned_part() | metaData.globally_shared_part();
      stk::mesh::BucketVector const& my_node_buckets = bulkData.get_buckets(stk::topology::NODE_RANK, select_all_local);
@@ -255,7 +225,7 @@ void STK_ExodusReaderFactory::completeMeshConstruction(STK_Interface & mesh,stk:
    // (-1 is the last time step)
    int restartIndex = restartIndex_;
    if(restartIndex<0) {
-     std::pair<int,double> lastTimeStep = meshData->get_input_io_region()->get_max_time();
+     std::pair<int,double> lastTimeStep = meshData->get_input_ioss_region()->get_max_time();
      restartIndex = 1+restartIndex+lastTimeStep.first;
    }
 
@@ -277,8 +247,7 @@ void STK_ExodusReaderFactory::completeMeshConstruction(STK_Interface & mesh,stk:
    mesh.endModification();
 
    if (userMeshScaling_) {
-     stk::mesh::Field<double,stk::mesh::Cartesian>* coord_field =
-       metaData.get_field<stk::mesh::Field<double, stk::mesh::Cartesian> >(stk::topology::NODE_RANK, "coordinates");
+     stk::mesh::Field<double>* coord_field = metaData.get_field<double>(stk::topology::NODE_RANK, "coordinates");
      std::vector< const stk::mesh::FieldBase *> fields;
      fields.push_back(coord_field);
 
@@ -286,7 +255,7 @@ void STK_ExodusReaderFactory::completeMeshConstruction(STK_Interface & mesh,stk:
    }
 
    if(restartIndex>0) // process_input_request is a no-op if restartIndex<=0 ... thus there would be no inital time
-      mesh.setInitialStateTime(meshData->get_input_io_region()->get_state_time(restartIndex));
+      mesh.setInitialStateTime(meshData->get_input_ioss_region()->get_state_time(restartIndex));
    else
       mesh.setInitialStateTime(0.0); // no initial time to speak, might as well use 0.0
 
@@ -402,16 +371,13 @@ Teuchos::RCP<const Teuchos::ParameterList> STK_ExodusReaderFactory::getValidPara
       validParams->set<int>("Restart Index",-1,"Index of solution to read in",
 			    Teuchos::rcp(new Teuchos::AnyNumberParameterEntryValidator(Teuchos::AnyNumberParameterEntryValidator::PREFER_INT,Teuchos::AnyNumberParameterEntryValidator::AcceptedTypes(true))));
 
-      Teuchos::setStringToIntegralParameter<int>("File Type",
-                                                 "Exodus",
-                                                 "Choose input file type - either \"Exodus\", \"Exodus Refinement\" or \"Pamgen\"",
-                                                 Teuchos::tuple<std::string>("Exodus","Pamgen"
+      validParams->set<std::string>("File Type", "Exodus",
+        "Choose input file type - either \"Exodus\", \"Exodus Refinement\" or \"Pamgen\"",
+        rcp(new Teuchos::StringValidator(Teuchos::tuple<std::string>("Exodus", "Pamgen"
 #ifdef PANZER_HAVE_UMR
-                                                                             ,"Exodus Refinement"
-#endif
-                                                                             ),
-                                                 validParams.get()
-                                                 );
+                                                                     ,"Exodus Refinement"
+#endif        
+        ))));
 
       validParams->set<double>("Scale Factor", 1.0, "Scale factor to apply to mesh after read",
                                Teuchos::rcp(new Teuchos::AnyNumberParameterEntryValidator(Teuchos::AnyNumberParameterEntryValidator::PREFER_DOUBLE,Teuchos::AnyNumberParameterEntryValidator::AcceptedTypes(true))));
@@ -444,7 +410,7 @@ void STK_ExodusReaderFactory::registerElementBlocks(STK_Interface & mesh,stk::io
    // here we use the Ioss interface because they don't add
    // "bonus" element blocks and its easier to determine
    // "real" element blocks versus STK-only blocks
-   const Ioss::ElementBlockContainer & elem_blocks = meshData.get_input_io_region()->get_element_blocks();
+   const Ioss::ElementBlockContainer & elem_blocks = meshData.get_input_ioss_region()->get_element_blocks();
    for(Ioss::ElementBlockContainer::const_iterator itr=elem_blocks.begin();itr!=elem_blocks.end();++itr) {
       Ioss::GroupingEntity * entity = *itr;
       const std::string & name = entity->name();
@@ -544,7 +510,7 @@ void STK_ExodusReaderFactory::registerEdgeBlocks(STK_Interface & mesh,stk::io::S
     * This will add the edge block as a subset of the element
     * block in the STK mesh.
     */
-   const Ioss::EdgeBlockContainer & edge_blocks = meshData.get_input_io_region()->get_edge_blocks();
+   const Ioss::EdgeBlockContainer & edge_blocks = meshData.get_input_ioss_region()->get_edge_blocks();
    for(Ioss::EdgeBlockContainer::const_iterator ebc_iter=edge_blocks.begin();ebc_iter!=edge_blocks.end();++ebc_iter) {
       Ioss::GroupingEntity * entity = *ebc_iter;
       const stk::mesh::Part * edgeBlockPart = metaData->get_part(entity->name());
@@ -574,7 +540,7 @@ void STK_ExodusReaderFactory::registerFaceBlocks(STK_Interface & mesh,stk::io::S
     * This will add the face block as a subset of the element
     * block in the STK mesh.
     */
-   const Ioss::FaceBlockContainer & face_blocks = meshData.get_input_io_region()->get_face_blocks();
+   const Ioss::FaceBlockContainer & face_blocks = meshData.get_input_ioss_region()->get_face_blocks();
    for(Ioss::FaceBlockContainer::const_iterator fbc_itr=face_blocks.begin();fbc_itr!=face_blocks.end();++fbc_itr) {
       Ioss::GroupingEntity * entity = *fbc_itr;
       const stk::mesh::Part * faceBlockPart = metaData->get_part(entity->name());

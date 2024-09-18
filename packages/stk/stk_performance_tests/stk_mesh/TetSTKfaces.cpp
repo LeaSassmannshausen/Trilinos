@@ -44,7 +44,6 @@
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Comm.hpp>
 #include <stk_mesh/base/CreateFaces.hpp>
-#include <stk_mesh/base/MemoryUsage.hpp>
 
 namespace stk {
 namespace performance_tests {
@@ -75,7 +74,7 @@ TEST(tet_faces, tet_faces)
 
   double start_time = stk::cpu_time();
 
-  stk::mesh::fixtures::simple_fields::TetFixture fixture( MPI_COMM_WORLD, mesh_dims[0], mesh_dims[1], mesh_dims[2]);
+  stk::mesh::fixtures::TetFixture fixture( MPI_COMM_WORLD, mesh_dims[0], mesh_dims[1], mesh_dims[2]);
   fixture.m_meta.commit();
   fixture.generate_mesh();
 
@@ -108,7 +107,7 @@ TEST(tet_faces, tet_faces)
     const double timers[NUM_TIMERS] = {mesh_create_time, create_faces_time, total_time};
     const char* timer_names[NUM_TIMERS] = {"Create mesh", "Create faces", "Total time"};
 
-    stk::print_timers_and_memory(&timer_names[0], &timers[0], NUM_TIMERS);
+    stk::print_timers_and_memory(timer_names, timers, NUM_TIMERS);
     std::cout<<"Global HWM: "<<stk::human_bytes(global_hwm)<<std::endl;
   }
 
@@ -141,7 +140,7 @@ TEST(tet_faces, minimal_tet_faces)
 
   double start_time = stk::cpu_time();
 
-  stk::mesh::fixtures::simple_fields::TetFixture fixture( MPI_COMM_WORLD, mesh_dims[0], mesh_dims[1], mesh_dims[2]);
+  stk::mesh::fixtures::TetFixture fixture( MPI_COMM_WORLD, mesh_dims[0], mesh_dims[1], mesh_dims[2]);
   fixture.m_meta.commit();
   fixture.generate_mesh();
 
@@ -174,7 +173,7 @@ TEST(tet_faces, minimal_tet_faces)
     const double timers[NUM_TIMERS] = {mesh_create_time, create_faces_time, total_time};
     const char* timer_names[NUM_TIMERS] = {"Create mesh", "Create faces", "Total time"};
 
-    stk::print_timers_and_memory(&timer_names[0], &timers[0], NUM_TIMERS);
+    stk::print_timers_and_memory(timer_names, timers, NUM_TIMERS);
     std::cout<<"Global HWM: "<<stk::human_bytes(global_hwm)<<std::endl;
   }
 

@@ -58,7 +58,7 @@ class EmptyNgpFieldSyncDebugger
 public:
   using StkFieldSyncDebuggerType = EmptyStkFieldSyncDebugger;
 
-  KOKKOS_DEFAULTED_FUNCTION EmptyNgpFieldSyncDebugger(StkFieldSyncDebuggerType *) {}
+  KOKKOS_FUNCTION EmptyNgpFieldSyncDebugger(StkFieldSyncDebuggerType *) {}
   KOKKOS_DEFAULTED_FUNCTION ~EmptyNgpFieldSyncDebugger() = default;
 
   KOKKOS_DEFAULTED_FUNCTION EmptyNgpFieldSyncDebugger(const EmptyNgpFieldSyncDebugger &) = default;
@@ -101,10 +101,6 @@ public:
   template <typename NgpField>
   KOKKOS_INLINE_FUNCTION
   void device_stale_access_check(NgpField *, const stk::mesh::FastMeshIndex &, int, const char *, int) const {}
-
-  template <typename NgpField>
-  KOKKOS_INLINE_FUNCTION
-  void device_stale_access_check(NgpField *, const stk::mesh::DeviceMesh::MeshIndex &, int, const char *, int) const {}
 
   template <typename NgpField>
   KOKKOS_INLINE_FUNCTION
@@ -227,23 +223,6 @@ public:
 
     if (data_is_stale_on_device(index, component)) {
       print_stale_data_warning(ngpField, index.bucket_id, index.bucket_ord, component, fileName, lineNumber);
-    }
-  }
-
-  template <typename NgpField>
-  KOKKOS_FUNCTION
-  void device_stale_access_check(NgpField* ngpField, const stk::mesh::DeviceMesh::MeshIndex& index, int component,
-                                 const char* fileName, int lineNumber) const
-  {
-    anyPotentialDeviceFieldModification() = true;
-
-    if (field_not_updated_after_mesh_mod(ngpField->synchronizedCount)) {
-      print_unupdated_field_warning(fileName, lineNumber);
-      return;
-    }
-
-    if (data_is_stale_on_device(index, component)) {
-      print_stale_data_warning(ngpField, index.bucket->bucket_id(), index.bucketOrd, component, fileName, lineNumber);
     }
   }
 
@@ -437,11 +416,6 @@ private:
   KOKKOS_INLINE_FUNCTION
   bool data_is_stale_on_device(const stk::mesh::FastMeshIndex & index, int component) const {
     return data_is_stale_on_device(index.bucket_id, index.bucket_ord, component);
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  bool data_is_stale_on_device(const stk::mesh::DeviceMesh::MeshIndex & index, int component) const {
-    return data_is_stale_on_device(index.bucket->bucket_id(), index.bucketOrd, component);
   }
 
   KOKKOS_INLINE_FUNCTION

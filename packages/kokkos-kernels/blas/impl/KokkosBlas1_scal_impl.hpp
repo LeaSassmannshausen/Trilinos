@@ -44,31 +44,23 @@ namespace Impl {
 // coefficients in the a vector, if used.
 template <class RV, class AV, class XV, int scalar_x, class SizeType>
 struct V_Scal_Functor {
-  typedef typename RV::execution_space execution_space;
   typedef SizeType size_type;
-  typedef Kokkos::Details::ArithTraits<typename RV::non_const_value_type> ATS;
+  typedef Kokkos::ArithTraits<typename RV::non_const_value_type> ATS;
 
   RV m_r;
   XV m_x;
   AV m_a;
 
-  V_Scal_Functor(const RV& r, const XV& x, const AV& a,
-                 const SizeType startingColumn)
-      : m_r(r), m_x(x), m_a(a) {
-    static_assert(Kokkos::is_view<RV>::value,
-                  "V_Scal_Functor: RV is not a Kokkos::View.");
-    static_assert(Kokkos::is_view<AV>::value,
-                  "V_Scal_Functor: AV is not a Kokkos::View.");
-    static_assert(Kokkos::is_view<XV>::value,
-                  "V_Scal_Functor: XV is not a Kokkos::View.");
+  V_Scal_Functor(const RV& r, const XV& x, const AV& a, const SizeType startingColumn) : m_r(r), m_x(x), m_a(a) {
+    static_assert(Kokkos::is_view<RV>::value, "V_Scal_Functor: RV is not a Kokkos::View.");
+    static_assert(Kokkos::is_view<AV>::value, "V_Scal_Functor: AV is not a Kokkos::View.");
+    static_assert(Kokkos::is_view<XV>::value, "V_Scal_Functor: XV is not a Kokkos::View.");
     static_assert(RV::rank == 1, "V_Scal_Functor: RV is not rank 1.");
     static_assert(AV::rank == 1, "V_Scal_Functor: AV is not rank 1.");
     static_assert(XV::rank == 1, "V_Scal_Functor: XV is not rank 1.");
 
     if (startingColumn != 0) {
-      m_a = Kokkos::subview(
-          a,
-          std::make_pair(startingColumn, static_cast<SizeType>(a.extent(0))));
+      m_a = Kokkos::subview(a, std::make_pair(startingColumn, static_cast<SizeType>(a.extent(0))));
     }
   }
 
@@ -99,18 +91,15 @@ struct V_Scal_Functor {
 // 1. Y(i) = alpha*X(i) for alpha in -1,0,1
 // 2. Y(i) = a*X(i)
 template <class RV, class XV, int scalar_x, class SizeType>
-struct V_Scal_Functor<RV, typename XV::non_const_value_type, XV, scalar_x,
-                      SizeType> {
-  typedef typename RV::execution_space execution_space;
+struct V_Scal_Functor<RV, typename XV::non_const_value_type, XV, scalar_x, SizeType> {
   typedef SizeType size_type;
-  typedef Kokkos::Details::ArithTraits<typename RV::non_const_value_type> ATS;
+  typedef Kokkos::ArithTraits<typename RV::non_const_value_type> ATS;
 
   RV m_r;
   XV m_x;
   const typename XV::non_const_value_type m_a;
 
-  V_Scal_Functor(const RV& r, const XV& x,
-                 const typename XV::non_const_value_type& a,
+  V_Scal_Functor(const RV& r, const XV& x, const typename XV::non_const_value_type& a,
                  const SizeType /* startingColumn */)
       : m_r(r), m_x(x), m_a(a) {}
 
@@ -134,19 +123,16 @@ struct V_Scal_Functor<RV, typename XV::non_const_value_type, XV, scalar_x,
 // Variant of MV_Scal_Generic for single vectors (1-D Views) r and x.
 // As above, av is either a 1-D View (and only its first entry will be
 // read), or a scalar.
-template <class RV, class AV, class XV, class SizeType>
-void V_Scal_Generic(const RV& r, const AV& av, const XV& x,
-                    const SizeType startingColumn, int a = 2) {
-  static_assert(Kokkos::is_view<RV>::value,
-                "V_Scal_Generic: RV is not a Kokkos::View.");
-  static_assert(Kokkos::is_view<XV>::value,
-                "V_Scal_Generic: XV is not a Kokkos::View.");
+template <class execution_space, class RV, class AV, class XV, class SizeType>
+void V_Scal_Generic(const execution_space& space, const RV& r, const AV& av, const XV& x, const SizeType startingColumn,
+                    int a = 2) {
+  static_assert(Kokkos::is_view<RV>::value, "V_Scal_Generic: RV is not a Kokkos::View.");
+  static_assert(Kokkos::is_view<XV>::value, "V_Scal_Generic: XV is not a Kokkos::View.");
   static_assert(RV::rank == 1, "V_Scal_Generic: RV is not rank 1.");
   static_assert(XV::rank == 1, "V_Scal_Generic: XV is not rank 1.");
 
-  typedef typename RV::execution_space execution_space;
   const SizeType numRows = x.extent(0);
-  Kokkos::RangePolicy<execution_space, SizeType> policy(0, numRows);
+  Kokkos::RangePolicy<execution_space, SizeType> policy(space, 0, numRows);
 
   if (a == 0) {
     V_Scal_Functor<RV, AV, XV, 0, SizeType> op(r, x, av, startingColumn);

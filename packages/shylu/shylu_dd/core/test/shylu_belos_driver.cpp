@@ -1,3 +1,12 @@
+// @HEADER
+// *****************************************************************************
+//               ShyLU: Scalable Hybrid LU Preconditioner and Solver
+//
+// Copyright 2011 NTESS and the ShyLU contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
+// @HEADER
+
 /** \file shylu_driver.cpp
 
     \brief Factors and solves a sparse matrix using LU factorization.
@@ -236,8 +245,8 @@ int main(int argc, char *argv[])
     Epetra_CrsMatrix *iterA = 0;
     Epetra_CrsMatrix *redistA = 0;
     Epetra_MultiVector *iterb1 = 0;
-    Ifpack_Preconditioner *prec;
-    ML_Epetra::MultiLevelPreconditioner *MLprec;
+    Ifpack_Preconditioner *prec = nullptr;
+    ML_Epetra::MultiLevelPreconditioner *MLprec = nullptr;
     while(file_number < maxFiles+startFile)
     {
 
@@ -502,6 +511,8 @@ int main(int argc, char *argv[])
     delete newB;
     delete A;
     delete partitioner;
+
+    return 0;
 }
 
 int InitMatValues( const Epetra_CrsMatrix& newA, Epetra_CrsMatrix* A )

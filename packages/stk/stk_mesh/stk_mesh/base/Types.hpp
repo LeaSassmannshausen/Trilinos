@@ -131,7 +131,11 @@ std::ostream& operator<<(std::ostream& os, EntityState state)
   return os;
 }
 
-template< class FieldType > struct FieldTraits ;
+template< class FieldType > struct STK_DEPRECATED FieldTraits ;
+
+namespace legacy {
+template< class FieldType > struct FieldTraits;
+}
 
 //MeshIndex describes an Entity's location in the mesh, specifying which bucket,
 //and the offset (ordinal) into that bucket.
@@ -151,6 +155,16 @@ struct FastMeshIndex
   unsigned bucket_id;
   unsigned bucket_ord;
 };
+
+inline bool operator<(const FastMeshIndex& lhs, const FastMeshIndex& rhs)
+{
+  return lhs.bucket_id == rhs.bucket_id ? lhs.bucket_ord < rhs.bucket_ord : lhs.bucket_id < rhs.bucket_id;
+}
+
+inline bool operator==(const FastMeshIndex& lhs, const FastMeshIndex& rhs)
+{
+  return lhs.bucket_id == rhs.bucket_id && lhs.bucket_ord == rhs.bucket_ord;
+}
 
 NAMED_PAIR(BucketInfo, unsigned, bucket_id, unsigned, num_entities_this_bucket)
 
@@ -267,9 +281,11 @@ typedef PairIter<const EntityCommInfo*>  PairIterEntityComm ;
  *  a stencil function returns a non-negative integer;
  *  otherwise a stencil function returns a negative value.
  */
-typedef int ( * relation_stencil_ptr )( EntityRank  from_type ,
+#ifndef STK_HIDE_DEPRECATED_CODE // Delete after July 31 2024
+STK_DEPRECATED typedef int ( * relation_stencil_ptr )( EntityRank  from_type ,
                                         EntityRank  to_type ,
                                         unsigned  identifier );
+#endif
 
 //----------------------------------------------------------------------
 /** \brief  Span of a sorted relations for a given domain entity.
@@ -302,7 +318,15 @@ using ConnectivityOrdinal = uint16_t;
 constexpr ConnectivityOrdinal INVALID_CONNECTIVITY_ORDINAL = 65535;
 #else
 using ConnectivityOrdinal = uint32_t;
-constexpr ConnectivityOrdinal INVALID_CONNECTIVITY_ORDINAL = ~0U;
+constexpr ConnectivityOrdinal INVALID_CONNECTIVITY_ORDINAL = std::numeric_limits<ConnectivityOrdinal>::max();
+#endif
+
+#ifdef STK_16BIT_UPWARDCONN_INDEX_TYPE
+using UpwardConnIndexType = uint16_t;
+constexpr UpwardConnIndexType INVALID_UPWARDCONN_INDEX = 65535;
+#else
+using UpwardConnIndexType = uint32_t;
+constexpr UpwardConnIndexType INVALID_UPWARDCONN_INDEX = std::numeric_limits<UpwardConnIndexType>::max();
 #endif
 
 enum Permutation : unsigned char

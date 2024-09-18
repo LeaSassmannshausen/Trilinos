@@ -1,44 +1,10 @@
 // @HEADER
-// ************************************************************************
-//
+// *****************************************************************************
 //                           Intrepid2 Package
-//                 Copyright (2007) Sandia Corporation
 //
-// Under terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-// license for use of this work by or on behalf of the U.S. Government.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Kyungjoo Kim  (kyukim@sandia.gov),
-//                    Mauro Perego  (mperego@sandia.gov), or
-//                    Nate Roberts  (nvrober@sandia.gov)
-//
-// ************************************************************************
+// Copyright 2007 NTESS and the Intrepid2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 /** \file   Intrepid2_CellGeometryTestUtils.hpp
@@ -57,7 +23,7 @@
 namespace Intrepid2
 {
 /** \brief Use the cell nodes provided by one cell geometry object to create another CellGeometry that is node-based (as opposed to tensor-grid-based, uniform-grid-based, etc.)
-   \param [in] anyCellGeometry - the projected geometry degrees of freedom
+   \param [in] anyCellGeometry - the geometry object from which to get the node locations
    \param [in] copyAffineness - if true, the resulting geometry will be marked as affine if the original geometry was, allowing reduce storage of Jacobians, etc.
    \return a representation of the same geometry, defined using cell-to-nodes and node-to-coordinates containers.
 */
@@ -73,13 +39,12 @@ namespace Intrepid2
     using PointScalarView = ScalarView<PointScalar, DeviceType >;
     using intView         = ScalarView<        int, DeviceType >;
     
-    auto cellToNodes      = intView                          ("cell to nodes", numCells, numNodes);    // this will be a one-to-one mapping
+    auto cellToNodes      = intView                        ("cell to nodes", numCells, numNodes);    // this will be a one-to-one mapping
     PointScalarView nodes = getView<PointScalar,DeviceType>("nodes", numCells * numNodes, spaceDim); // we store redundant copies of vertices for each cell
 
     using ExecutionSpace = typename DeviceType::execution_space;
     auto policy = Kokkos::MDRangePolicy<ExecutionSpace,Kokkos::Rank<2>>({0,0},{numCells,numNodes});
     
-    // "workset"
     Kokkos::parallel_for("copy cell nodes from CellGeometry", policy,
     KOKKOS_LAMBDA (const int &cellOrdinal, const int &nodeOrdinalInCell) {
       const int globalNodeOrdinal = cellOrdinal * numNodes + nodeOrdinalInCell;

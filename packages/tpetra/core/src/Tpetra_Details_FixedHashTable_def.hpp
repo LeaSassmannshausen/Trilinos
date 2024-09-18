@@ -1,45 +1,11 @@
-/*
 // @HEADER
-// ***********************************************************************
-//
+// *****************************************************************************
 //          Tpetra: Templated Linear Algebra Services Package
-//                 Copyright (2008) Sandia Corporation
 //
-// Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-// the U.S. Government retains certain rights in this software.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Michael A. Heroux (maherou@sandia.gov)
-//
-// ************************************************************************
+// Copyright 2008 NTESS and the Tpetra contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
-*/
 
 #ifndef TPETRA_DETAILS_FIXEDHASHTABLE_DEF_HPP
 #define TPETRA_DETAILS_FIXEDHASHTABLE_DEF_HPP
@@ -205,7 +171,7 @@ template<class KeyType>
 struct FillPairsResult {
   KOKKOS_INLINE_FUNCTION
   FillPairsResult () :
-    minKey_ (::Kokkos::Details::ArithTraits<KeyType>::max ()),
+    minKey_ (::Kokkos::ArithTraits<KeyType>::max ()),
     // min() for a floating-point type returns the minimum _positive_
     // normalized value.  This is different than for integer types.
     // lowest() is new in C++11 and returns the least value, always
@@ -218,9 +184,9 @@ struct FillPairsResult {
     // issue.  The standard floating-point types are signed and have a
     // sign bit, so lowest() is just -max().  For integer types, we
     // can use min() instead.
-    maxKey_ (::Kokkos::Details::ArithTraits<KeyType>::is_integer ?
-             ::Kokkos::Details::ArithTraits<KeyType>::min () :
-             -::Kokkos::Details::ArithTraits<KeyType>::max ()),
+    maxKey_ (::Kokkos::ArithTraits<KeyType>::is_integer ?
+             ::Kokkos::ArithTraits<KeyType>::min () :
+             -::Kokkos::ArithTraits<KeyType>::max ()),
     success_ (true)
   {
     static_assert (std::is_arithmetic<KeyType>::value, "FillPairsResult: "
@@ -322,10 +288,10 @@ public:
     keys_ (keys),
     size_ (counts.extent (0)),
     startingValue_ (startingValue),
-    initMinKey_ (::Kokkos::Details::ArithTraits<key_type>::max ()),
-    initMaxKey_ (::Kokkos::Details::ArithTraits<key_type>::is_integer ?
-                 ::Kokkos::Details::ArithTraits<key_type>::min () :
-                 -::Kokkos::Details::ArithTraits<key_type>::max ())
+    initMinKey_ (::Kokkos::ArithTraits<key_type>::max ()),
+    initMaxKey_ (::Kokkos::ArithTraits<key_type>::is_integer ?
+                 ::Kokkos::ArithTraits<key_type>::min () :
+                 -::Kokkos::ArithTraits<key_type>::max ())
   {}
 
   /// \brief Constructor that takes initial min and max key values.
@@ -607,7 +573,7 @@ FixedHashTable (const Teuchos::ArrayView<const KeyType>& keys,
   // DEEP_COPY REVIEW - HOST-TO_DEVICE
   Kokkos::deep_copy (execution_space(), keys_d, keys_k);
 
-  const KeyType initMinKey = ::Kokkos::Details::ArithTraits<KeyType>::max ();
+  const KeyType initMinKey = ::Kokkos::ArithTraits<KeyType>::max ();
   // min() for a floating-point type returns the minimum _positive_
   // normalized value.  This is different than for integer types.
   // lowest() is new in C++11 and returns the least value, always
@@ -620,9 +586,9 @@ FixedHashTable (const Teuchos::ArrayView<const KeyType>& keys,
   // standard floating-point types are signed and have a sign bit, so
   // lowest() is just -max().  For integer types, we can use min()
   // instead.
-  const KeyType initMaxKey = ::Kokkos::Details::ArithTraits<KeyType>::is_integer ?
-    ::Kokkos::Details::ArithTraits<KeyType>::min () :
-    -::Kokkos::Details::ArithTraits<KeyType>::max ();
+  const KeyType initMaxKey = ::Kokkos::ArithTraits<KeyType>::is_integer ?
+    ::Kokkos::ArithTraits<KeyType>::min () :
+    -::Kokkos::ArithTraits<KeyType>::max ();
   this->init (keys_d, startingValue, initMinKey, initMaxKey,
               initMinKey, initMinKey, false);
 
@@ -642,7 +608,7 @@ FixedHashTable (const keys_type& keys,
   lastContigKey_ (lastContigKey),
   checkedForDuplicateKeys_ (false)
 {
-  const KeyType initMinKey = ::Kokkos::Details::ArithTraits<KeyType>::max ();
+  const KeyType initMinKey = ::Kokkos::ArithTraits<KeyType>::max ();
   // min() for a floating-point type returns the minimum _positive_
   // normalized value.  This is different than for integer types.
   // lowest() is new in C++11 and returns the least value, always
@@ -655,9 +621,9 @@ FixedHashTable (const keys_type& keys,
   // standard floating-point types are signed and have a sign bit, so
   // lowest() is just -max().  For integer types, we can use min()
   // instead.
-  const KeyType initMaxKey = ::Kokkos::Details::ArithTraits<KeyType>::is_integer ?
-    ::Kokkos::Details::ArithTraits<KeyType>::min () :
-    -::Kokkos::Details::ArithTraits<KeyType>::max ();
+  const KeyType initMaxKey = ::Kokkos::ArithTraits<KeyType>::is_integer ?
+    ::Kokkos::ArithTraits<KeyType>::min () :
+    -::Kokkos::ArithTraits<KeyType>::max ();
   this->init (keys, startingValue, initMinKey, initMaxKey,
               firstContigKey, lastContigKey, true);
 }
@@ -689,7 +655,7 @@ FixedHashTable (const Teuchos::ArrayView<const KeyType>& keys,
   // DEEP_COPY REVIEW - NOT TESTED
   Kokkos::deep_copy (keys_d, keys_k);
 
-  const KeyType initMinKey = ::Kokkos::Details::ArithTraits<KeyType>::max ();
+  const KeyType initMinKey = ::Kokkos::ArithTraits<KeyType>::max ();
   // min() for a floating-point type returns the minimum _positive_
   // normalized value.  This is different than for integer types.
   // lowest() is new in C++11 and returns the least value, always
@@ -702,9 +668,9 @@ FixedHashTable (const Teuchos::ArrayView<const KeyType>& keys,
   // standard floating-point types are signed and have a sign bit, so
   // lowest() is just -max().  For integer types, we can use min()
   // instead.
-  const KeyType initMaxKey = ::Kokkos::Details::ArithTraits<KeyType>::is_integer ?
-    ::Kokkos::Details::ArithTraits<KeyType>::min () :
-    -::Kokkos::Details::ArithTraits<KeyType>::max ();
+  const KeyType initMaxKey = ::Kokkos::ArithTraits<KeyType>::is_integer ?
+    ::Kokkos::ArithTraits<KeyType>::min () :
+    -::Kokkos::ArithTraits<KeyType>::max ();
   this->init (keys_d, startingValue, initMinKey, initMaxKey,
               firstContigKey, lastContigKey, true);
 }
@@ -719,7 +685,7 @@ FixedHashTable (const keys_type& keys,
            static_cast<ValueType> (startingValue + keys.size () - 1)),
   checkedForDuplicateKeys_ (false)
 {
-  const KeyType initMinKey = ::Kokkos::Details::ArithTraits<KeyType>::max ();
+  const KeyType initMinKey = ::Kokkos::ArithTraits<KeyType>::max ();
   // min() for a floating-point type returns the minimum _positive_
   // normalized value.  This is different than for integer types.
   // lowest() is new in C++11 and returns the least value, always
@@ -732,9 +698,9 @@ FixedHashTable (const keys_type& keys,
   // standard floating-point types are signed and have a sign bit, so
   // lowest() is just -max().  For integer types, we can use min()
   // instead.
-  const KeyType initMaxKey = ::Kokkos::Details::ArithTraits<KeyType>::is_integer ?
-    ::Kokkos::Details::ArithTraits<KeyType>::min () :
-    -::Kokkos::Details::ArithTraits<KeyType>::max ();
+  const KeyType initMaxKey = ::Kokkos::ArithTraits<KeyType>::is_integer ?
+    ::Kokkos::ArithTraits<KeyType>::min () :
+    -::Kokkos::ArithTraits<KeyType>::max ();
   this->init (keys, startingValue, initMinKey, initMaxKey,
               initMinKey, initMinKey, false);
 }
@@ -753,7 +719,7 @@ FixedHashTable (const Teuchos::ArrayView<const KeyType>& keys,
                                keys.size ());
   host_input_vals_type vals_k (vals.size () == 0 ? NULL : vals.getRawPtr (),
                                vals.size ());
-  const KeyType initMinKey = ::Kokkos::Details::ArithTraits<KeyType>::max ();
+  const KeyType initMinKey = ::Kokkos::ArithTraits<KeyType>::max ();
   // min() for a floating-point type returns the minimum _positive_
   // normalized value.  This is different than for integer types.
   // lowest() is new in C++11 and returns the least value, always
@@ -766,9 +732,9 @@ FixedHashTable (const Teuchos::ArrayView<const KeyType>& keys,
   // standard floating-point types are signed and have a sign bit, so
   // lowest() is just -max().  For integer types, we can use min()
   // instead.
-  const KeyType initMaxKey = ::Kokkos::Details::ArithTraits<KeyType>::is_integer ?
-    ::Kokkos::Details::ArithTraits<KeyType>::min () :
-    -::Kokkos::Details::ArithTraits<KeyType>::max ();
+  const KeyType initMaxKey = ::Kokkos::ArithTraits<KeyType>::is_integer ?
+    ::Kokkos::ArithTraits<KeyType>::min () :
+    -::Kokkos::ArithTraits<KeyType>::max ();
   this->init (keys_k, vals_k, initMinKey, initMaxKey);
 }
 
@@ -787,11 +753,12 @@ init (const keys_type& keys,
   using Kokkos::ViewAllocateWithoutInitializing;
   using Teuchos::TypeNameTraits;
   typedef typename std::decay<decltype (keys.extent (0)) >::type size_type;
+  Tpetra::Details::ProfilingRegion pr("Tpetra::Details::FixedHashTable::init(7-arg)");
   const char prefix[] = "Tpetra::Details::FixedHashTable: ";
 
   const offset_type numKeys = static_cast<offset_type> (keys.extent (0));
   {
-    const offset_type theMaxVal = ::Kokkos::Details::ArithTraits<offset_type>::max ();
+    const offset_type theMaxVal = ::Kokkos::ArithTraits<offset_type>::max ();
     const size_type maxValST = static_cast<size_type> (theMaxVal);
     TEUCHOS_TEST_FOR_EXCEPTION
       (keys.extent (0) > maxValST, std::invalid_argument, prefix << "The "
@@ -802,10 +769,10 @@ init (const keys_type& keys,
   }
   TEUCHOS_TEST_FOR_EXCEPTION
     (static_cast<unsigned long long> (numKeys) >
-     static_cast<unsigned long long> (::Kokkos::Details::ArithTraits<ValueType>::max ()),
+     static_cast<unsigned long long> (::Kokkos::ArithTraits<ValueType>::max ()),
      std::invalid_argument, "Tpetra::Details::FixedHashTable: The number of "
      "keys " << numKeys << " is greater than the maximum representable "
-     "ValueType value " << ::Kokkos::Details::ArithTraits<ValueType>::max () << ".  "
+     "ValueType value " << ::Kokkos::ArithTraits<ValueType>::max () << ".  "
      "This means that it is not possible to use this constructor.");
   TEUCHOS_TEST_FOR_EXCEPTION
     (numKeys > static_cast<offset_type> (INT_MAX), std::logic_error, prefix <<
@@ -1027,7 +994,7 @@ init (const keys_type& keys,
     functor_type functor (val, counts, ptr, theKeys, newStartingValue,
                           initMinKey, initMaxKey);
     typedef Kokkos::RangePolicy<execution_space, offset_type> range_type;
-    Kokkos::parallel_reduce (range_type (0, theNumKeys), functor, result);
+    Kokkos::parallel_reduce ("Tpetra::Details::FixedHashTable::FillPairs", range_type (0, theNumKeys), functor, result);
   }
   else {
     Kokkos::HostSpace hostMemSpace;
@@ -1089,12 +1056,13 @@ init (const host_input_keys_type& keys,
       KeyType initMinKey,
       KeyType initMaxKey)
 {
+  Tpetra::Details::ProfilingRegion pr("Tpetra::Details::FixedHashTable::init(4-arg)");
   const offset_type numKeys = static_cast<offset_type> (keys.extent (0));
   TEUCHOS_TEST_FOR_EXCEPTION
-    (static_cast<unsigned long long> (numKeys) > static_cast<unsigned long long> (::Kokkos::Details::ArithTraits<ValueType>::max ()),
+    (static_cast<unsigned long long> (numKeys) > static_cast<unsigned long long> (::Kokkos::ArithTraits<ValueType>::max ()),
      std::invalid_argument, "Tpetra::Details::FixedHashTable: The number of "
      "keys " << numKeys << " is greater than the maximum representable "
-     "ValueType value " << ::Kokkos::Details::ArithTraits<ValueType>::max () << ".");
+     "ValueType value " << ::Kokkos::ArithTraits<ValueType>::max () << ".");
   TEUCHOS_TEST_FOR_EXCEPTION
     (numKeys > static_cast<offset_type> (INT_MAX), std::logic_error, "Tpetra::"
      "Details::FixedHashTable: This class currently only works when the number "
@@ -1234,7 +1202,7 @@ checkForDuplicateKeys () const
     functor_type functor (val_, ptr_);
     int hasDupKeys = 0;
     typedef Kokkos::RangePolicy<execution_space, offset_type> range_type;
-    Kokkos::parallel_reduce (range_type (0, size), functor, hasDupKeys);
+    Kokkos::parallel_reduce ("Tpetra::Details::FixedHashTable::CheckForDuplicateKeys", range_type (0, size), functor, hasDupKeys);
     return hasDupKeys > 0;
   }
 }

@@ -1,3 +1,12 @@
+// @HEADER
+// *****************************************************************************
+//               ShyLU: Scalable Hybrid LU Preconditioner and Solver
+//
+// Copyright 2011 NTESS and the ShyLU contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
+// @HEADER
+
 #ifndef SHYLUBASKER_SFACTOR_HPP
 #define SHYLUBASKER_SFACTOR_HPP
 
@@ -156,10 +165,7 @@ int Basker<Int, Entry, Exe_Space>::sfactor()
 
   if(Options.btf == BASKER_TRUE)
   {
-    if(btf_nblks > 1)
-    {
-      btf_last_dense(setup_flag);
-    }	 
+    btf_last_dense(setup_flag);
   }
 
   //Allocate Factorspace

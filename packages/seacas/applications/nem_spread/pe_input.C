@@ -1,5 +1,5 @@
 /*
- * Copyright(C) 1999-2020 National Technology & Engineering Solutions
+ * Copyright(C) 1999-2020, 2023 National Technology & Engineering Solutions
  * of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
  * NTESS, the U.S. Government retains certain rights in this software.
  *
@@ -20,7 +20,6 @@
 #include <cstdio>  // for nullptr, stderr, etc
 #include <cstdlib> // for exit, realloc
 #include <cstring> // for strtok, strchr, strstr, etc
-#include <rf_allo.h>
 
 #define TLIST_CNT 5
 
@@ -244,13 +243,13 @@ int read_pexoII_info(NemSpread<T, INT> &spreader, const char *filename)
             /* "{" defines the beginning of the group designator */
             cptr2 = strchr(cptr, '{');
             if (cptr2 == nullptr) {
-              fmt::print(stderr, "fatal: list start designator \"{\" not found");
+              fmt::print(stderr, fmt::runtime("fatal: list start designator \"{\" not found"));
               exit(1);
             }
             cptr2++;
             cptr3 = strchr(cptr, '}');
             if (cptr3 == nullptr) {
-              fmt::print(stderr, "fatal: list end designator \"}\" not found");
+              fmt::print(stderr, fmt::runtime("fatal: list end designator \"}\" not found"));
               exit(1);
             }
             *cptr3 = '\0';
@@ -382,7 +381,7 @@ int read_pexoII_info(NemSpread<T, INT> &spreader, const char *filename)
           cptr = strtok(nullptr, ",");
 
         } /* End "while (cptr != nullptr)" */
-      }   /* End "else if (token_compare(cptr, "reserve space"))" */
+      } /* End "else if (token_compare(cptr, "reserve space"))" */
       /****** Parallel Disk Information ******/
       else if (token_compare(cptr, "parallel disk info")) {
 
@@ -520,7 +519,7 @@ int read_pexoII_info(NemSpread<T, INT> &spreader, const char *filename)
       }
 
     } /* End "if(inp_line[0] != '#')" */
-  }   /* End "while(fgets(inp_line, MAX_INPUT_STR_LN, file_cmd))" */
+  } /* End "while(fgets(inp_line, MAX_INPUT_STR_LN, file_cmd))" */
 
   if (Output_File_Base_Name.empty() && !Exo_LB_File.empty()) {
     // User did not specify a base name.  Use the basenmae of the

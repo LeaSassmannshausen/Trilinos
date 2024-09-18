@@ -16,6 +16,9 @@ TRIBITS_PACKAGE(AztecOO)
 #
 # B) Set up package-specific options
 #
+
+TRIBITS_ADD_SHOW_DEPRECATED_WARNINGS_OPTION()
+
 TRIBITS_ADD_OPTION_AND_DEFINE(${PACKAGE_NAME}_ENABLE_AZLU
   HAVE_AZLU
   "Enables the azlu preconditioner.  Requires the y12m TPL."
@@ -45,8 +48,6 @@ TRIBITS_ADD_EXAMPLE_DIRECTORIES(example)
 #
 # Exclude files for source package.
 #
-
-TRIBITS_EXCLUDE_AUTOTOOLS_FILES()
 
 TRIBITS_EXCLUDE_FILES(
   doc/AZ_capture_matrix_howto.txt

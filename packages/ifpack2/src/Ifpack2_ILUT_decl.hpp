@@ -1,50 +1,19 @@
-/*@HEADER
-// ***********************************************************************
-//
+// @HEADER
+// *****************************************************************************
 //       Ifpack2: Templated Object-Oriented Algebraic Preconditioner Package
-//                 Copyright (2009) Sandia Corporation
 //
-// Under terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-// license for use of this work by or on behalf of the U.S. Government.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Michael A. Heroux (maherou@sandia.gov)
-//
-// ***********************************************************************
-//@HEADER
-*/
+// Copyright 2009 NTESS and the Ifpack2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
+// @HEADER
 
 /// \file Ifpack2_ILUT_decl.hpp
 /// \brief Declaration of ILUT preconditioner
 
 #ifndef IFPACK2_ILUT_DECL_HPP
 #define IFPACK2_ILUT_DECL_HPP
+
+#include "KokkosSparse_par_ilut.hpp"
 
 #include "Ifpack2_Preconditioner.hpp"
 #include "Ifpack2_Details_CanChangeMatrix.hpp"
@@ -139,6 +108,32 @@ public:
                             global_ordinal_type,
                             node_type> crs_matrix_type;
 
+  //! \name For implementation of Kokkos Kernels parallel ILUt (thresholded ILU)
+  typedef typename crs_matrix_type::local_matrix_device_type local_matrix_device_type;
+  typedef typename local_matrix_device_type::StaticCrsGraphType::row_map_type lno_row_view_t;
+  ////////////////////////////////////
+  typedef Tpetra::CrsGraph<local_ordinal_type, global_ordinal_type, node_type> crs_graph_type;
+  typedef typename crs_graph_type::local_graph_device_type local_graph_device_type;
+  typedef typename local_graph_device_type::array_layout   array_layout;
+  typedef typename local_graph_device_type::device_type    device_type;
+  typedef typename local_graph_device_type::size_type      usize_type;
+  //KokkosKernels requires unsigned
+  //typedef typename Kokkos::View<size_type*, array_layout, device_type> lno_row_view_t;
+  typedef typename Kokkos::View<usize_type*, array_layout, device_type> lno_urow_view_t;
+  ////////////////////////////////////
+  typedef typename local_matrix_device_type::StaticCrsGraphType::entries_type lno_nonzero_view_t;
+  //typedef typename Kokkos::View<lno_nonzero_view_t*, array_layout, device_type> static_graph_entries_t;
+  typedef typename Kokkos::View<typename local_matrix_device_type::non_const_ordinal_type*, array_layout, device_type> static_graph_entries_t;
+  typedef typename local_matrix_device_type::values_type scalar_nonzero_view_t;
+  //typedef typename Kokkos::View<scalar_nonzero_view_t*, array_layout, device_type> local_matrix_values_t;
+  typedef typename Kokkos::View<typename local_matrix_device_type::non_const_value_type*, array_layout, device_type> local_matrix_values_t;
+  typedef typename local_matrix_device_type::StaticCrsGraphType::device_type::memory_space TemporaryMemorySpace;
+  typedef typename local_matrix_device_type::StaticCrsGraphType::device_type::memory_space PersistentMemorySpace;
+  typedef typename local_matrix_device_type::StaticCrsGraphType::device_type::execution_space HandleExecSpace;
+  typedef typename KokkosKernels::Experimental::KokkosKernelsHandle
+    <typename lno_row_view_t::const_value_type, typename lno_nonzero_view_t::const_value_type, typename scalar_nonzero_view_t::value_type,
+    HandleExecSpace, TemporaryMemorySpace,PersistentMemorySpace > kk_handle_type;
+
   //! Type of the Tpetra::Map specialization that this class uses.
   typedef Tpetra::Map<local_ordinal_type,
                       global_ordinal_type,
@@ -198,13 +193,17 @@ public:
   /// The "fact: relax value" parameter currently has no effect.
   void setParameters (const Teuchos::ParameterList& params);
 
-  /// \brief Clear any previously computed factors.
+  /// \brief Clear any previously computed factors, and potentially
+  ///        compute sparsity patterns of factors.
   ///
   /// You may call this before calling compute().  The compute()
   /// method will call this automatically if it has not yet been
   /// called.  If you call this after calling compute(), you must
   /// recompute the factorization (by calling compute() again) before
   /// you may call apply().
+  ///
+  /// If your are using Par_ILUT from Kokkos Kernels, initialize()
+  /// will also perform a symbolic factorization (i.e., compute sparsity patterns of factors).
   void initialize ();
 
   //! Returns \c true if the preconditioner has been successfully initialized.
@@ -401,8 +400,15 @@ private:
   Teuchos::RCP<const row_matrix_type> A_;
   //! "Local filter" version of A_.
   Teuchos::RCP<const row_matrix_type> A_local_;
+  lno_row_view_t A_local_rowmap_;
+  lno_nonzero_view_t A_local_entries_;
+  scalar_nonzero_view_t A_local_values_;
   //! L factor of the incomplete LU factorization of A_local_.
   Teuchos::RCP<crs_matrix_type> L_;
+  lno_urow_view_t     L_rowmap_;
+  lno_urow_view_t     U_rowmap_;
+  lno_urow_view_t     L_rowmap_orig_;
+  lno_urow_view_t     U_rowmap_orig_;
   //! Sparse triangular solver for L
   Teuchos::RCP<LocalSparseTriangularSolver<row_matrix_type> > L_solver_;
   //! U factor of the incomplete LU factorization of A_local_.
@@ -420,6 +426,16 @@ private:
   double LevelOfFill_; //!< Max fill level
   //! Discard all elements below this tolerance
   magnitude_type DropTolerance_;
+  // See https://kokkos-kernels.readthedocs.io/en/latest/developer/apidocs/sparse.html#par-ilut
+  // for more information on the following options.
+  mutable struct par_ilut_option_struct {
+    int max_iter;
+    magnitude_type residual_norm_delta_stop;
+    int team_size;
+    int vector_size;
+    double fill_in_limit; //Note: par_ilut declares this as float
+    bool verbose;
+  } par_ilut_options_;
 
   //@}
   // \name Other internal data
@@ -442,6 +458,11 @@ private:
   //! \c true if \c this object has been computed
   bool IsComputed_;
   //@}
+
+  //! Optional KokkosKernels implementation.
+  bool useKokkosKernelsParILUT_;
+  Teuchos::RCP<kk_handle_type> KernelHandle_;
+
 }; // class ILUT
 
 } // namespace Ifpack2

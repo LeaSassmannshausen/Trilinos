@@ -1,4 +1,4 @@
-// Copyright(C) 1999-2023 National Technology & Engineering Solutions
+// Copyright(C) 1999-2024 National Technology & Engineering Solutions
 // of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 // NTESS, the U.S. Government retains certain rights in this software.
 //
@@ -28,7 +28,6 @@ namespace {
   }
 
   void parse_variable_names(const char *tokens, StringIdVector *variable_list);
-  void parse_variable_names(const char *tokens, StringIdVector *variable_list);
   void parse_offset(const char *tokens, vector3d *offset);
   void parse_integer_list(const char *tokens, std::vector<int> *list);
   void parse_part_list(const char *tokens, std::vector<int> *list);
@@ -44,8 +43,6 @@ SystemInterface::SystemInterface()
   enroll_options();
 }
 
-SystemInterface::~SystemInterface() = default;
-
 void SystemInterface::enroll_options()
 {
   options_.usage("[options] list_of_files_to_join");
@@ -55,7 +52,7 @@ void SystemInterface::enroll_options()
   options_.enroll("version", GetLongOption::NoValue, "Print version and exit", nullptr);
 
   options_.enroll("output", GetLongOption::MandatoryValue, "Name of output file to create",
-                  "ejoin-out.e");
+                  "ejoin-out.e", nullptr, true);
 
   options_.enroll(
       "extract_blocks", GetLongOption::MandatoryValue,
@@ -74,6 +71,19 @@ void SystemInterface::enroll_options()
                   "\t\tand block 8 from part5, specify\n"
                   "\t\t\t '-omit_blocks p1:1:3:4,p2:2:3:4,p5:8'",
                   nullptr);
+
+  options_.enroll("omit_assemblies", GetLongOption::OptionalValue,
+                  "If no value, then don't transfer any assemblies to output file.\n"
+                  "\t\tIf just p#,p#,... specified, then omit assemblies on specified parts\n"
+                  "\t\tIf p#:id1:id2,p#:id2,id4... then omit the assemblies with the specified\n"
+                  "\t\tid in the specified parts.",
+                  nullptr, "ALL");
+
+  options_.enroll(
+      "omit_part_assemblies", GetLongOption::NoValue,
+      "Do not create an assembly for each input part containing the blocks in that part.\n"
+      "\t\tDefault is to create the part assemblies.",
+      nullptr);
 
   options_.enroll("omit_nodesets", GetLongOption::OptionalValue,
                   "If no value, then don't transfer any nodesets to output file.\n"
@@ -94,7 +104,7 @@ void SystemInterface::enroll_options()
                   "\t\tcreate a nodeset containing the nodes of that part\n"
                   "\t\tand output the nodal fields as nodeset fields instead of nodal fields.\n"
                   "\t\tFormat is comma-separated list of parts (1-based), or ALL",
-                  nullptr);
+                  nullptr, nullptr, true);
 
   options_.enroll("match_node_ids", GetLongOption::NoValue,
                   "Combine nodes if their global ids match.", nullptr);
@@ -115,25 +125,29 @@ void SystemInterface::enroll_options()
 #endif
 
   options_.enroll("tolerance", GetLongOption::MandatoryValue,
-                  "Maximum distance between two nodes to be considered colocated.", nullptr);
+                  "Maximum distance between two nodes to be considered colocated.", nullptr,
+                  nullptr, true);
 
   options_.enroll(
       "block_prefix", GetLongOption::MandatoryValue,
       "Prefix used on the input block names of second and subsequent meshes to make them\n"
-      "\t\tunique.  Default is 'p'.  Example: block1, p1_block1, p2_block1.",
+      "\t\tunique.  Default is 'p'.  Example: block1, p2_block1, p3_block1.",
       "p");
 
   options_.enroll("offset", GetLongOption::MandatoryValue,
                   "Comma-separated x,y,z offset for coordinates of second and subsequent meshes.\n"
                   "\t\tThe offset will be multiplied by the part number-1 so:\n"
                   "\t\tP1: no offset; P2: 1x, 1y, 1z; P3: 2x, 2y, 2z; P(n+1): nx, ny, nz",
-                  nullptr);
+                  nullptr, nullptr, true);
 
   options_.enroll("steps", GetLongOption::MandatoryValue,
                   "Specify subset of timesteps to transfer to output file.\n"
                   "\t\tFormat is beg:end:step. 1:10:2 --> 1,3,5,7,9\n"
-                  "\t\tTo only transfer last step, use '-steps LAST'",
-                  "1:");
+                  "\t\tIf the 'beg' or 'end' is < 0, then it is the \"-Nth\" step...\n"
+                  "\t\t-1 is \"first last\" or last, -3 is \"third last\"\n"
+                  "\t\tTo copy just the last 3 steps, do: `-steps -3:-1`\n"
+                  "\t\tEnter LAST for last step",
+                  "1:", nullptr, true);
 
   options_.enroll("gvar", GetLongOption::MandatoryValue,
                   "Comma-separated list of global variables to be joined or ALL or NONE.", nullptr);
@@ -171,7 +185,7 @@ void SystemInterface::enroll_options()
                   "Ignore the element id maps on the input database and just use a 1..#elements id "
                   "map on output.\n"
                   "\t\tMuch faster for large models if do not need specific element global ids",
-                  nullptr);
+                  nullptr, nullptr, true);
 
   options_.enroll("netcdf4", GetLongOption::NoValue,
                   "Create output database using the HDF5-based "
@@ -249,6 +263,7 @@ bool SystemInterface::parse_options(int argc, char **argv)
   blockInclusions_.resize(part_count);
   nsetOmissions_.resize(part_count);
   ssetOmissions_.resize(part_count);
+  assemblyOmissions_.resize(part_count);
 
   // Get options from environment variable also...
   char *options = getenv("EJOIN_OPTIONS");
@@ -258,7 +273,7 @@ bool SystemInterface::parse_options(int argc, char **argv)
         "\nThe following options were specified via the EJOIN_OPTIONS environment variable:\n"
         "\t{}\n\n",
         options);
-    options_.parse(options, options_.basename(*argv));
+    options_.parse(options, GetLongOption::basename(*argv));
   }
 
   outputName_  = options_.get_option_value("output", outputName_);
@@ -301,6 +316,25 @@ bool SystemInterface::parse_options(int argc, char **argv)
     if (temp != nullptr) {
       parse_omissions(temp, &blockOmissions_, "block", true);
     }
+  }
+
+  {
+    const char *temp = options_.retrieve("omit_assemblies");
+    if (temp != nullptr) {
+      if (str_equal("ALL", temp)) {
+        omitAssemblies_ = true;
+      }
+      else {
+        parse_omissions(temp, &assemblyOmissions_, "assembly", true);
+      }
+    }
+    else {
+      omitAssemblies_ = false;
+    }
+  }
+
+  if (options_.retrieve("omit_part_assemblies") != nullptr) {
+    createAssemblies_ = false;
   }
 
   {
@@ -438,10 +472,8 @@ bool SystemInterface::convert_nodes_to_nodesets(int part_number) const
   if (nodesetConvertParts_[0] == 0) {
     return true;
   }
-  else {
-    return std::find(nodesetConvertParts_.cbegin(), nodesetConvertParts_.cend(), part_number) !=
-           nodesetConvertParts_.cend();
-  }
+  return std::find(nodesetConvertParts_.cbegin(), nodesetConvertParts_.cend(), part_number) !=
+         nodesetConvertParts_.cend();
 }
 
 void SystemInterface::parse_step_option(const char *tokens)
@@ -449,15 +481,17 @@ void SystemInterface::parse_step_option(const char *tokens)
   //: The defined formats for the count attribute are:<br>
   //:  <ul>
   //:    <li><missing> -- default -- 1 <= count <= oo  (all steps)</li>
-  //:    <li>"X"                  -- X <= count <= X  (just step X). If X == LAST, last step
-  // only</li>
+  //:    <li>"X"                  -- X <= count <= X  (just step X) LAST for last step.</li>
   //:    <li>"X:Y"                -- X to Y by 1</li>
   //:    <li>"X:"                 -- X to oo by 1</li>
   //:    <li>":Y"                 -- 1 to Y by 1</li>
   //:    <li>"::Z"                -- 1 to oo by Z</li>
-  //:    <li>"LAST"               -- last step only</li>
   //:  </ul>
-  //: The count and step must always be >= 0
+  //: The step must always be > 0
+  //: If the 'from' or 'to' is < 0, then it is the "-Nth" step...
+  //: -1 is "first last" or last
+  //: -4 is "fourth last step"
+  //: To copy just the last 3 steps, do: `-steps -3:-1`
 
   // Break into tokens separated by ":"
 
@@ -473,24 +507,24 @@ void SystemInterface::parse_step_option(const char *tokens)
       for (auto &val : vals) {
         // Parse 'i'th field
         char tmp_str[128];
-        int  k = 0;
 
+        int k = 0;
         while (tokens[j] != '\0' && tokens[j] != ':') {
           tmp_str[k++] = tokens[j++];
         }
 
         tmp_str[k] = '\0';
         if (strlen(tmp_str) > 0) {
-          val = strtoul(tmp_str, nullptr, 0);
+          val = strtol(tmp_str, nullptr, 0);
         }
 
         if (tokens[j++] == '\0') {
           break; // Reached end of string
         }
       }
-      stepMin_      = abs(vals[0]);
-      stepMax_      = abs(vals[1]);
-      stepInterval_ = abs(vals[2]);
+      stepMin_      = vals[0];
+      stepMax_      = vals[1];
+      stepInterval_ = abs(vals[2]); // step is always positive...
     }
     else if (str_equal("LAST", tokens)) {
       stepMin_ = stepMax_ = -1;

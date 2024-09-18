@@ -36,8 +36,9 @@
 #include <stddef.h>                     // for size_t
 #include <algorithm>                    // for sort
 #include "stk_mesh/base/Bucket.hpp"     // for Bucket
-#include "stk_mesh/base/BulkData.hpp"   // for EntityLess, BulkData
+#include "stk_mesh/base/BulkData.hpp"   // for  BulkData
 #include "stk_mesh/base/Entity.hpp"     // for Entity
+#include "stk_mesh/base/EntityLess.hpp"     // for Entity
 #include "stk_mesh/base/MetaData.hpp"   // for MetaData
 #include "stk_mesh/base/Selector.hpp"   // for Selector
 
@@ -76,6 +77,13 @@ void get_entities( const BulkData & mesh , EntityRank entity_rank ,
   if (sortByGlobalId) {
     std::sort(entities.begin(), entities.end(), EntityLess(mesh));
   }
+}
+
+std::vector<Entity> get_entities(const BulkData & mesh, EntityRank entity_rank, bool sortByGlobalId)
+{
+  std::vector<Entity> entities;
+  get_entities(mesh, entity_rank, entities, sortByGlobalId);
+  return entities;
 }
 
 unsigned count_selected_entities(
@@ -162,6 +170,17 @@ void get_entities( const BulkData& bulk,
     std::sort(entities.begin(), entities.end(), EntityLess(bulk));
   }
 }
+
+std::vector<Entity> get_entities(const BulkData& bulk,
+                                 const EntityRank rank,
+                                 const Selector & selector,
+                                 bool sortByGlobalId)
+{
+  std::vector<Entity> entities;
+  get_entities(bulk, rank, selector, entities, sortByGlobalId);
+  return entities;
+}
+
 //----------------------------------------------------------------------
 
 void count_entities(

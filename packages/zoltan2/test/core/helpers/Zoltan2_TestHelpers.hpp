@@ -1,46 +1,10 @@
 // @HEADER
-//
-// ***********************************************************************
-//
+// *****************************************************************************
 //   Zoltan2: A package of combinatorial algorithms for scientific computing
-//                  Copyright 2012 Sandia Corporation
 //
-// Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-// the U.S. Government retains certain rights in this software.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Karen Devine      (kddevin@sandia.gov)
-//                    Erik Boman        (egboman@sandia.gov)
-//                    Siva Rajamanickam (srajama@sandia.gov)
-//
-// ***********************************************************************
-//
+// Copyright 2012 NTESS and the Zoltan2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 /*! \file Zoltan2_TestHelpers.hpp
@@ -49,11 +13,12 @@
 #ifndef ZOLTAN2_TESTHELPERS_HPP
 #define ZOLTAN2_TESTHELPERS_HPP
 
+#include <Teuchos_UnitTestHarness.hpp>
 #include <Zoltan2_Util.hpp>
 #include <iostream>
 
 #include <Tpetra_Map.hpp>
-typedef Tpetra::Map<>::node_type znode_t;
+    typedef Tpetra::Map<>::node_type znode_t;
 
 // The path to the directory of test data
 
@@ -61,18 +26,18 @@ typedef Tpetra::Map<>::node_type znode_t;
 #define PATH_NAME(path) STR_VALUE(path)
 
 #ifdef Z2_DATA_DIR
-  std::string testDataFilePath(PATH_NAME(Z2_DATA_DIR));
+std::string testDataFilePath(PATH_NAME(Z2_DATA_DIR));
 #else
-  std::string testDataFilePath(".");
+std::string testDataFilePath(".");
 #endif
 
 // The path to the Zoltan1 test directory.  We use
 // some of their data for testing.
 
 #ifdef Z1_TEST_DIR
-  std::string zoltanTestDirectory(PATH_NAME(Z1_TEST_DIR));
+std::string zoltanTestDirectory(PATH_NAME(Z1_TEST_DIR));
 #else
-  std::string zoltanTestDirectory(".");
+std::string zoltanTestDirectory(".");
 #endif
 
 //////////////////////////////////////////////////////////////////////////
@@ -106,38 +71,108 @@ typedef int zpart_t; // added this for consistency but needs further discussion
 typedef Tpetra::Map<>::local_ordinal_type zlno_t;
 typedef Tpetra::Map<>::global_ordinal_type zgno_t;
 
+using Teuchos::compareArrays;
+
 #ifdef HAVE_TPETRA_DOUBLE
-  typedef double zscalar_t;
-# define HAVE_EPETRA_SCALAR_TYPE
+typedef double zscalar_t;
+#define HAVE_EPETRA_SCALAR_TYPE
 #else
-  typedef float zscalar_t;
+typedef float zscalar_t;
 #endif
 
 #if defined HAVE_TPETRA_INT_INT
-#  if defined HAVE_EPETRA_SCALAR_TYPE
-#    define HAVE_EPETRA_DATA_TYPES
-#  endif
+#if defined HAVE_EPETRA_SCALAR_TYPE
+#define HAVE_EPETRA_DATA_TYPES
+#endif
 #endif
 
 #ifndef HAVE_ZOLTAN2_EPETRA
-#  undef HAVE_EPETRA_SCALAR_TYPE
-#  undef HAVE_EPETRA_DATA_TYPES
+#undef HAVE_EPETRA_SCALAR_TYPE
+#undef HAVE_EPETRA_DATA_TYPES
 #endif
 
 //////////////////////////////////////////////////////////////////////////
 
-#define MEMORY_CHECK(iPrint, msg) \
-  if (iPrint){ \
-    long kb = Zoltan2::getProcessKilobytes(); \
-    std::cout.width(10); \
-    std::cout.fill('*'); \
-    std::cout << kb << " KB, " << msg << std::endl; \
-    std::cout.width(0); \
-    std::cout.fill(' '); \
+#define MEMORY_CHECK(iPrint, msg)                                              \
+  if (iPrint) {                                                                \
+    long kb = Zoltan2::getProcessKilobytes();                                  \
+    std::cout.width(10);                                                       \
+    std::cout.fill('*');                                                       \
+    std::cout << kb << " KB, " << msg << std::endl;                            \
+    std::cout.width(0);                                                        \
+    std::cout.fill(' ');                                                       \
+  }
+
+#define Z2_TEST(TEST)                                                          \
+  {                                                                            \
+    Teuchos::RCP<Teuchos::FancyOStream> fout =                                 \
+        Teuchos::fancyOStream(Teuchos::rcpFromRef(std::cout));                 \
+    auto &out = *fout;                                                         \
+    bool success = true;                                                       \
+    try {                                                                      \
+      TEST;                                                                    \
+    } catch (...) {                                                            \
+      out << "Test failed.";                                                   \
+    }                                                                          \
+    if (!success) {                                                            \
+      throw std::runtime_error(#TEST " FAIL");                                 \
+    }                                                                          \
+  }
+
+#define Z2_TEST_THROW(code, ExceptType) Z2_TEST(TEST_THROW(code, ExceptType))
+#define Z2_TEST_NOTHROW(code) Z2_TEST(TEST_NOTHROW(code))
+#define Z2_TEST_EQUALITY(val1, val2) Z2_TEST(TEST_EQUALITY(val1, val2))
+#define Z2_TEST_INEQUALITY(val1, val2) Z2_TEST(TEST_INEQUALITY(val1, val2))
+#define Z2_TEST_ASSERT(expr) Z2_TEST(TEST_ASSERT(expr))
+#define Z2_TEST_EQUALITY_CONST(val1, val2)                                     \
+  Z2_TEST(TEST_EQUALITY_CONST(val1, val2))
+#define Z2_TEST_INEQUALITY_CONST(val1, val2)                                   \
+  Z2_TEST(TEST_INEQUALITY_CONST(val1, val2))
+#define Z2_TEST_COMPARE(val1, comp, val2)                                      \
+  Z2_TEST(TEST_COMPARE(val1, comp, val2))
+#define Z2_TEST_COMPARE_ARRAYS(val1, val2)                                     \
+  Z2_TEST(TEST_COMPARE_ARRAYS(val1, val2))
+#define Z2_TEST_COMPARE_FLOATING_ARRAYS(val1, val2, tol)                       \
+  Z2_TEST(TEST_COMPARE_FLOATING_ARRAYS(val1, val2, tol))
+#define Z2_TEST_FLOATING_EQUALITY(val1, val2, tol)                             \
+  Z2_TEST(TEST_FLOATING_EQUALITY(val1, val2, tol))
+
+inline void PrintFromRoot(const std::string &message) {
+  if (Tpetra::getDefaultComm()->getRank() == 0) {
+    printf("%s \n", message.c_str());
+  }
+}
+
+template <typename DeviceType, typename HostType>
+void TestDeviceHostView(const DeviceType &deviceView,
+                        const HostType &hostView) {
+  // Should we test for more dimensions?
+  for (int dim = 0; dim <= 2; ++dim) {
+    Z2_TEST_EQUALITY(deviceView.extent(dim), hostView.extent(dim));
+  }
+
+  const auto mirrorDevice = Kokkos::create_mirror_view(deviceView);
+  Kokkos::deep_copy(mirrorDevice, deviceView);
+
+  // Compare the values element-wise
+  Z2_TEST_COMPARE_ARRAYS(hostView, mirrorDevice);
+}
+
+#define Z2_TEST_DEVICE_HOST_VIEWS(deviceView, hostView)                        \
+                                                                               \
+  {                                                                            \
+    for (int dim = 0; dim <= 2; ++dim) {                                       \
+      Z2_TEST_EQUALITY(deviceView.extent(dim), hostView.extent(dim));          \
+    }                                                                          \
+                                                                               \
+    const auto mirrorDevice = Kokkos::create_mirror_view(deviceView);          \
+    Kokkos::deep_copy(mirrorDevice, deviceView);                               \
+                                                                               \
+    Z2_TEST_COMPARE_ARRAYS(hostView, mirrorDevice);                            \
   }
 
 #include <ErrorHandlingForTests.hpp>
-#include <UserInputForTests.hpp>
 #include <PrintData.hpp>
+#include <UserInputForTests.hpp>
 
 #endif

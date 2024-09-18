@@ -31,6 +31,8 @@ public:
   // query number of surfaces
   unsigned numberSurfaces() { return surface_list.size();}
 
+  unsigned numberCalculators() { return my_calculators.size();}
+
   // push a surface onto our container
   void addSurface(Surface * surf) { surface_list.add(surf); }
 
@@ -39,9 +41,11 @@ public:
 
   void addCalculator(std::unique_ptr<IC_Calculator> calc) { my_calculators.emplace_back(std::move(calc)); }
 
-  BoundingBox get_surface_bounding_box() { return surface_list.get_bounding_box(); }
+  BoundingBox get_surface_bounding_box();
 
   void execute(const double time);
+
+  Composite_Surface & get_surfaces() { return surface_list; }
 private:
   void compute_IC_error_indicator();
 private:

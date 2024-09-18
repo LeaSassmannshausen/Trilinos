@@ -30,16 +30,14 @@ namespace Impl {
 // Entry-wise absolute value / magnitude: R(i,j) = abs(X(i,j)).
 template <class RMV, class XMV, class SizeType = typename RMV::size_type>
 struct MV_Abs_Functor {
-  typedef typename RMV::execution_space execution_space;
   typedef SizeType size_type;
-  typedef Kokkos::Details::ArithTraits<typename XMV::non_const_value_type> ATS;
+  typedef Kokkos::ArithTraits<typename XMV::non_const_value_type> ATS;
 
   const size_type numCols;
   RMV R_;
   XMV X_;
 
-  MV_Abs_Functor(const RMV& R, const XMV& X)
-      : numCols(X.extent(1)), R_(R), X_(X) {
+  MV_Abs_Functor(const RMV& R, const XMV& X) : numCols(X.extent(1)), R_(R), X_(X) {
     static_assert(Kokkos::is_view<RMV>::value,
                   "KokkosBlas::Impl::"
                   "MV_Abs_Functor: RMV is not a Kokkos::View.");
@@ -68,9 +66,8 @@ struct MV_Abs_Functor {
 // Entry-wise, in-place absolute value / magnitude: R(i,j) = abs(R(i,j)).
 template <class RMV, class SizeType = typename RMV::size_type>
 struct MV_AbsSelf_Functor {
-  typedef typename RMV::execution_space execution_space;
   typedef SizeType size_type;
-  typedef Kokkos::Details::ArithTraits<typename RMV::non_const_value_type> ATS;
+  typedef Kokkos::ArithTraits<typename RMV::non_const_value_type> ATS;
 
   const size_type numCols;
   RMV R_;
@@ -98,9 +95,8 @@ struct MV_AbsSelf_Functor {
 // Single-vector, entry-wise absolute value / magnitude: R(i) = abs(X(i)).
 template <class RV, class XV, class SizeType = typename RV::size_type>
 struct V_Abs_Functor {
-  typedef typename RV::execution_space execution_space;
   typedef SizeType size_type;
-  typedef Kokkos::Details::ArithTraits<typename XV::non_const_value_type> ATS;
+  typedef Kokkos::ArithTraits<typename XV::non_const_value_type> ATS;
 
   RV R_;
   XV X_;
@@ -128,9 +124,8 @@ struct V_Abs_Functor {
 // abs(R(i)).
 template <class RV, class SizeType = typename RV::size_type>
 struct V_AbsSelf_Functor {
-  typedef typename RV::execution_space execution_space;
   typedef SizeType size_type;
-  typedef Kokkos::Details::ArithTraits<typename RV::non_const_value_type> ATS;
+  typedef Kokkos::ArithTraits<typename RV::non_const_value_type> ATS;
 
   RV R_;
 
@@ -149,8 +144,8 @@ struct V_AbsSelf_Functor {
 
 // Invoke the "generic" (not unrolled) multivector functor that
 // computes entry-wise absolute value.
-template <class RMV, class XMV, class SizeType>
-void MV_Abs_Generic(const RMV& R, const XMV& X) {
+template <class execution_space, class RMV, class XMV, class SizeType>
+void MV_Abs_Generic(const execution_space& space, const RMV& R, const XMV& X) {
   static_assert(Kokkos::is_view<RMV>::value,
                 "KokkosBlas::Impl::"
                 "MV_Abs_Generic: RMV is not a Kokkos::View.");
@@ -164,12 +159,10 @@ void MV_Abs_Generic(const RMV& R, const XMV& X) {
                 "KokkosBlas::Impl::"
                 "MV_Abs_Generic: XMV is not rank 2");
 
-  typedef typename XMV::execution_space execution_space;
   const SizeType numRows = X.extent(0);
-  Kokkos::RangePolicy<execution_space, SizeType> policy(0, numRows);
+  Kokkos::RangePolicy<execution_space, SizeType> policy(space, 0, numRows);
 
-  if ((void*)(R.data()) ==
-      (void*)(X.data())) {  // if R and X are the same (alias one another)
+  if ((void*)(R.data()) == (void*)(X.data())) {  // if R and X are the same (alias one another)
     MV_AbsSelf_Functor<RMV, SizeType> op(R);
     Kokkos::parallel_for("KokkosBlas::Abs::S0", policy, op);
   } else {
@@ -179,8 +172,8 @@ void MV_Abs_Generic(const RMV& R, const XMV& X) {
 }
 
 // Variant of MV_Abs_Generic for single vectors (1-D Views) R and X.
-template <class RV, class XV, class SizeType>
-void V_Abs_Generic(const RV& R, const XV& X) {
+template <class execution_space, class RV, class XV, class SizeType>
+void V_Abs_Generic(const execution_space& space, const RV& R, const XV& X) {
   static_assert(Kokkos::is_view<RV>::value,
                 "KokkosBlas::Impl::"
                 "V_Abs_Generic: RV is not a Kokkos::View.");
@@ -194,12 +187,10 @@ void V_Abs_Generic(const RV& R, const XV& X) {
                 "KokkosBlas::Impl::"
                 "V_Abs_Generic: XV is not rank 1");
 
-  typedef typename XV::execution_space execution_space;
   const SizeType numRows = X.extent(0);
-  Kokkos::RangePolicy<execution_space, SizeType> policy(0, numRows);
+  Kokkos::RangePolicy<execution_space, SizeType> policy(space, 0, numRows);
 
-  if ((void*)(R.data()) ==
-      (void*)(X.data())) {  // if R and X are the same (alias one another)
+  if ((void*)(R.data()) == (void*)(X.data())) {  // if R and X are the same (alias one another)
     V_AbsSelf_Functor<RV, SizeType> op(R);
     Kokkos::parallel_for("KokkosBlas::Abs::S2", policy, op);
   } else {

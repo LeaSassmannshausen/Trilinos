@@ -1,40 +1,10 @@
 # @HEADER
-# ************************************************************************
-#
+# *****************************************************************************
 #            TriBITS: Tribal Build, Integrate, and Test System
-#                    Copyright 2013 Sandia Corporation
 #
-# Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-# the U.S. Government retains certain rights in this software.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are
-# met:
-#
-# 1. Redistributions of source code must retain the above copyright
-# notice, this list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright
-# notice, this list of conditions and the following disclaimer in the
-# documentation and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the Corporation nor the names of the
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-# LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# ************************************************************************
+# Copyright 2013-2016 NTESS and the TriBITS contributors.
+# SPDX-License-Identifier: BSD-3-Clause
+# *****************************************************************************
 # @HEADER
 
 include(TribitsPackageDefineDependencies)
@@ -182,8 +152,7 @@ macro(tribits_read_all_package_deps_files_create_deps_graph)
   set(${PROJECT_NAME}_DEFINED_INTERNAL_PACKAGES "") # Packages and subpackages
 
   foreach(TRIBITS_PACKAGE  IN LISTS ${PROJECT_NAME}_DEFINED_INTERNAL_TOPLEVEL_PACKAGES)
-    tribits_read_toplevel_package_deps_files_add_to_graph(${TRIBITS_PACKAGE}
-      ${${TRIBITS_PACKAGE}_REL_SOURCE_DIR})
+    tribits_read_toplevel_package_deps_files_add_to_graph(${TRIBITS_PACKAGE})
   endforeach()
 
   list(LENGTH ${PROJECT_NAME}_DEFINED_INTERNAL_PACKAGES
@@ -456,15 +425,21 @@ macro(tribits_process_package_dependencies_lists  packageName)
   set(${packageName}_LIB_DEFINED_DEPENDENCIES "")
   set(${packageName}_TEST_DEFINED_DEPENDENCIES "")
 
+  # Append the XXX_TPLS list on the end of the XXX_PACKAGES list
+  list(APPEND LIB_REQUIRED_DEP_PACKAGES ${LIB_REQUIRED_DEP_TPLS})
+  list(APPEND LIB_OPTIONAL_DEP_PACKAGES ${LIB_OPTIONAL_DEP_TPLS})
+  list(APPEND TEST_REQUIRED_DEP_PACKAGES ${TEST_REQUIRED_DEP_TPLS})
+  list(APPEND TEST_OPTIONAL_DEP_PACKAGES ${TEST_OPTIONAL_DEP_TPLS})
+  set(LIB_REQUIRED_DEP_TPLS "")
+  set(LIB_OPTIONAL_DEP_TPLS "")
+  set(TEST_REQUIRED_DEP_TPLS "")
+  set(TEST_OPTIONAL_DEP_TPLS "")
+
   # Fill the backward dependency vars
   tribits_set_dep_packages(${packageName} LIB  REQUIRED  PACKAGES)
   tribits_set_dep_packages(${packageName} LIB  OPTIONAL  PACKAGES)
-  tribits_set_dep_packages(${packageName} LIB  REQUIRED  TPLS)
-  tribits_set_dep_packages(${packageName} LIB  OPTIONAL  TPLS)
   tribits_set_dep_packages(${packageName} TEST  REQUIRED  PACKAGES)
   tribits_set_dep_packages(${packageName} TEST  OPTIONAL  PACKAGES)
-  tribits_set_dep_packages(${packageName} TEST  REQUIRED  TPLS)
-  tribits_set_dep_packages(${packageName} TEST  OPTIONAL  TPLS)
 
   # Fill forward deps lists #63
   tribits_append_forward_dep_packages(${packageName}  LIB)
@@ -512,7 +487,7 @@ macro(tribits_set_dep_packages  packageName  testOrLib  requiredOrOptional  pkgs
     if (${depPkg} STREQUAL ${packageName})
       tribits_abort_on_self_dep("${packageName}" "${inputListType}")
     endif()
-    tribits_is_pkg_defined(${depPkg} ${pkgsOrTpls} depPkgIsDefined)
+    tribits_is_pkg_defined(${depPkg} depPkgIsDefined)
     if (depPkgIsDefined)
       list(APPEND ${packageName}_${testOrLib}_DEFINED_DEPENDENCIES ${depPkg})
       if ("${requiredOrOptional}"  STREQUAL  "REQUIRED")
@@ -534,18 +509,12 @@ endmacro()
 
 # Determine if a (internal or external) package is defined or not
 #
-function(tribits_is_pkg_defined  depPkg  pkgsOrTpls  depPkgIsDefinedOut)
+function(tribits_is_pkg_defined  depPkg    depPkgIsDefinedOut)
   set(depPkgIsDefined  FALSE)
-  if (pkgsOrTpls STREQUAL "PACKAGES")
-    if (${depPkg}_SOURCE_DIR)
-      set(depPkgIsDefined  TRUE)
-    endif()
-  elseif(pkgsOrTpls STREQUAL "TPLS")
-    if (${depPkg}_FINDMOD)
-      set(depPkgIsDefined  TRUE)
-    endif()
-  else()
-    message(FATAL_ERROR "Invalid value for pkgsOrTpls = '${pkgsOrTpls}'")
+  if (${depPkg}_SOURCE_DIR)
+    set(depPkgIsDefined  TRUE)
+  elseif(${depPkg}_FINDMOD)
+    set(depPkgIsDefined  TRUE)
   endif()
   set(${depPkgIsDefinedOut} ${depPkgIsDefined} PARENT_SCOPE)
 endfunction()

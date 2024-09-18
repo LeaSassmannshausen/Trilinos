@@ -1,44 +1,10 @@
 // @HEADER
-// ************************************************************************
-//
+// *****************************************************************************
 //                           Intrepid2 Package
-//                 Copyright (2007) Sandia Corporation
 //
-// Under terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-// license for use of this work by or on behalf of the U.S. Government.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Kyungjoo Kim  (kyukim@sandia.gov),
-//                    Mauro Perego  (mperego@sandia.gov), or
-//                    Nate Roberts  (nvrober@sandia.gov)
-//
-// ************************************************************************
+// Copyright 2007 NTESS and the Intrepid2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 /** \file   Intrepid2_HierarchicalBasisFamily.hpp
@@ -55,12 +21,15 @@
 #include "Intrepid2_HierarchicalBasis_HCURL_TET.hpp"
 #include "Intrepid2_HierarchicalBasis_HDIV_TRI.hpp"
 #include "Intrepid2_HierarchicalBasis_HDIV_TET.hpp"
+#include "Intrepid2_HierarchicalBasis_HDIV_PYR.hpp"
 #include "Intrepid2_IntegratedLegendreBasis_HGRAD_LINE.hpp"
 #include "Intrepid2_IntegratedLegendreBasis_HGRAD_TRI.hpp"
 #include "Intrepid2_IntegratedLegendreBasis_HGRAD_TET.hpp"
+#include "Intrepid2_IntegratedLegendreBasis_HGRAD_PYR.hpp"
 #include "Intrepid2_LegendreBasis_HVOL_LINE.hpp"
 #include "Intrepid2_LegendreBasis_HVOL_TRI.hpp"
 #include "Intrepid2_LegendreBasis_HVOL_TET.hpp"
+#include "Intrepid2_LegendreBasis_HVOL_PYR.hpp"
 
 namespace Intrepid2 {
   
@@ -102,6 +71,21 @@ namespace Intrepid2 {
     using HDIV  = HierarchicalBasis_HDIV_TET<DeviceType,OutputScalar,PointScalar>;
     using HVOL  = LegendreBasis_HVOL_TET<DeviceType,OutputScalar,PointScalar>;
   };
+
+
+  template<typename DeviceType,
+           typename OutputScalar = double,
+           typename PointScalar  = double,
+           bool defineVertexFunctions = true>
+  class HierarchicalPyramidBasisFamily
+  {
+  public:
+    // we will fill these in as we implement them
+    using HGRAD = IntegratedLegendreBasis_HGRAD_PYR<DeviceType,OutputScalar,PointScalar,defineVertexFunctions>;
+    using HCURL = void;
+    using HDIV  = HierarchicalBasis_HDIV_PYR<DeviceType,OutputScalar,PointScalar>;
+    using HVOL  = LegendreBasis_HVOL_PYR<DeviceType,OutputScalar,PointScalar>;
+  };
   
   /** \class Intrepid2::HierarchicalBasisFamily
       \brief A family of hierarchical basis functions, constructed in a way that follows work by Fuentes et al.
@@ -129,7 +113,8 @@ namespace Intrepid2 {
   using HierarchicalBasisFamily = DerivedBasisFamily< IntegratedLegendreBasis_HGRAD_LINE<DeviceType,OutputScalar,PointScalar,true>,
                                                       LegendreBasis_HVOL_LINE<DeviceType,OutputScalar,PointScalar>,
                                                       HierarchicalTriangleBasisFamily<DeviceType,OutputScalar,PointScalar>,
-                                                      HierarchicalTetrahedronBasisFamily<DeviceType,OutputScalar,PointScalar>
+                                                      HierarchicalTetrahedronBasisFamily<DeviceType,OutputScalar,PointScalar>,
+                                                      HierarchicalPyramidBasisFamily<DeviceType,OutputScalar,PointScalar>
                                                       >;
   
   /** \class Intrepid2::HierarchicalBasisFamily
@@ -146,7 +131,8 @@ namespace Intrepid2 {
   using DGHierarchicalBasisFamily = DerivedBasisFamily< IntegratedLegendreBasis_HGRAD_LINE<DeviceType,OutputScalar,PointScalar,false>,
                                                         LegendreBasis_HVOL_LINE<DeviceType,OutputScalar,PointScalar>,
                                                         HierarchicalTriangleBasisFamily<DeviceType,OutputScalar,PointScalar,false>,
-                                                        HierarchicalTetrahedronBasisFamily<DeviceType,OutputScalar,PointScalar,false>
+                                                        HierarchicalTetrahedronBasisFamily<DeviceType,OutputScalar,PointScalar,false>,
+                                                        HierarchicalPyramidBasisFamily<DeviceType,OutputScalar,PointScalar,false>
                                                       >;
   
 }

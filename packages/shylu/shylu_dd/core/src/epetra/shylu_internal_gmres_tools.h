@@ -1,3 +1,12 @@
+// @HEADER
+// *****************************************************************************
+//               ShyLU: Scalable Hybrid LU Preconditioner and Solver
+//
+// Copyright 2011 NTESS and the ShyLU contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
+// @HEADER
+
 #ifndef IQR_GMRES_TOOLS_H
 #define IQR_GMRES_TOOLS_H
 
@@ -254,3 +263,10 @@ int GMRESManager< Map, MultiVector,
 } // namespace IQR
 
 #endif // IQR_GMRES_TOOLS_H
+
+#if defined(ShyLU_DDCore_SHOW_DEPRECATED_WARNINGS)
+#ifdef __GNUC__
+#warning "The ShyLU_DDCore package is deprecated"
+#endif
+#endif
+

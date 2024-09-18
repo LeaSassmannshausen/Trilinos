@@ -1,42 +1,10 @@
 // @HEADER
-// ***********************************************************************
-//
+// *****************************************************************************
 //                           Stokhos Package
-//                 Copyright (2009) Sandia Corporation
 //
-// Under terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-// license for use of this work by or on behalf of the U.S. Government.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Eric T. Phipps (etphipp@sandia.gov).
-//
-// ***********************************************************************
+// Copyright 2009 NTESS and the Stokhos contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 #ifndef KOKKOS_VIEW_MP_VECTOR_INTERLACED_HPP
@@ -982,8 +950,8 @@ struct ViewAssignment< ViewMPVectorInterlaced , ViewMPVectorInterlaced , void >
                              typename View<ST,SL,SD,SM,specialize>::array_layout >::value
                     &&
                     // Same rank
-                    ( unsigned(View<DT,DL,DD,DM,specialize>::Rank) ==
-                      unsigned(View<ST,SL,SD,SM,specialize>::Rank) )
+                    ( unsigned(View<DT,DL,DD,DM,specialize>::rank) ==
+                      unsigned(View<ST,SL,SD,SM,specialize>::rank) )
                     &&
                     // Destination is not managed
                     ! View<DT,DL,DD,DM,specialize>::is_managed
@@ -997,7 +965,7 @@ struct ViewAssignment< ViewMPVectorInterlaced , ViewMPVectorInterlaced , void >
     typedef typename dst_traits::value_type                   dst_sacado_mp_vector_type ;
     typedef typename dst_sacado_mp_vector_type::storage_type  dst_stokhos_storage_type ;
 
-    enum { DstRank         = dst_type::Rank };
+    enum { DstRank         = dst_type::rank };
     enum { DstStaticLength = dst_stokhos_storage_type::static_size };
 
     const int length = part.end - part.begin ;
@@ -1015,7 +983,7 @@ struct ViewAssignment< ViewMPVectorInterlaced , ViewMPVectorInterlaced , void >
     dims[5] = src.m_array_shape.N5;
     dims[6] = src.m_array_shape.N6;
     dims[7] = src.m_array_shape.N7;
-    unsigned rank = dst_type::Rank;
+    unsigned rank = dst_type::rank;
 
     dst_shape_type::assign( dst.m_shape,
                             dims[0] , dims[1] , dims[2] , dims[3] ,

@@ -41,63 +41,6 @@ struct Trans {
   struct ConjTranspose {};
 };
 
-#if !defined(KOKKOS_IF_ON_HOST)
-
-namespace Impl {
-
-template <class>
-struct algo_level3_blocked_mb_impl;
-template <>
-struct algo_level3_blocked_mb_impl<Kokkos::HostSpace> {
-  static constexpr int value = 4;
-};
-#if defined(KOKKOS_ENABLE_CUDA)
-template <>
-struct algo_level3_blocked_mb_impl<Kokkos::CudaSpace> {
-  static constexpr int value = 2;
-};
-#endif
-#if defined(KOKKOS_ENABLE_HIP)
-template <>
-struct algo_level3_blocked_mb_impl<Kokkos::Experimental::HIPSpace> {
-  static constexpr int value = 2;
-};
-#endif
-#if defined(KOKKOS_ENABLE_SYCL)
-template <>
-struct algo_level3_blocked_mb_impl<Kokkos::Experimental::SYCLDeviceUSMSpace> {
-  static constexpr int value = 2;
-};
-#endif
-
-template <class>
-struct algo_level2_blocked_mb_impl;
-template <>
-struct algo_level2_blocked_mb_impl<Kokkos::HostSpace> {
-  static constexpr int value = 4;
-};
-#if defined(KOKKOS_ENABLE_CUDA)
-template <>
-struct algo_level2_blocked_mb_impl<Kokkos::CudaSpace> {
-  static constexpr int value = 1;
-};
-#endif
-#if defined(KOKKOS_ENABLE_HIP)
-template <>
-struct algo_level2_blocked_mb_impl<Kokkos::Experimental::HIPSpace> {
-  static constexpr int value = 1;
-};
-#endif
-#if defined(KOKKOS_ENABLE_SYCL)
-template <>
-struct algo_level2_blocked_mb_impl<Kokkos::Experimental::SYCLDeviceUSMSpace> {
-  static constexpr int value = 1;
-};
-#endif
-
-}  // namespace Impl
-#endif
-
 struct Algo {
   struct Level3 {
     struct Unblocked {
@@ -111,19 +54,10 @@ struct Algo {
       // - team policy (smaller) or range policy (bigger)
       // - space (gpu vs host)
       // - blocksize input (blk <= 4 mb = 2, otherwise mb = 4), etc.
-#if defined(KOKKOS_IF_ON_HOST)
       static constexpr KOKKOS_FUNCTION int mb() {
         KOKKOS_IF_ON_HOST((return 4;))
         KOKKOS_IF_ON_DEVICE((return 2;))
       }
-
-#else  // FIXME remove when requiring minimum version of Kokkos 3.6
-      static constexpr KOKKOS_FUNCTION int mb() {
-        return algo_level3_blocked_mb_impl<
-            Kokkos::Impl::ActiveExecutionMemorySpace>::value;
-      }
-
-#endif
     };
     struct MKL {
       static const char *name() { return "MKL"; }
@@ -151,6 +85,7 @@ struct Algo {
   using SolveLU   = Level3;
   using QR        = Level3;
   using UTV       = Level3;
+  using Pttrf     = Level3;
 
   struct Level2 {
     struct Unblocked {};
@@ -161,19 +96,10 @@ struct Algo {
       // - team policy (smaller) or range policy (bigger)
       // - space (cuda vs host)
       // - blocksize input (blk <= 4 mb = 2, otherwise mb = 4), etc.
-#if defined(KOKKOS_IF_ON_HOST)
       static constexpr KOKKOS_FUNCTION int mb() {
         KOKKOS_IF_ON_HOST((return 4;))
         KOKKOS_IF_ON_DEVICE((return 1;))
       }
-
-#else  // FIXME remove when requiring minimum version of Kokkos 3.6
-      static constexpr KOKKOS_FUNCTION int mb() {
-        return algo_level2_blocked_mb_impl<
-            Kokkos::Impl::ActiveExecutionMemorySpace>::value;
-      }
-
-#endif
     };
     struct MKL {};
     struct CompactMKL {};
@@ -191,6 +117,7 @@ struct Algo {
   using Gemv   = Level2;
   using Trsv   = Level2;
   using ApplyQ = Level2;
+  using Tbsv   = Level2;
 };
 
 namespace Impl {
@@ -208,12 +135,9 @@ namespace Impl {
 // Output params:
 //  * teamsPerReduction: number of teams to use for each reduction
 template <typename ExecSpace, typename size_type>
-void multipleReductionWorkDistribution(size_type length,
-                                       size_type numReductions,
-                                       size_type &teamsPerDot) {
-  constexpr size_type workPerTeam = 4096;  // Amount of work per team
-  size_type appxNumTeams =
-      (length * numReductions) / workPerTeam;  // Estimation for appxNumTeams
+void multipleReductionWorkDistribution(size_type length, size_type numReductions, size_type &teamsPerDot) {
+  constexpr size_type workPerTeam = 4096;                                    // Amount of work per team
+  size_type appxNumTeams          = (length * numReductions) / workPerTeam;  // Estimation for appxNumTeams
 
   // Adjust appxNumTeams in case it is too small or too large
   if (appxNumTeams < 1) appxNumTeams = 1;

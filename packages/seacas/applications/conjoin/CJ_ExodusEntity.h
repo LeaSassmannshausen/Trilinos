@@ -1,4 +1,4 @@
-// Copyright(C) 1999-2020, 2022, 2023 National Technology & Engineering Solutions
+// Copyright(C) 1999-2020, 2022, 2023, 2024 National Technology & Engineering Solutions
 // of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with
 // NTESS, the U.S. Government retains certain rights in this software.
 //
@@ -22,8 +22,6 @@ namespace Excn {
 
   template <typename INT> struct Mesh
   {
-    Mesh() = default;
-
     size_t count(ObjectType type) const
     {
       switch (type) {
@@ -56,36 +54,29 @@ namespace Excn {
 
   struct Block
   {
-    Block()                              = default;
-    Block(const Block &other)            = default;
-    ~Block()                             = default;
-    Block &operator=(const Block &other) = default;
-
     size_t entity_count() const { return elementCount; }
 
     IntVector                truthTable{};
     std::vector<std::string> attributeNames{};
     std::string              name_{};
-    int64_t                  id{0};
+    ex_entity_id             id{0};
     size_t                   elementCount{0};
     size_t                   nodesPerElement{0};
     size_t                   attributeCount{0};
     size_t                   offset_{0};
-    size_t                   position_{0};
+    mutable size_t           position_{0};
     std::string              elType{};
   };
 
   template <typename INT> struct NodeSet
   {
-    NodeSet() = default;
-
-    IntVector   truthTable{};
-    int64_t     id{0};
-    size_t      nodeCount{0};
-    size_t      dfCount{0};
-    size_t      offset_{0};
-    size_t      position_{0};
-    std::string name_{};
+    IntVector    truthTable{};
+    ex_entity_id id{0};
+    size_t       nodeCount{0};
+    size_t       dfCount{0};
+    size_t       offset_{0};
+    size_t       position_{0};
+    std::string  name_{};
 
     std::vector<INT> nodeSetNodes{};
     std::vector<INT> nodeOrderMap{};
@@ -109,18 +100,15 @@ namespace Excn {
     }
   };
 
-  using Side = std::pair<int, int>;
   template <typename INT> struct SideSet
   {
-    SideSet() = default;
-
-    IntVector   truthTable{};
-    int64_t     id{0};
-    size_t      sideCount{0};
-    size_t      dfCount{0};
-    size_t      offset_{0};
-    size_t      position_{0};
-    std::string name_{};
+    IntVector    truthTable{};
+    ex_entity_id id{0};
+    size_t       sideCount{0};
+    size_t       dfCount{0};
+    size_t       offset_{0};
+    size_t       position_{0};
+    std::string  name_{};
 
     std::vector<INT> elems{};
     std::vector<INT> sides{};
@@ -141,14 +129,13 @@ namespace Excn {
 
   struct CommunicationMap
   {
-    CommunicationMap() = default;
     CommunicationMap(size_t the_id, size_t count, char the_type)
         : id(the_id), entityCount(count), type(the_type)
     {
     }
-    int64_t id{0};
-    size_t  entityCount{0};
-    char    type{'U'}; // 'n' for node, 'e' for element
+    ex_entity_id id{0};
+    size_t       entityCount{0};
+    char         type{'U'}; // 'n' for node, 'e' for element
   };
 
   struct CommunicationMetaData

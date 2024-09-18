@@ -1,43 +1,10 @@
 // @HEADER
-// ************************************************************************
-//
+// *****************************************************************************
 //                           Intrepid2 Package
-//                 Copyright (2007) Sandia Corporation
 //
-// Under terms of Contract DE-AC04-94AL85000, there is a non-exclusive
-// license for use of this work by or on behalf of the U.S. Government.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// 1. Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the Corporation nor the names of the
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY SANDIA CORPORATION "AS IS" AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL SANDIA CORPORATION OR THE
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Questions? Contact Kyungjoo Kim  (kyukim@sandia.gov), or
-//                    Mauro Perego  (mperego@sandia.gov)
-//
-// ************************************************************************
+// Copyright 2007 NTESS and the Intrepid2 contributors.
+// SPDX-License-Identifier: BSD-3-Clause
+// *****************************************************************************
 // @HEADER
 
 
@@ -61,7 +28,9 @@
 
 #include "Intrepid2_CubatureDirectLineGaussJacobi20.hpp"
 #include "Intrepid2_CubatureDirectTriDefault.hpp"
+#include "Intrepid2_CubatureDirectTriSymmetric.hpp"
 #include "Intrepid2_CubatureDirectTetDefault.hpp"
+#include "Intrepid2_CubatureDirectTetSymmetric.hpp"
 //#include "Intrepid2_CubatureTensorPyr.hpp"
 
 #include "Teuchos_oblackholestream.hpp"
@@ -127,7 +96,9 @@ namespace Intrepid2 {
       typedef ValueType weightValueType;
       typedef CubatureDirectLineGauss        <DeviceType,pointValueType,weightValueType> CubatureLineType;
       typedef CubatureDirectTriDefault       <DeviceType,pointValueType,weightValueType> CubatureTriType;
+      typedef CubatureDirectTriSymmetric     <DeviceType,pointValueType,weightValueType> CubatureTriSymType;
       typedef CubatureDirectTetDefault       <DeviceType,pointValueType,weightValueType> CubatureTetType;
+      typedef CubatureDirectTetSymmetric     <DeviceType,pointValueType,weightValueType> CubatureTetSymType;
       typedef CubatureTensor                 <DeviceType,pointValueType,weightValueType> CubatureTensorType;
       //typedef CubatureTensorPyr              <DeviceType,pointValueType,weightValueType> CubatureTensorPyrType;
 
@@ -154,12 +125,16 @@ namespace Intrepid2 {
         {
           INTREPID2_TEST_ERROR_EXPECTED( CubatureTriType triCub(-1) );
           INTREPID2_TEST_ERROR_EXPECTED( CubatureTriType triCub(Parameters::MaxCubatureDegreeTri+1) );
+          INTREPID2_TEST_ERROR_EXPECTED( CubatureTriSymType triSymCub(-1) );
+          INTREPID2_TEST_ERROR_EXPECTED( CubatureTriSymType triSymCub(Parameters::MaxCubatureDegreeTri+1) );
         }
 
         *outStream << "-> Tetrahedron testing\n\n";
         {
           INTREPID2_TEST_ERROR_EXPECTED( CubatureTetType tetCub(-1) );
           INTREPID2_TEST_ERROR_EXPECTED( CubatureTetType tetCub(Parameters::MaxCubatureDegreeTet+1) );
+          INTREPID2_TEST_ERROR_EXPECTED( CubatureTetSymType tetSymCub(-1) );
+          INTREPID2_TEST_ERROR_EXPECTED( CubatureTetSymType tetSymCub(Parameters::MaxCubatureDegreeTet+1) );
         }
 #endif
         if (nthrow != ncatch) {
@@ -198,6 +173,12 @@ namespace Intrepid2 {
                                         ">>> ERROR (Integration::Test01): triangle cubature reports a wrong number of points.");
           INTREPID2_TEST_FOR_EXCEPTION( triCub.getDimension() != 2, std::logic_error,
                                         ">>> ERROR (Integration::Test01): triangle cubature reports a wrong dimension.");
+          
+          CubatureTriSymType triSymCub(17);
+          INTREPID2_TEST_FOR_EXCEPTION( triSymCub.getNumPoints() != 60, std::logic_error,
+                                        ">>> ERROR (Integration::Test01): triangle symmetric cubature reports a wrong number of points.");
+          INTREPID2_TEST_FOR_EXCEPTION( triSymCub.getDimension() != 2, std::logic_error,
+                                        ">>> ERROR (Integration::Test01): triangle symmetric cubature reports a wrong dimension.");
         }
 
         *outStream << "-> Tetrahedron testing\n\n";
@@ -207,6 +188,15 @@ namespace Intrepid2 {
                                         ">>> ERROR (Integration::Test01): tetrahedron cubature reports a wrong number of points.");
           INTREPID2_TEST_FOR_EXCEPTION( tetCub.getDimension() != 3, std::logic_error,
                                         ">>> ERROR (Integration::Test01): tetrahedron cubature reports a wrong dimension.");
+        }
+        
+        *outStream << "-> Tetrahedron testing\n\n";
+        {
+          CubatureTetSymType tetSymCub(17);
+          INTREPID2_TEST_FOR_EXCEPTION( tetSymCub.getNumPoints() != 364, std::logic_error,
+                                        ">>> ERROR (Integration::Test01): tetrahedron symmetric cubature reports a wrong number of points.");
+          INTREPID2_TEST_FOR_EXCEPTION( tetSymCub.getDimension() != 3, std::logic_error,
+                                        ">>> ERROR (Integration::Test01): tetrahedron symmetric cubature reports a wrong dimension.");
         }
 
         *outStream << "-> Quad testing\n\n";
@@ -247,6 +237,12 @@ namespace Intrepid2 {
           prismCub.getAccuracy( accuracy );
           INTREPID2_TEST_FOR_EXCEPTION( accuracy[0] != 4 || accuracy[1] != 3, std::logic_error,
                                         ">>> ERROR (Integration::Test01): prism cubature reports wrong accuracy.");
+
+
+          CubatureTensorType prismSymCub( CubatureTriSymType(4), CubatureLineType(3) );
+          prismSymCub.getAccuracy( accuracy );
+          INTREPID2_TEST_FOR_EXCEPTION( accuracy[0] != 4 || accuracy[1] != 3, std::logic_error,
+                                        ">>> ERROR (Integration::Test01): prism symmetric cubature reports wrong accuracy.");
         }
 
       } catch (std::logic_error &err) {
@@ -284,7 +280,7 @@ namespace Intrepid2 {
 
         *outStream << "-> Triangle testing\n\n";
         {
-          for (auto deg=0;deg<=Parameters::MaxCubatureDegreeTri;++deg) {
+          for (auto deg=0;deg<=20;++deg) {
             CubatureTriType cub(deg);
             cub.getCubature(cubPoints, cubWeights);
             const auto npts = cub.getNumPoints();
@@ -292,12 +288,30 @@ namespace Intrepid2 {
             const auto testVol = computeRefVolume(npts, cubWeights);
             const auto refVol  = 0.5;
             if (std::abs(testVol - refVol) > tol) {
-              *outStream << std::setw(30) << "Triangle volume --> " << std::setw(10) << std::scientific << testVol <<
+              *outStream << std::setw(30) << "Triangle volume computed with cubature of degree " << deg << " --> " << std::setw(10) << std::scientific << testVol <<
                 std::setw(10) << "diff = " << std::setw(10) << std::scientific << std::abs(testVol - refVol) << "\n";
               ++errorFlag;
               *outStream << std::setw(70) << "^^^^----FAILURE!" << "\n";
             }
           }
+
+          *outStream << "-> Triangle symmetric cubature testing\n\n";
+          for (auto deg=0;deg<=Parameters::MaxCubatureDegreeTri;++deg) {
+            CubatureTriSymType cub(deg);
+            cub.getCubature(cubPoints, cubWeights);
+            const auto npts = cub.getNumPoints();
+
+            const auto testVol = computeRefVolume(npts, cubWeights);
+            const auto refVol  = 0.5;
+            if (std::abs(testVol - refVol) > tol) {
+              *outStream << std::setw(30) << "Triangle volume computed with symmetric cubature of degree " << deg << " --> " << std::setw(10) << std::scientific << testVol <<
+                std::setw(10) << "diff = " << std::setw(10) << std::scientific << std::abs(testVol - refVol) << "\n";
+              ++errorFlag;
+              *outStream << std::setw(70) << "^^^^----FAILURE!" << "\n";
+            }
+          }
+
+
         }
 
         *outStream << "-> Quad testing\n\n";
@@ -314,7 +328,7 @@ namespace Intrepid2 {
               const auto testVol = computeRefVolume(npts, cubWeights);
               const auto refVol  = 4.0;
               if (std::abs(testVol - refVol) > tol) {
-                *outStream << std::setw(30) << "Quadrilateral volume --> " << std::setw(10) << std::scientific << testVol <<
+                *outStream << std::setw(30) << "Quadrilateral volume computed with tensor-product cubature of degree (" << x_deg << ", " << y_deg << ") --> " << std::setw(10) << std::scientific << testVol <<
                   std::setw(10) << "diff = " << std::setw(10) << std::scientific << std::abs(testVol - refVol) << "\n";
 
                 ++errorFlag;
@@ -334,7 +348,25 @@ namespace Intrepid2 {
             const auto testVol = computeRefVolume(npts, cubWeights);
             const auto refVol  = 1.0/6.0;
             if (std::abs(testVol - refVol) > tol) {
-              *outStream << std::setw(30) << "Tetrahedron volume --> " << std::setw(10) << std::scientific << testVol <<
+              *outStream << std::setw(30) << "Tetrahedron volume computed with cubature of degree " << deg << " --> " << std::setw(10) << std::scientific << testVol <<
+                std::setw(10) << "diff = " << std::setw(10) << std::scientific << std::abs(testVol - refVol) << "\n";
+              
+              ++errorFlag;
+              *outStream << std::setw(70) << "^^^^----FAILURE!" << "\n";
+            }
+          }
+
+          *outStream << "-> Tetrahedron symmetric cubature testing\n\n";
+          for (auto deg=0;deg<=Parameters::MaxCubatureDegreeTet;++deg) {
+            CubatureTetSymType cub(deg);
+            
+            cub.getCubature(cubPoints, cubWeights);
+            const auto npts = cub.getNumPoints();
+            
+            const auto testVol = computeRefVolume(npts, cubWeights);
+            const auto refVol  = 1.0/6.0;
+            if (std::abs(testVol - refVol) > tol) {
+              *outStream << std::setw(30) << "Tetrahedron volume computed with symmetric cubature of degree " << deg << " --> " << std::setw(10) << std::scientific << testVol <<
                 std::setw(10) << "diff = " << std::setw(10) << std::scientific << std::abs(testVol - refVol) << "\n";
               
               ++errorFlag;
@@ -360,7 +392,7 @@ namespace Intrepid2 {
                 const auto testVol = computeRefVolume(npts, cubWeights);
                 const auto refVol  = 8.0;
                 if (std::abs(testVol - refVol) > tol) {
-                  *outStream << std::setw(30) << "Hexahedron volume --> " << std::setw(10) << std::scientific << testVol <<
+                  *outStream << std::setw(30) << "Hexahedron volume computed with tensor-product cubature of degree (" << x_deg << ", " << y_deg << ", " << z_deg << ") --> " << std::setw(10) << std::scientific << testVol <<
                     std::setw(10) << "diff = " << std::setw(10) << std::scientific << std::abs(testVol - refVol) << "\n";
 
                   ++errorFlag;
@@ -372,7 +404,7 @@ namespace Intrepid2 {
         *outStream << "-> Prism testing\n\n";
         {
           for (auto z_deg=0;z_deg<Parameters::MaxCubatureDegreeEdge;++z_deg)
-            for (auto xy_deg=0;xy_deg<Parameters::MaxCubatureDegreeTri;++xy_deg) {
+            for (auto xy_deg=0;xy_deg<20;++xy_deg) {
               const auto xy_tri = CubatureTriType(xy_deg);
               const auto z_line = CubatureLineType(z_deg);
               CubatureTensorType cub( xy_tri, z_line );
@@ -383,7 +415,27 @@ namespace Intrepid2 {
               const auto testVol = computeRefVolume(npts, cubWeights);
               const auto refVol  = 1.0;
               if (std::abs(testVol - refVol) > tol) {
-                *outStream << std::setw(30) << "Wedge volume --> " << std::setw(10) << std::scientific << testVol <<
+                *outStream << std::setw(30) << "Wedge volume computed with tensor-product cubature of degrees (" << xy_deg << ", " << z_deg << ") --> " << std::setw(10) << std::scientific << testVol <<
+                  std::setw(10) << "diff = " << std::setw(10) << std::scientific << std::abs(testVol - refVol) << "\n";
+                ++errorFlag;
+                *outStream << std::setw(70) << "^^^^----FAILURE!" << "\n";
+              }
+            }
+
+          *outStream << "-> Prism symmetric quadrature testing\n\n";
+          for (auto z_deg=0;z_deg<Parameters::MaxCubatureDegreeEdge;++z_deg)
+            for (auto xy_deg=0;xy_deg<Parameters::MaxCubatureDegreeTri;++xy_deg) {
+              const auto xy_tri = CubatureTriSymType(xy_deg);
+              const auto z_line = CubatureLineType(z_deg);
+              CubatureTensorType cub( xy_tri, z_line );
+              
+              cub.getCubature(cubPoints, cubWeights);
+              const auto npts = cub.getNumPoints();
+              
+              const auto testVol = computeRefVolume(npts, cubWeights);
+              const auto refVol  = 1.0;
+              if (std::abs(testVol - refVol) > tol) {
+                *outStream << std::setw(30) << "Wedge volume computed with symmetric tensor-product cubature of degree (" << xy_deg << ", " << z_deg << ") --> " << std::setw(10) << std::scientific << testVol <<
                   std::setw(10) << "diff = " << std::setw(10) << std::scientific << std::abs(testVol - refVol) << "\n";
                 ++errorFlag;
                 *outStream << std::setw(70) << "^^^^----FAILURE!" << "\n";
