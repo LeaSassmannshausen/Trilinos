@@ -218,7 +218,7 @@ void PresLaplaceLSCStrategy::computeInverses(const BlockedLinearOp& A,
   std::string presLapStr = getPressureLaplaceString();
 
   const LinearOp F       = getBlock(0, 0, A);
-  const LinearOp presLap = state->getLinearOp(presLapStr);
+  const LinearOp presLap = laplaceMatrix_; //->getLinearOp(presLapStr);
 
   /////////////////////////////////////////////////////////
 
@@ -233,7 +233,7 @@ void PresLaplaceLSCStrategy::computeInverses(const BlockedLinearOp& A,
   }
   Teko_DEBUG_EXPR(invTimer.stop());
   Teko_DEBUG_MSG("PL-LSC::computeInverses GetInvF = " << invTimer.totalElapsedTime(), 1);
-
+  
   /////////////////////////////////////////////////////////
 
   // (re)build the inverse of P
@@ -302,7 +302,7 @@ void PresLaplaceLSCStrategy::initializeFromParameterList(const Teuchos::Paramete
   // set other parameters
   setUseFullLDU(useLDU);
 
-    Teuchos::RCP<Teko::RequestHandler> rh = getRequestHandler();
+  Teuchos::RCP<Teko::RequestHandler> rh = getRequestHandler();
 
   if (useMass_) {
     rh->preRequest<Teko::LinearOp>(Teko::RequestMesg("Velocity Mass Matrix"));

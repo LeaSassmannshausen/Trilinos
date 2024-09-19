@@ -74,13 +74,13 @@ namespace FROSch {
             YOverlap_ = MultiVectorFactory<SC,LO,GO,NO>::Build(OverlappingMatrix_->getDomainMap(),x.getNumVectors());
         } else {
             YOverlap_->replaceMap(OverlappingMatrix_->getDomainMap());
-          }
+        }
         // END TIMER                                                                                                                                                                                                                
         //this->MpiComm_->barrier();
         //this->MpiComm_->barrier();
         //this->MpiComm_->barrier();
         //this->MpiComm_->barrier();
-        }
+        
         {
         FROSCH_TIMER_START_LEVELID(applyTime,"Beginning of Apply 2" );
 
