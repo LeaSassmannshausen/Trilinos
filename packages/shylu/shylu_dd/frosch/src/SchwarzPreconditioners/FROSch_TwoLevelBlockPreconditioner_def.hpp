@@ -381,6 +381,12 @@ namespace FROSch {
         int ret = 0;
         if (0>this->OverlappingOperator_->compute()) ret -= 1;
         if (0>CoarseOperator_->compute()) ret -= 10;
+
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        
         return ret;
     }
 

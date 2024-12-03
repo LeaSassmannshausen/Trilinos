@@ -81,6 +81,11 @@ namespace FROSch {
             this->ParameterList_->set("bool(CoarseSolveComm)", OnCoarseSolveComm_);
         }
 
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+
         return 0;
     }
 
@@ -132,10 +137,10 @@ namespace FROSch {
             y.update(ScalarTraits<SC>::one(),x,ScalarTraits<SC>::zero());
 
 	}
-	/*this->MpiComm_->barrier();
         this->MpiComm_->barrier();
         this->MpiComm_->barrier();
-        this->MpiComm_->barrier();*/
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
 
     }
 
@@ -163,10 +168,11 @@ namespace FROSch {
             XCoarse_ = XCoarseSolveTmp_;
         }
         y = *XCoarseSolveTmp_;
-	/*this->MpiComm_->barrier();
+
+	    this->MpiComm_->barrier();
         this->MpiComm_->barrier();
         this->MpiComm_->barrier();
-        this->MpiComm_->barrier();*/
+        this->MpiComm_->barrier();
 
     }
 
@@ -194,10 +200,10 @@ namespace FROSch {
         YTmp_->replaceMap(GatheringMaps_[GatheringMaps_.size()-1]);
         y = *YTmp_;
 
-	/*this->MpiComm_->barrier();
+	    this->MpiComm_->barrier();
         this->MpiComm_->barrier();
         this->MpiComm_->barrier();
-        this->MpiComm_->barrier();*/
+        this->MpiComm_->barrier();
 
     }
 
@@ -240,10 +246,11 @@ namespace FROSch {
 #endif
             Phi_->apply(*YCoarse_,y,NO_TRANS);
         }
-	/*this->MpiComm_->barrier();
+
+	    this->MpiComm_->barrier();
         this->MpiComm_->barrier();
         this->MpiComm_->barrier();
-        this->MpiComm_->barrier();*/
+        this->MpiComm_->barrier();
 
     }
 
@@ -580,6 +587,11 @@ namespace FROSch {
         } else {
             FROSCH_WARNING("FROSch::CoarseOperator",this->Verbose_,"No coarse basis has been set up. Neglecting CoarseOperator.");
         }
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        
         return 0;
     }
 
@@ -599,14 +611,22 @@ namespace FROSch {
             XMatrixPtr tmp = MatrixMatrix<SC,LO,GO,NO>::Multiply(*this->K_,false,*Phi_,false,*fancy);
             k0 = MatrixMatrix<SC,LO,GO,NO>::Multiply(*Phi_,true,*tmp,false,*fancy); //k0->describe(*fancy,VERB_EXTREME);
         }
-	Xpetra::IO< SC,LO,GO,NO > xpetraWriter;
-	if(this->ParameterList_->get("Write Coarse Matrix",false))
-	  xpetraWriter.Write("coarseMatrix",(*k0));
-	//xpetraWriter.Write("systemMatrix",(*this->K_));
+        Xpetra::IO< SC,LO,GO,NO > xpetraWriter;
+        if(this->ParameterList_->get("Write Coarse Matrix",false))
+            xpetraWriter.Write("coarseMatrix",(*k0));
+        //xpetraWriter.Write("systemMatrix",(*this->K_));
         if(this->ParameterList_->get("Write Phi",false))
-	  xpetraWriter.Write("phi",(*this->Phi_));
+            xpetraWriter.Write("phi",(*this->Phi_));
 
-	return k0;
+
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+    
+    
+    	return k0;
+
     }
 
     template<class SC,class LO,class GO,class NO>
