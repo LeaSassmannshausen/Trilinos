@@ -552,37 +552,37 @@ namespace FROSch {
                     << endl;
                 }
                 FROSCH_DETAILTIMER_STOP(printStatisticsTime);
-		//		cout << " REUSE COARSE MATRIX SYMBOLIC FACTORIZATION CHECK -- " << endl;
-		//		RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
-		int numCoarseSolveEntries=0;
-                bool reuseCoarseMatrixSymbolicFactorization = this->ParameterList_->get("Reuse: Coarse Matrix Symbolic Factorization",true);
-                if (!this->IsComputed_) {
-                    reuseCoarseMatrixSymbolicFactorization = false;
-                    //cout << "---  isComputed = false; --- " << endl;
-		}
-		else{
-		  numCoarseSolveEntries = CoarseSolver_->getCoarseMatrixNumEntries() ;
-		}  
-		bool k0EntryChange = false;
-		if(numCoarseSolveEntries > 0 && numCoarseSolveEntries != globalVec[1])
-		  k0EntryChange=true;
-		
+                //		cout << " REUSE COARSE MATRIX SYMBOLIC FACTORIZATION CHECK -- " << endl;
+                //		RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
+                int numCoarseSolveEntries=0;
+                        bool reuseCoarseMatrixSymbolicFactorization = this->ParameterList_->get("Reuse: Coarse Matrix Symbolic Factorization",true);
+                        if (!this->IsComputed_) {
+                            reuseCoarseMatrixSymbolicFactorization = false;
+                            //cout << "---  isComputed = false; --- " << endl;
+                }
+                else{
+                numCoarseSolveEntries = CoarseSolver_->getCoarseMatrixNumEntries() ;
+                }  
+                bool k0EntryChange = false;
+                if(numCoarseSolveEntries > 0 && numCoarseSolveEntries != globalVec[1])
+                    k0EntryChange=true;
+                
                 if (!reuseCoarseMatrixSymbolicFactorization || k0EntryChange ) {
-	
+
                     if (this->IsComputed_ && this->Verbose_) cout << "FROSch::CoarseOperator : Recomputing the Symbolic Factorization of the coarse matrix" << endl;
-	            
+                
                     CoarseSolver_ = SolverFactory<SC,LO,GO,NO>::Build(CoarseMatrix_,
-                                                                      sublist(this->ParameterList_,"CoarseSolver"),
-                                                                      string("CoarseSolver (Level ") + to_string(this->LevelID_) + string(")"));
-		  
+                                                                        sublist(this->ParameterList_,"CoarseSolver"),
+                                                                        string("CoarseSolver (Level ") + to_string(this->LevelID_) + string(")"));
+            
                     CoarseSolver_->initialize();
                 } else {
                     FROSCH_ASSERT(!CoarseSolver_.is_null(),"FROSch::CoarseOperator: CoarseSolver_.is_null()");
 
                     CoarseSolver_->updateMatrix(CoarseMatrix_.getConst(),true);
                 }
-               	
-		CoarseSolver_->compute();
+                
+                CoarseSolver_->compute();
             }
         } else {
             FROSCH_WARNING("FROSch::CoarseOperator",this->Verbose_,"No coarse basis has been set up. Neglecting CoarseOperator.");
