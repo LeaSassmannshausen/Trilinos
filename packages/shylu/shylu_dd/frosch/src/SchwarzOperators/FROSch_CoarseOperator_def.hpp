@@ -268,9 +268,10 @@ namespace FROSch {
 
         if (!Phi_.is_null()) {
             // Build CoarseMatrix_
+            XMatrixPtr k0;
             {
                 FROSCH_DETAILTIMER_START_LEVELID(setUpCoarseOperatorTimeBuild,"CoarseOperator::BuildCoarseMatrix");
-                XMatrixPtr k0 = buildCoarseMatrix();
+                k0 = buildCoarseMatrix();
 
                 // this->MpiComm_->barrier();
                 // this->MpiComm_->barrier();
