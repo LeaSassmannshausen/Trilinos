@@ -81,10 +81,10 @@ namespace FROSch {
             this->ParameterList_->set("bool(CoarseSolveComm)", OnCoarseSolveComm_);
         }
 
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
 
         return 0;
     }
@@ -137,10 +137,10 @@ namespace FROSch {
             y.update(ScalarTraits<SC>::one(),x,ScalarTraits<SC>::zero());
 
 	}
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
 
     }
 
@@ -169,10 +169,10 @@ namespace FROSch {
         }
         y = *XCoarseSolveTmp_;
 
-	    this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
+	    // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
 
     }
 
@@ -200,10 +200,10 @@ namespace FROSch {
         YTmp_->replaceMap(GatheringMaps_[GatheringMaps_.size()-1]);
         y = *YTmp_;
 
-	    this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
+	    // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
 
     }
 
@@ -247,10 +247,10 @@ namespace FROSch {
             Phi_->apply(*YCoarse_,y,NO_TRANS);
         }
 
-	    this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
+	    // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
 
     }
 
@@ -268,8 +268,16 @@ namespace FROSch {
 
         if (!Phi_.is_null()) {
             // Build CoarseMatrix_
-            XMatrixPtr k0 = buildCoarseMatrix();
+            {
+                FROSCH_DETAILTIMER_START_LEVELID(setUpCoarseOperatorTime,"CoarseOperator::BuildCoarseMatrix");
+                XMatrixPtr k0 = buildCoarseMatrix();
 
+                // this->MpiComm_->barrier();
+                // this->MpiComm_->barrier();
+                // this->MpiComm_->barrier();
+                // this->MpiComm_->barrier();
+
+            }
             //------------------------------------------------------------------------------------------------------------------------
             // Communicate coarse matrix
             FROSCH_DETAILTIMER_START_LEVELID(communicateCoarseMatrixTime,"communicate coarse matrix");
@@ -587,10 +595,10 @@ namespace FROSch {
         } else {
             FROSCH_WARNING("FROSch::CoarseOperator",this->Verbose_,"No coarse basis has been set up. Neglecting CoarseOperator.");
         }
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
         
         return 0;
     }
@@ -603,7 +611,7 @@ namespace FROSch {
 
         FROSCH_DETAILTIMER_START_LEVELID(buildCoarseMatrixTime,"CoarseOperator::buildCoarseMatrix");
         XMatrixPtr k0;
-         if (this->ParameterList_->get("Use Triple MatrixMultiply",false)) {
+        if (this->ParameterList_->get("Use Triple MatrixMultiply",false)) {
             k0 = MatrixFactory<SC,LO,GO,NO>::Build(CoarseSpace_->getBasisMapUnique(),as<LO>(0));
             TripleMatrixMultiply<SC,LO,GO,NO>::MultiplyRAP(*Phi_,true,*this->K_,false,*Phi_,false,*k0);
         } else {
@@ -619,10 +627,10 @@ namespace FROSch {
             xpetraWriter.Write("phi",(*this->Phi_));
 
 
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
     
     
     	return k0;

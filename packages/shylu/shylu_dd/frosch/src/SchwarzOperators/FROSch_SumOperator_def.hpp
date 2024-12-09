@@ -101,6 +101,11 @@ namespace FROSch {
         } else {
             y.update(alpha,x,beta);
         }
+
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
+        this->MpiComm_->barrier();
     }
 
     template <class SC,class LO,class GO,class NO>
