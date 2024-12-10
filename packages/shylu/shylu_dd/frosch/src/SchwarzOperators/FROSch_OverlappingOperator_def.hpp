@@ -116,7 +116,7 @@ namespace FROSch {
         //this->MpiComm_->barrier();
         //this->MpiComm_->barrier();
         }
-     {
+        {
           FROSCH_TIMER_START_LEVELID(applyTime,"Call to subdomain solver apply");
 
           SubdomainSolver_->apply(*XOverlap_,*YOverlap_,mode,ScalarTraits<SC>::one(),ScalarTraits<SC>::zero());
@@ -134,7 +134,7 @@ namespace FROSch {
 
           YOverlap_->replaceMap(OverlappingMap_);
 
-
+        }
 	    // Is it necessary to apply the projection here locally or can we apply it a the end to the global solution. Probably this will be done in the sum operator
         // Does restricted Schwarz any influence on the pressure
         // Reading aTmp from paramterfile
@@ -149,11 +149,13 @@ namespace FROSch {
             a->doImport(*this->aProjection_,*Scatter_,INSERT);
             a->replaceMap(OverlappingMap_);
 	   
+            SCVecPtr a_values = a->getDataNonConst(0);  
+            SCVecPtr y_values = YOverlap_->getDataNonConst(0);
             double sumAY = 0.;
             {
                 FROSCH_TIMER_START_LEVELID(applyTime,"Sum up AY");
                 for(int i=0; i< a->getDataNonConst(0).size(); i++)
-                    sumAY += a->getDataNonConst(0)[i] * YOverlap_->getDataNonConst(0)[i];
+                    sumAY += a_values[i] * y_values[i];
             }
 
             double sumAA = 0.;
@@ -161,7 +163,7 @@ namespace FROSch {
                 FROSCH_TIMER_START_LEVELID(applyTime,"Sum up AA");
 
                 for(int i=0; i< a->getDataNonConst(0).size(); i++)
-                    sumAA += a->getDataNonConst(0)[i] * a->getDataNonConst(0)[i];
+                    sumAA += a_values[i] * a_values[i];
             }
             double aint = 1./sumAA;
             SC scaling = aint*sumAY; 
@@ -172,7 +174,7 @@ namespace FROSch {
             {              
                 FROSCH_TIMER_START_LEVELID(applyTime,"Apply Scaling");
                 for(int i=0; i< a->getDataNonConst(0).size(); i++)
-                    YOverlap_->getDataNonConst(0)[i] -= scaling*  a->getDataNonConst(0)[i];
+                    y_values[i] -= scaling*  a_values[i];
             }
             
             // Sanity Check
@@ -180,10 +182,10 @@ namespace FROSch {
             //YOverlap_->dot(*aConst,ortho);
             //if(abs(ortho[0]) >= 1.e-12 )
             //    cout << " ########### ORTHO CHECK on proc " << YOverlap_->getMap()->getComm()->getRank() << "= "  << ortho[0] << " ############ " << endl;
-          }
-          XTmp_->putScalar(ScalarTraits<SC>::zero());
-         // END TIMER                                                                                                                                                                 
         }
+        XTmp_->putScalar(ScalarTraits<SC>::zero());
+         // END TIMER                                                                                                                                                                 
+        
         ConstXMapPtr yMap;
           ConstXMapPtr yOverlapMap;
         {
