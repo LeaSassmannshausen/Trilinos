@@ -149,32 +149,29 @@ namespace FROSch {
             a->doImport(*this->aProjection_,*Scatter_,INSERT);
             a->replaceMap(OverlappingMap_);
 	   
-            //SCVecPtr a_values = a->getDataNonConst(0);  
-            //SCVecPtr y_values = YOverlap_->getDataNonConst(0);
-            XMultiVectorConstPtr aConst = a;    
-
-            //double sumAY = 0.;
-            Teuchos::Array<SC> sumAY(1);
-
+            SCVecPtr a_values = a->getDataNonConst(0);  
+            SCVecPtr y_values = YOverlap_->getDataNonConst(0);
+            double sumAY = 0.;
             {
                 FROSCH_TIMER_START_LEVELID(applyTime,"Sum up AY");
-                // for(int i=0; i< a_values.size(); i++)
-                //     sumAY += a_values[i] * y_values[i];
-                YOverlap_->dot(*aConst,sumAY);
+                for(int i=0; i< a_values.size(); i++)
+                    sumAY += a_values[i] * y_values[i];
             }
 
-            // double sumAA = 0.;
-            Teuchos::Array<SC> sumAA(1);
+            double sumAA = 0.;
             {
                 FROSCH_TIMER_START_LEVELID(applyTime,"Sum up AA");
+                if(sumAA_ < 0.){
+                    for(int i=0; i< a_values.size(); i++)
+                        sumAA += a_values[i] * a_values[i];
 
-                // for(int i=0; i< a_values.size(); i++)
-                //     sumAA += a_values[i] * a_values[i];
-                a->dot(*aConst,sumAA);
+                    sumAA_ = sumAA;
+                }
             }
-            double aint = 1./sumAA[0];
-            SC scaling = aint*sumAY[0]; 
+            double aint = 1./sumAA_;
+            SC scaling = aint*sumAY; 
 
+            XMultiVectorConstPtr aConst = a;    
             //YOverlap_->update(-scaling,*aConst,1);
             //YOverlap_->describe(*fancy,VERB_EXTREME);
             {              
