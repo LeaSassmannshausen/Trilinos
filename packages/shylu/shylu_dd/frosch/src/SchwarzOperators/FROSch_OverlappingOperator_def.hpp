@@ -37,7 +37,7 @@ namespace FROSch {
             FROSCH_NOTIFICATION("FROSch::Overlapping Operator",(this->Verbose_) && this->ParameterList_->get("Use Global Pressure Correction",false),"Use global projection to correct pressure.");
 
             //FROSCH_NOTIFICATION("FROSch::Overlapping Operator",(this->Verbose_),"Use pressure projection to correct pressure:: Local Pressure Correction");<<<<<<<<<<<<s
-
+            this->sumAA_ = -1;
             this->aProjection_ = ExtractPtrFromParameterList<XMultiVector >(*this->ParameterList_,"Projection");    
         }
     }
@@ -161,14 +161,14 @@ namespace FROSch {
             double sumAA = 0.;
             {
                 FROSCH_TIMER_START_LEVELID(applyTime,"Sum up AA");
-                if(sumAA_ < 0.){
+                if(this->sumAA_ < 0.){
                     for(int i=0; i< a_values.size(); i++)
                         sumAA += a_values[i] * a_values[i];
 
-                    sumAA_ = sumAA;
+                    this->sumAA_ = sumAA;
                 }
             }
-            double aint = 1./sumAA_;
+            double aint = 1./this->sumAA_;
             SC scaling = aint*sumAY; 
 
             XMultiVectorConstPtr aConst = a;    
