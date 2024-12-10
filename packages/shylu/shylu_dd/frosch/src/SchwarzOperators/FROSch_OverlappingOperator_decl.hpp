@@ -93,7 +93,7 @@ namespace FROSch {
         mutable XMultiVectorPtr XOverlapTmp_;
         mutable XMultiVectorPtr YOverlap_;
         mutable XMultiVectorPtr aProjection_;
-        double sumAA_; // sum ocurring in pressure projection that in only computed once
+        mutable double sumAA_; // sum ocurring in pressure projection that in only computed once
       
         XImportPtr Scatter_;
 
