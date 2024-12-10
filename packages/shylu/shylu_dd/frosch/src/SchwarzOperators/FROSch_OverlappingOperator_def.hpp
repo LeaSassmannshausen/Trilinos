@@ -173,8 +173,9 @@ namespace FROSch {
             //YOverlap_->describe(*fancy,VERB_EXTREME);
             {              
                 FROSCH_TIMER_START_LEVELID(applyTime,"Apply Scaling");
-                for(int i=0; i< a->getDataNonConst(0).size(); i++)
-                    y_values[i] -= scaling*  a_values[i];
+                // for(int i=0; i< a->getDataNonConst(0).size(); i++)
+                //     y_values[i] -= scaling*  a_values[i];
+                YOverlap_->update(-scaling,*aConst,1);
             }
             
             // Sanity Check
