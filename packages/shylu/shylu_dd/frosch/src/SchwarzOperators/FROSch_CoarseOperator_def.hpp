@@ -564,10 +564,10 @@ namespace FROSch {
                 //		cout << " REUSE COARSE MATRIX SYMBOLIC FACTORIZATION CHECK -- " << endl;
                 //		RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
                 int numCoarseSolveEntries=0;
-                        bool reuseCoarseMatrixSymbolicFactorization = this->ParameterList_->get("Reuse: Coarse Matrix Symbolic Factorization",true);
-                        if (!this->IsComputed_) {
-                            reuseCoarseMatrixSymbolicFactorization = false;
-                            //cout << "---  isComputed = false; --- " << endl;
+                bool reuseCoarseMatrixSymbolicFactorization = this->ParameterList_->get("Reuse: Coarse Matrix Symbolic Factorization",true);
+                if (!this->IsComputed_) {
+                    reuseCoarseMatrixSymbolicFactorization = false;
+                    //cout << "---  isComputed = false; --- " << endl;
                 }
                 else{
                 numCoarseSolveEntries = CoarseSolver_->getCoarseMatrixNumEntries() ;
