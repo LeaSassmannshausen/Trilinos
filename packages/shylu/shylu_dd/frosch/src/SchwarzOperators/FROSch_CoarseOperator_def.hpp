@@ -628,10 +628,10 @@ namespace FROSch {
             xpetraWriter.Write("phi",(*this->Phi_));
 
 
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
-        this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
+        // this->MpiComm_->barrier();
     
     
     	return k0;
