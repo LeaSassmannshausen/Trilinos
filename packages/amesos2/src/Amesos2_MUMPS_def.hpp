@@ -317,7 +317,6 @@ namespace Amesos2
        pl->set("ICNTL(3)", -1, "See Manual" );
        pl->set("ICNTL(4)", 1, "See Manual" );
        pl->set("ICNTL(6)", 0, "See Manual" );
-       pl->set("ICNTL(7)", 7, "See Manual" );
        pl->set("ICNTL(9)", 1, "See Manual" );
        pl->set("ICNTL(11)", 0, "See Manual" );
        pl->set("ICNTL(14)", 20, "See Manual" );
