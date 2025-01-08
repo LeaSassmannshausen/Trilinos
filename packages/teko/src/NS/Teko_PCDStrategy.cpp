@@ -120,7 +120,7 @@ void PCDStrategy::initializeState(const Teko::BlockedLinearOp& A,
     if (invMass == Teuchos::null)
       invMass = buildInverse(*invFactoryS_, Qp);
     else
-      rebuildInverse(*invFactoryS_, Qp, invMass);
+      { } //rebuildInverse(*invFactoryS_, Qp, invMass);  
 
     iQp = invMass;
   } else {
@@ -141,7 +141,7 @@ void PCDStrategy::initializeState(const Teko::BlockedLinearOp& A,
     if (invLaplace == Teuchos::null)
       invLaplace = buildInverse(*invFactoryS_, laplace);
     else
-      rebuildInverse(*invFactoryS_, laplace, invLaplace);
+      { } // rebuildInverse(*invFactoryS_, laplace, invLaplace); does not need to be rebuild, since it does not change over time
   }
 
   // build the inverse Schur complement
