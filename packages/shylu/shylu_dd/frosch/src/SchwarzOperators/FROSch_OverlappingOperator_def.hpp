@@ -398,7 +398,7 @@ namespace FROSch {
         if(printOverlappingMatrix)
         {
           Xpetra::IO< SC,LO,GO,NO > xpetraWriter;
-          xpetraWriter.Write("overlappingMatrix_"+std::to_string(OverlappingMatrix_->getComm()->getRank()),(*OverlappingMatrix_));
+          xpetraWriter.Write("overlappingMatrix_"+std::to_string(this->MpiComm_->getRank()),(*OverlappingMatrix_));
         }
 
         this->IsComputed_ = true;
