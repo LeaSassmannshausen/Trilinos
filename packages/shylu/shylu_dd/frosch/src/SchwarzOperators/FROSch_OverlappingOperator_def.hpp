@@ -394,6 +394,13 @@ namespace FROSch {
             SubdomainSolver_->updateMatrix(OverlappingMatrix_,true);
         }
         
+        bool printOverlappingMatrix = this->ParameterList_->get("Print Overlapping Matrix",false);
+        if(printOverlappingMatrix)
+        {
+          Xpetra::IO< SC,LO,GO,NO > xpetraWriter;
+          xpetraWriter.Write("overlappingMatrix_"+std::to_string(OverlappingMatrix_->getComm()->getRank()),(*OverlappingMatrix_));
+        }
+
         this->IsComputed_ = true;
         return SubdomainSolver_->compute();
         /*if (!reuseSymbolicFactorization || SubdomainSolver_.is_null()) {
