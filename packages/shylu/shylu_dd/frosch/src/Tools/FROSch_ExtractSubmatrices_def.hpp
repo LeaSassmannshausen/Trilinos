@@ -167,11 +167,11 @@ namespace FROSch {
                     ArrayView<SC> local_vals (local_vals_vector);
                     for (LO j=0; j<size; j++) {
                         GO localIndex = subdomainRowMap->getLocalElement(global_indices[j]);
-                        if (localIndex>=0) {
+                        //if (localIndex>=0) {
                             local_cols[new_nnz] = localIndex;
                             local_vals[new_nnz] = global_values[j];
                             new_nnz ++;
-                        }
+                        //}
                     }
                     localSubdomainMatrix->replaceLocalValues(i, local_cols(0, new_nnz), local_vals(0, new_nnz));
                 }
