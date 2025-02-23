@@ -114,6 +114,8 @@ namespace FROSch {
 #if 0 //defined(HAVE_XPETRA_TPETRA)
         if (globalMatrix->getRowMap()->lib() == UseTpetra) 
         {
+            std::cout << " ExtractLocalSubdomainMatrix_Compute: routine with tpetra " << std::endl;
+
             // NOTE: this fillComplete is expensive on GPUs
             subdomainMatrix->fillComplete();
             auto devSubdomainMap         = subdomainRowMap->getLocalMap();
@@ -149,6 +151,7 @@ namespace FROSch {
             localSubdomainMatrix->resumeFill();
 
             size_t max_nnz = localSubdomainMatrix->getLocalMaxNumRowEntries();
+            std::cout << " ExtractLocalSubdomainMatrix_Compute:local num max row entries " << max_nnz << std::endl;
             std::vector<LO> local_cols_vector (max_nnz);
             std::vector<SC> local_vals_vector (max_nnz);
             for (unsigned i=0; i<subdomainRowMap->getLocalNumElements(); i++) {
