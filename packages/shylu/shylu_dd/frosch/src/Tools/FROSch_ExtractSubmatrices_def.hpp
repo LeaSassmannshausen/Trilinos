@@ -106,7 +106,6 @@ namespace FROSch {
         auto subdomainRowMap = subdomainMatrix->getRowMap();
         RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout)); 
         subdomainRowMap->describe(*fancy,VERB_EXTREME);
-        subdomainMatrix->describe(*fancy,VERB_EXTREME);
         subdomainMatrix->setAllToScalar(zero);
         subdomainMatrix->resumeFill();
         subdomainMatrix->doImport(*globalMatrix, *scatter, ADD);
