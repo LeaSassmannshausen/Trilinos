@@ -104,7 +104,9 @@ namespace FROSch {
         FROSCH_DETAILTIMER_START(extractLocalSubdomainMatrixTime_compute, "ExtractLocalSubdomainMatrix_Compute");
         const SC zero = ScalarTraits<SC>::zero();
         auto subdomainRowMap = subdomainMatrix->getRowMap();
-
+        RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout)); 
+        subdomainRowMap->describe(*fancy,VERB_EXTREME);
+        subdomainMatrix->describe(*fancy,VERB_EXTREME);
         subdomainMatrix->setAllToScalar(zero);
         subdomainMatrix->resumeFill();
         subdomainMatrix->doImport(*globalMatrix, *scatter, ADD);
