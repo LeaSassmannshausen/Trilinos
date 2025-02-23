@@ -264,7 +264,6 @@ namespace FROSch {
             // using original K_ as input
             RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout)); 
             this->K_->describe(*fancy,VERB_EXTREME);
-            this->subdomainMatrix_->describe(*fancy,VERB_EXTREME);
             ExtractLocalSubdomainMatrix_Compute(this->subdomainScatter_, this->K_, this->subdomainMatrix_, this->localSubdomainMatrix_);
             this->OverlappingMatrix_ = this->localSubdomainMatrix_.getConst();
         } else {
