@@ -2360,6 +2360,8 @@ namespace Tpetra {
     }
     const LO* const inputInds = lclCols.getRawPtr ();
     const Scalar* const inputVals = vals.getRawPtr ();
+
+    std::cout << "CrsMatrix:: replaceLocalValues -- iputInds "  << inputInds << " inoutVals " << inputVals << " num entries " << numInputEnt << endl; 
     return this->replaceLocalValues (localRow, numInputEnt,
                                      inputVals, inputInds);
   }
@@ -2429,6 +2431,7 @@ namespace Tpetra {
         rowVals[offset] = newVals[k];
       };
     std::function<void(size_t const, size_t const, size_t const)> cb(std::ref(fun));
+    std::cout << "CrsMatrix::replaceGlobalValuesImpl global indizes " << graph.findGlobalIndices(rowInfo, indsT, cb) << " row info "<< rowInfo << " num entries " <<numElts << endl;
     return graph.findGlobalIndices(rowInfo, indsT, cb);
   }
 
