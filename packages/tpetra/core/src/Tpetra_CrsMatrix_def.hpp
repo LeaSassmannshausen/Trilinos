@@ -2285,9 +2285,6 @@ namespace Tpetra {
                           const impl_scalar_type newVals[],
                           const LocalOrdinal numElts) 
   {
-
-    std::cout << "CrsMatrix::replaceLocalValuesImpl line 2289 " << std::endl;
-
     typedef LocalOrdinal LO;
     typedef GlobalOrdinal GO;
     const bool sorted = graph.isSorted ();
@@ -2299,7 +2296,6 @@ namespace Tpetra {
       // Get a view of the column indices in the row.  This amortizes
       // the cost of getting the view over all the entries of inds.
       auto colInds = graph.getLocalIndsViewHost (rowInfo);
-      std::cout << "\t CrsMatrix::replaceLocalValuesImpl locally indexed - num elements " << numElts << " rowinfo num entries " << rowInfo.numEntries << std::endl;
 
       for (LO j = 0; j < numElts; ++j) {
         const LO lclColInd = inds[j];
@@ -2314,7 +2310,6 @@ namespace Tpetra {
       }
     }
     else if (graph.isGloballyIndexed ()) {
-
       if (graph.colMap_.is_null ()) {
         return Teuchos::OrdinalTraits<LO>::invalid ();
       }
@@ -2346,7 +2341,6 @@ namespace Tpetra {
     // allocation (on first insertion, not at graph / matrix
     // construction).  Lazy allocation will go away because it is
     // not thread scalable.
-    std::cout << "CrsMatrix::replaceLocalValuesImpl numvalid " << numValid << std::endl;
 
     return numValid;
   }
@@ -2366,8 +2360,6 @@ namespace Tpetra {
     }
     const LO* const inputInds = lclCols.getRawPtr ();
     const Scalar* const inputVals = vals.getRawPtr ();
-
-    std::cout << "CrsMatrix:: replaceLocalValues -- iputInds "  << inputInds << " inoutVals " << inputVals << " num entries " << numInputEnt << std::endl; 
     return this->replaceLocalValues (localRow, numInputEnt,
                                      inputVals, inputInds);
   }
@@ -2381,9 +2373,6 @@ namespace Tpetra {
     const Kokkos::View<const local_ordinal_type*, Kokkos::AnonymousSpace>& inputInds,
     const Kokkos::View<const impl_scalar_type*, Kokkos::AnonymousSpace>& inputVals)
   {
-
-    std::cout << "CrsMatrix::replaceLocalValues leading to implicit  line 2379" << std::endl;
-
     using LO = local_ordinal_type;
     const LO numInputEnt = inputInds.extent(0);
     if (numInputEnt != static_cast<LO>(inputVals.extent(0))) {
@@ -2403,8 +2392,6 @@ namespace Tpetra {
                       const Scalar inputVals[],
                       const LocalOrdinal inputCols[])
   {
-    std::cout << "CrsMatrix::replaceLocalValues leading to implicit line 2400 " << std::endl;
-
     typedef impl_scalar_type IST;
     typedef LocalOrdinal LO;
 
@@ -2436,16 +2423,12 @@ namespace Tpetra {
                            const impl_scalar_type newVals[],
                            const LocalOrdinal numElts)
   {
-    std::cout << "CrsMatrix::replaceGlobalValuesImpl  " << std::endl;
-
     Teuchos::ArrayView<const GlobalOrdinal> indsT(inds, numElts);
     auto fun =
       [&](size_t const k, size_t const /*start*/, size_t const offset) {
         rowVals[offset] = newVals[k];
       };
     std::function<void(size_t const, size_t const, size_t const)> cb(std::ref(fun));
-
-    std::cout << "CrsMatrix::replaceGlobalValuesImpl global indizes " << graph.findGlobalIndices(rowInfo, indsT, cb) <<" num entries " <<numElts << std::endl;
     return graph.findGlobalIndices(rowInfo, indsT, cb);
   }
 
