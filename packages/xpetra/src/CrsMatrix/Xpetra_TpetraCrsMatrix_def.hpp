@@ -170,7 +170,7 @@ void TpetraCrsMatrix<Scalar, LocalOrdinal, GlobalOrdinal, Node>::replaceLocalVal
                                                                                     const ArrayView<const Scalar> &vals) {
   XPETRA_MONITOR("TpetraCrsMatrix::replaceLocalValues");
   typedef typename ArrayView<const LocalOrdinal>::size_type size_type;
-  std::cout << " Column size " << cols.size() << " values size " << vals.size() << "  for local row " << localRow << " optimized storage:" << mtx_isStorageOptimized()  << std::endl;
+  std::cout << " Column size " << cols.size() << " values size " << vals.size() << "  for local row " << localRow << " optimized storage:" << mtx_->isStorageOptimized()  << std::endl;
   const LocalOrdinal numValid =
       mtx_->replaceLocalValues(localRow, cols, vals);
   TEUCHOS_TEST_FOR_EXCEPTION(
