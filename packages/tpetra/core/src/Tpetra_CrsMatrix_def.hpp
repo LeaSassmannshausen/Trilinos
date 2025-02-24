@@ -2431,6 +2431,7 @@ namespace Tpetra {
         rowVals[offset] = newVals[k];
       };
     std::function<void(size_t const, size_t const, size_t const)> cb(std::ref(fun));
+    
     std::cout << "CrsMatrix::replaceGlobalValuesImpl global indizes " << graph.findGlobalIndices(rowInfo, indsT, cb) <<" num entries " <<numElts << std::endl;
     return graph.findGlobalIndices(rowInfo, indsT, cb);
   }
