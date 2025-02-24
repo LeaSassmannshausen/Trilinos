@@ -2311,7 +2311,7 @@ namespace Tpetra {
         std::cout << "\t \t CrsMatrix::replaceLocalValuesImpl locally indexed - offset " << offset << " rowinfo num entries " << rowInfo.numEntries << std::endl;
 
         if (offset != rowInfo.numEntries) {
-          std::cout << " offset != rowInfo.numEntries " << std::endl;
+          std::cout << " \t \t \t offset != rowInfo.numEntries " << std::endl;
           rowVals[offset] = newVals[j];
           hint = offset + 1;
           ++numValid;
