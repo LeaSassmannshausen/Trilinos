@@ -2296,22 +2296,17 @@ namespace Tpetra {
     LO numValid = 0; // number of valid local column indices
 
     if (graph.isLocallyIndexed ()) {
-      std::cout << "CrsMatrix::replaceLocalValuesImpl locally indexed" << std::endl;
-
       // Get a view of the column indices in the row.  This amortizes
       // the cost of getting the view over all the entries of inds.
       auto colInds = graph.getLocalIndsViewHost (rowInfo);
-      std::cout << "\t CrsMatrix::replaceLocalValuesImpl locally indexed - num elements " << numElts << std::endl;
+      std::cout << "\t CrsMatrix::replaceLocalValuesImpl locally indexed - num elements " << numElts << " rowinfo num entries " << rowInfo.numEntries << std::endl;
 
       for (LO j = 0; j < numElts; ++j) {
         const LO lclColInd = inds[j];
         const size_t offset =
           KokkosSparse::findRelOffset (colInds, rowInfo.numEntries,
                                        lclColInd, hint, sorted);
-        std::cout << "\t \t CrsMatrix::replaceLocalValuesImpl locally indexed - offset " << offset << " rowinfo num entries " << rowInfo.numEntries << std::endl;
-
         if (offset != rowInfo.numEntries) {
-          std::cout << " \t \t \t offset != rowInfo.numEntries " << std::endl;
           rowVals[offset] = newVals[j];
           hint = offset + 1;
           ++numValid;
@@ -2319,7 +2314,6 @@ namespace Tpetra {
       }
     }
     else if (graph.isGloballyIndexed ()) {
-      std::cout << "CrsMatrix::replaceLocalValuesImpl globally indexed" << std::endl;
 
       if (graph.colMap_.is_null ()) {
         return Teuchos::OrdinalTraits<LO>::invalid ();
