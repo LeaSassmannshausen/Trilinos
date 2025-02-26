@@ -180,6 +180,7 @@ class PresLaplaceLSCStrategy : public LSCStrategy {
   bool isSymmetric_;
   int eigSolveParam_;
   bool useFullLDU_;
+  bool assumeStable_;
 
   LinearOp massMatrix_;
   LinearOp laplaceMatrix_;

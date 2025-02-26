@@ -148,8 +148,9 @@ void PresLaplaceLSCStrategy::initializeState(const BlockedLinearOp& A,
   LinearOp D = B;
   LinearOp G = Bt;
 
-  bool isStabilized = (not isZeroOp(C));
-
+  //bool isStabilized = (not isZeroOp(C));
+  bool isStabilized = assumeStable_ ? false : (not isZeroOp(C));
+  std::cout << " isStabilzed " << isStabilized << std::endl;
   // grab operators from state object
   LinearOp massMatrix = massMatrix_; //state->getLinearOp(velMassStr);
 
@@ -278,6 +279,8 @@ void PresLaplaceLSCStrategy::initializeFromParameterList(const Teuchos::Paramete
     scaleType_ = getDiagonalType(pl.get<std::string>("Scaling Type"));
     TEUCHOS_TEST_FOR_EXCEPT(scaleType_ == NotDiag);
   }
+  if (pl.isParameter("Assume Stable Discretization"))
+    assumeStable_ = pl.get<bool>("Assume Stable Discretization");
 
   // set defaults as needed
   if (invVStr == "") invVStr = invStr;
