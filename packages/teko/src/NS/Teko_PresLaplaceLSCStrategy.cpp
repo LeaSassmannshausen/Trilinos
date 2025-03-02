@@ -150,7 +150,7 @@ void PresLaplaceLSCStrategy::initializeState(const BlockedLinearOp& A,
 
   //bool isStabilized = (not isZeroOp(C));
   bool isStabilized = assumeStable_ ? false : (not isZeroOp(C));
-  std::cout << " isStabilzed " << isStabilized << std::endl;
+  //std::cout << " isStabilzed " << isStabilized << std::endl;
   // grab operators from state object
   LinearOp massMatrix = massMatrix_; //state->getLinearOp(velMassStr);
 
