@@ -234,7 +234,7 @@ void InvLSCStrategy::initializeState(const BlockedLinearOp& A, LSCPrecondState* 
   // else "invMass_" should be set and there is no reason to rebuild it
 
   // compute BQBt
-  state->BQBt_ = explicitMultiply(B, state->invMass_, Bt, state->BQBt_);
+  state->BQBt_ = explicitMultiply(B, state->invMass_, G, state->BQBt_);
   Teko_DEBUG_MSG("Computed BQBt", 10);
 
   // if there is no H-Scaling
