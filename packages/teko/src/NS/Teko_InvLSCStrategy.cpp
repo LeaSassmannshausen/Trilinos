@@ -472,7 +472,7 @@ void InvLSCStrategy::initializeFromParameterList(const Teuchos::ParameterList& p
   if (pl.isParameter("Assume Stable Discretization"))
     assumeStable_ = pl.get<bool>("Assume Stable Discretization");
   if (pl.isParameter("Is Symmetric"))
-    assumeStable_ = pl.get<bool>("Is Symmetric");
+    isSymmetric_ = pl.get<bool>("Is Symmetric");
 
   Teko_DEBUG_MSG_BEGIN(5) DEBUG_STREAM << "LSC Inverse Strategy Parameters: " << std::endl;
   DEBUG_STREAM << "   inv type   = \"" << invStr << "\"" << std::endl;
