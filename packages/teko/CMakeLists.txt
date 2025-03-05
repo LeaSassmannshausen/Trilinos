@@ -57,11 +57,11 @@ ELSE()
 ENDIF()
 
 # enable development mode
-IF(${PROJECT_NAME}_ENABLE_DEBUG_MSGS)
-   SET(Teko_DEBUG_OFF OFF)
-ELSE()
+# IF(${PROJECT_NAME}_ENABLE_DEBUG_MSGS)
+#    SET(Teko_DEBUG_OFF OFF)
+# ELSE()
    SET(Teko_DEBUG_OFF ON)
-ENDIF()
+# ENDIF()
 
 #
 # C) Add the libraries, tests, and examples

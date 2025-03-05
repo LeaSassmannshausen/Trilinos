@@ -54,12 +54,12 @@ class LSCPrecondState;  // forward declaration
  *     + C_O \f$.
  *
  * Where \f$\hat{Q}_u\f$ is typically a diagonal approximation of the mass matrix,
- * and \f$H\f$ is an appropriate diagonal scaling matrix (see [2] for details).
+ * and \f$ H\f$ is an appropriate diagonal scaling matrix (see [2] for details).
  * The scalars \f$\alpha\f$ and \f$\gamma\f$ are chosen to stabilize an unstable
  * discretization (for the case of \f$C\neq 0\f$). If the system is stable then
  * they can be set to \f$0\f$ (see [1] for more details).
  *
- * In order to approximate \f$A\f$ two decompositions can be chosen, a full LU
+ * In order to approximate \f$ A\f$ two decompositions can be chosen, a full LU
  * decomposition and a purely upper triangular version. A full LU decomposition
  * requires that the velocity convection-diffusion operator (\f$F\f$) is inverted
  * twice, while an upper triangular approximation requires only a single inverse.
