@@ -147,7 +147,7 @@ void identityRowIndices(const Tpetra::Map<LO, GO, NT>& rowMap,
     bool rowIsIdentity = true;
     GO rowGID          = rowMap.getGlobalElement(i);
 
-    size_t numEntries = mat.getNumEntriesInGlobalRow(i);
+    size_t numEntries = mat.getNumEntriesInGlobalRow(rowGID);
     auto indices = typename Tpetra::CrsMatrix<ST, LO, GO, NT>::nonconst_global_inds_host_view_type(
         Kokkos::ViewAllocateWithoutInitializing("rowIndices"), numEntries);
     auto values = typename Tpetra::CrsMatrix<ST, LO, GO, NT>::nonconst_values_host_view_type(
