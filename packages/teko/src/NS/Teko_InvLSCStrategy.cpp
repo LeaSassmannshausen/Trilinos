@@ -253,6 +253,8 @@ void InvLSCStrategy::initializeState(const BlockedLinearOp& A, LSCPrecondState* 
   LinearOp H = hScaling_;
   if (H == Teuchos::null && not isSymmetric_) H = state->invMass_;
 
+  Teko_DEBUG_MSG("Setup the scaling operator", 10);
+
   // setup the scaling operator
   if (H == Teuchos::null)
     state->BHBt_ = state->BQBt_;
@@ -267,6 +269,8 @@ void InvLSCStrategy::initializeState(const BlockedLinearOp& A, LSCPrecondState* 
 
   // if this is a stable discretization...we are done!
   if (not isStabilized) {
+    Teko_DEBUG_MSG("LSC is not stabilized", 10);
+
     state->addInverse("BQBtmC", state->BQBt_);
     state->addInverse("BHBtmC", state->BHBt_);
     state->gamma_ = 0.0;
@@ -275,10 +279,14 @@ void InvLSCStrategy::initializeState(const BlockedLinearOp& A, LSCPrecondState* 
 
     state->setInitialized(true);
 
+    Teko_DEBUG_MSG("Return from initialize state", 10);
+
     return;
   }
 
   // for Epetra_CrsMatrix...zero out certain rows: this ensures spectral radius is correct
+  Teko_DEBUG_MSG("Zero out rows in F", 10);
+
   LinearOp modF = F;
   if (!Teko::TpetraHelpers::isTpetraLinearOp(F)) {  // Epetra
 #ifdef TEKO_HAVE_EPETRA
@@ -304,6 +312,8 @@ void InvLSCStrategy::initializeState(const BlockedLinearOp& A, LSCPrecondState* 
         "Epetra code, but TEKO is not built with Epetra!");
 #endif
   } else {  // Tpetra
+    Teko_DEBUG_MSG("Tpetra", 10);
+
     ST scalar   = 0.0;
     bool transp = false;
     RCP<const Tpetra::CrsMatrix<ST, LO, GO, NT> > crsF =
@@ -313,12 +323,17 @@ void InvLSCStrategy::initializeState(const BlockedLinearOp& A, LSCPrecondState* 
 
     // get rows in need of zeroing
     Teko::TpetraHelpers::identityRowIndices(*crsF->getRowMap(), *crsF, zeroIndices);
+    
+    Teko_DEBUG_MSG("Identified zero rows", 10);
 
     // build an operator that zeros those rows
     modF = Thyra::tpetraLinearOp<ST, LO, GO, NT>(
         Thyra::tpetraVectorSpace<ST, LO, GO, NT>(crsF->getDomainMap()),
         Thyra::tpetraVectorSpace<ST, LO, GO, NT>(crsF->getRangeMap()),
         rcp(new Teko::TpetraHelpers::ZeroedOperator(zeroIndices, crsF)));
+
+    Teko_DEBUG_MSG("Built operator to zero out", 10);
+
   }
 
   // compute gamma
