@@ -135,6 +135,10 @@ class PCDStrategy : public LU2x2Strategy {
   Teuchos::RCP<Teuchos::ParameterList> pcdParams_;
 
   bool schurCompOrdering_;
+  bool discreteLaplace_;
+
+  LinearOp velocityMassMatrix_;
+   
 
   static Teuchos::RCP<Teuchos::Time> initTimer_;
   static Teuchos::RCP<Teuchos::Time> invSTimer_;

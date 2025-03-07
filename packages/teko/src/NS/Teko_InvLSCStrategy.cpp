@@ -321,7 +321,6 @@ void InvLSCStrategy::initializeState(const BlockedLinearOp& A, LSCPrecondState* 
 
     std::vector<GO> zeroIndices;
     Teko_DEBUG_MSG("Identify zero rows", 10);
-
     // get rows in need of zeroing
     Teko::TpetraHelpers::identityRowIndices(*crsF->getRowMap(), *crsF, zeroIndices);
     

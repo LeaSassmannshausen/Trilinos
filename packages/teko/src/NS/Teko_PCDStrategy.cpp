@@ -102,10 +102,10 @@ void PCDStrategy::initializeState(const Teko::BlockedLinearOp& A,
   Teuchos::TimeMonitor timer(*initTimer_, true);
 
   // extract sub blocks
-  LinearOp F  = Teko::getBlock(0, 0, A);
-  LinearOp Bt = Teko::getBlock(0, 1, A);
-  LinearOp B  = Teko::getBlock(1, 0, A);
-  LinearOp C  = Teko::getBlock(1, 1, A);
+  const LinearOp F  = Teko::getBlock(0, 0, A);
+  const LinearOp Bt = Teko::getBlock(0, 1, A);
+  const LinearOp B  = Teko::getBlock(1, 0, A);
+  const LinearOp C  = Teko::getBlock(1, 1, A);
 
   LinearOp Qp = getRequestHandler()->request<LinearOp>(presMassStr);
   TEUCHOS_ASSERT(Qp != Teuchos::null);
@@ -116,7 +116,7 @@ void PCDStrategy::initializeState(const Teko::BlockedLinearOp& A,
   if (massInverseType_ == NotDiag) {
     ModifiableLinearOp& invMass = state.getModifiableOp("invMass");
     Teko_DEBUG_SCOPE("Building inv(Mass)", 10);
-
+    std::cout << " Building inverse of mass with Inverse Factory of Schur Complement " << std::endl;
     if (invMass == Teuchos::null)
       invMass = buildInverse(*invFactoryS_, Qp);
     else
@@ -124,6 +124,7 @@ void PCDStrategy::initializeState(const Teko::BlockedLinearOp& A,
 
     iQp = invMass;
   } else {
+
     Teko_DEBUG_MSG(
         "Building inverse mass of type \"" << Teko::getDiagonalName(massInverseType_) << "\"", 10);
     iQp = getInvDiagonalOp(Qp, massInverseType_);
@@ -136,12 +137,44 @@ void PCDStrategy::initializeState(const Teko::BlockedLinearOp& A,
     Teuchos::TimeMonitor timerInvS(*invSTimer_, true);
 
     // LinearOp laplace = getRequestHandler()->request<Teko::LinearOp>(presLapStr);
-    LinearOp laplace = getRequestHandler()->request<Teko::LinearOp>(RequestMesg(lapParams_));
-    TEUCHOS_ASSERT(laplace != Teuchos::null);
-    if (invLaplace == Teuchos::null)
-      invLaplace = buildInverse(*invFactoryS_, laplace);
-    else
-      { } // rebuildInverse(*invFactoryS_, laplace, invLaplace); does not need to be rebuild, since it does not change over time
+    if(discreteLaplace_){ 
+      LinearOp laplace = getRequestHandler()->request<Teko::LinearOp>(RequestMesg(lapParams_));
+      TEUCHOS_ASSERT(laplace != Teuchos::null);
+      if (invLaplace == Teuchos::null)
+        invLaplace = buildInverse(*invFactoryS_, laplace);
+      else
+        { } // rebuildInverse(*invFactoryS_, laplace, invLaplace); does not need to be rebuild, since it does not change over time
+    }
+    else{
+
+      // ##############################################
+      ModifiableLinearOp& invVelocityMass = state.getModifiableOp("invVelocityMass");
+      if (velocityMassMatrix_ == Teuchos::null) {
+        Teko_DEBUG_MSG(
+            "LSC::initializeState Build Scaling <F> type \"" << getDiagonalName(massInverseType_) << "\"", 1);
+        invVelocityMass = getInvDiagonalOp(F, massInverseType_);
+      } else if (invVelocityMass == Teuchos::null) {
+        Teko_DEBUG_MSG(
+            "LSC::initializeState Build Scaling <mass> type \"" << getDiagonalName(massInverseType_) << "\"",
+            1);
+        invVelocityMass = getInvDiagonalOp(velocityMassMatrix_, massInverseType_);
+      }
+      LinearOp QuInv = invVelocityMass;
+      // ##############################################
+
+
+      ModifiableLinearOp laplaceMod = explicitMultiply(B, QuInv, Bt,laplaceMod);
+
+      LinearOp laplace = toLinearOp(laplaceMod);
+      if (invLaplace == Teuchos::null){
+        //const LinearOp& constLaplace = state.getInverse("laplace");
+        invLaplace = buildInverse(*invFactoryS_, laplace);
+      }
+      else
+        { } // rebuildInverse(*invFactoryS_, laplace, invLaplace); does not need to be rebuild, since it does not change over time
+
+    }
+    
   }
 
   // build the inverse Schur complement
@@ -219,6 +252,14 @@ void PCDStrategy::initializeFromParameterList(const Teuchos::ParameterList& pl,
   if (pl.isParameter("Flip Schur Complement Ordering"))
     schurCompOrdering_ = pl.get<bool>("Flip Schur Complement Ordering");
 
+  if (pl.isParameter("Use Discrete Laplace"))
+    discreteLaplace_ = pl.get<bool>("Use Discrete Laplace");  
+  else
+    discreteLaplace_ = true;
+
+  if(massInverseType_ == NotDiag && !discreteLaplace_)
+     massInverseType_ = Diagonal; // If we dont use the discrete laplace operator we can only use an approximated mass inverse
+
   // set defaults as needed
   if (invFStr == "") invFStr = invStr;
   if (invSStr == "") invSStr = invStr;
@@ -228,7 +269,7 @@ void PCDStrategy::initializeFromParameterList(const Teuchos::ParameterList& pl,
     lapParams_ =
         Teuchos::rcp(new Teuchos::ParameterList(pl.sublist("Pressure Laplace Parameters")));
   else
-    lapParams_ = Teuchos::rcp(new Teuchos::ParameterList);
+     lapParams_ = Teuchos::rcp(new Teuchos::ParameterList);
 
   // read pcd operator parameters
   if (pl.isSublist("Pressure Convection Diffusion Parameters"))
@@ -261,8 +302,8 @@ void PCDStrategy::initializeFromParameterList(const Teuchos::ParameterList& pl,
   pl.print(DEBUG_STREAM);
   Teko_DEBUG_MSG_END()
 
-      // build velocity inverse factory
-      invFactoryF_ = invLib.getInverseFactory(invFStr);
+  // build velocity inverse factory
+  invFactoryF_ = invLib.getInverseFactory(invFStr);
 
   if (invFStr == invSStr)
     invFactoryS_ = invFactoryF_;
@@ -278,6 +319,13 @@ void PCDStrategy::initializeFromParameterList(const Teuchos::ParameterList& pl,
   // getRequestHandler()->preRequest<Teko::LinearOp>(getPressureLaplaceString());
   getRequestHandler()->preRequest<Teko::LinearOp>(Teko::RequestMesg(lapParams_));
   getRequestHandler()->preRequest<Teko::LinearOp>(Teko::RequestMesg(pcdParams_));
+
+  if (!discreteLaplace_) {
+    Teuchos::RCP<Teko::RequestHandler> rh = getRequestHandler();
+    rh->preRequest<Teko::LinearOp>(Teko::RequestMesg("Velocity Mass Matrix"));
+    Teko::LinearOp mass = rh->request<Teko::LinearOp>(Teko::RequestMesg("Velocity Mass Matrix"));
+    velocityMassMatrix_ = mass;
+  }
 }
 
 //! For assiting in construction of the preconditioner
