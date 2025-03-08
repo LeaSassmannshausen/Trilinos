@@ -193,7 +193,7 @@ class InvLSCStrategy : public LSCStrategy {
   /** Set the \f$W\f$-Scaling vector used in \f$B H B^T\f$. This method
    * takes a vector.
    */
-  virtual void setWScaling(const MultiVector &wScaling) { wScaling_ = wScaling; std::cout << " Set wScaling "<< std::endl; }
+  virtual void setWScaling(const MultiVector &wScaling) { wScaling_ = wScaling; }
 
  protected:
   LinearOp massMatrix_;
