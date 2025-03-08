@@ -240,7 +240,14 @@ void InvLSCStrategy::initializeState(const BlockedLinearOp& A, LSCPrecondState* 
   // if there is no H-Scaling
   if (wScaling_ != Teuchos::null && hScaling_ == Teuchos::null) {
     // from W vector build H operator scaling
+    std::cout << " Compute H from W scaling " << std::endl; 
     RCP<const Thyra::VectorBase<double> > w = wScaling_->col(0);
+ 
+    // RCP<Teuchos::FancyOStream> out = Teuchos::VerboseObjectBase::getDefaultOStream();
+    // wScaling_->describe(*out,Teuchos::VERB_EXTREME);
+
+    // w->describe(*out,Teuchos::VERB_EXTREME);
+
     RCP<const Thyra::VectorBase<double> > iQu =
         rcp_dynamic_cast<const Thyra::DiagonalLinearOpBase<double> >(state->invMass_)->getDiag();
     RCP<Thyra::VectorBase<double> > h = Thyra::createMember(iQu->space());
@@ -248,6 +255,9 @@ void InvLSCStrategy::initializeState(const BlockedLinearOp& A, LSCPrecondState* 
     Thyra::put_scalar(0.0, h.ptr());
     Thyra::ele_wise_prod(1.0, *w, *iQu, h.ptr());
     hScaling_ = Teuchos::rcp(new Thyra::DefaultDiagonalLinearOp<double>(h));
+
+    // hScaling_->describe(*out,Teuchos::VERB_EXTREME);
+
   }
 
   LinearOp H = hScaling_;
@@ -264,6 +274,7 @@ void InvLSCStrategy::initializeState(const BlockedLinearOp& A, LSCPrecondState* 
     Teuchos::TimeMonitor timer(*time);
 
     // compute BHBt
+    std::cout << " Setting BHBt " << std::endl;
     state->BHBt_ = explicitMultiply(D, H, G, state->BHBt_);
   }
 
@@ -526,9 +537,17 @@ void InvLSCStrategy::initializeFromParameterList(const Teuchos::ParameterList& p
     Teko::LinearOp mass = rh->request<Teko::LinearOp>(Teko::RequestMesg("Velocity Mass Matrix"));
     setMassMatrix(mass);
   }
+
+   if (useWScaling_) {
+    std::cout << " Use w Scaling " << std::endl;
+    Teko::MultiVector wScale = pl.get<Teko::MultiVector>("W-Scaling Vector");
+
+    if (!wScale == Teuchos::null)
+      setWScaling(wScale);
+  }
 }
 
-//! For assiting in construction of the preconditioner
+//! For assisting in construction of the preconditioner
 Teuchos::RCP<Teuchos::ParameterList> InvLSCStrategy::getRequestedParameters() const {
   Teuchos::RCP<Teuchos::ParameterList> result;
   Teuchos::RCP<Teuchos::ParameterList> pl = rcp(new Teuchos::ParameterList());
@@ -569,6 +588,7 @@ bool InvLSCStrategy::updateRequestedParameters(const Teuchos::ParameterList& pl)
 
   // use W scaling matrix
   if (useWScaling_) {
+    std::cout << " Use w Scaling " << std::endl;
     Teko::MultiVector wScale = pl.get<Teko::MultiVector>("W-Scaling Vector");
 
     if (wScale == Teuchos::null)
