@@ -240,7 +240,7 @@ void InvLSCStrategy::initializeState(const BlockedLinearOp& A, LSCPrecondState* 
   // if there is no H-Scaling
   if (wScaling_ != Teuchos::null && hScaling_ == Teuchos::null) {
     // from W vector build H operator scaling
-    std::cout << " Compute H from W scaling " << std::endl; 
+    // std::cout << " Compute H from W scaling " << std::endl; 
     RCP<const Thyra::VectorBase<double> > w = wScaling_->col(0);
  
     // RCP<Teuchos::FancyOStream> out = Teuchos::VerboseObjectBase::getDefaultOStream();
@@ -274,7 +274,7 @@ void InvLSCStrategy::initializeState(const BlockedLinearOp& A, LSCPrecondState* 
     Teuchos::TimeMonitor timer(*time);
 
     // compute BHBt
-    std::cout << " Setting BHBt " << std::endl;
+    //std::cout << " Setting BHBt " << std::endl;
     state->BHBt_ = explicitMultiply(D, H, G, state->BHBt_);
   }
 
