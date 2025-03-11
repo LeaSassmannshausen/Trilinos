@@ -539,7 +539,7 @@ void InvLSCStrategy::initializeFromParameterList(const Teuchos::ParameterList& p
   }
 
    if (useWScaling_) {
-    std::cout << " Use w Scaling " << std::endl;
+    // std::cout << " Use w Scaling " << std::endl;
     Teko::MultiVector wScale = pl.get<Teko::MultiVector>("W-Scaling Vector");
 
     if (!wScale == Teuchos::null)
@@ -588,7 +588,7 @@ bool InvLSCStrategy::updateRequestedParameters(const Teuchos::ParameterList& pl)
 
   // use W scaling matrix
   if (useWScaling_) {
-    std::cout << " Use w Scaling " << std::endl;
+    std::cout << " updateRequestedParameters: Use w Scaling " << std::endl;
     Teko::MultiVector wScale = pl.get<Teko::MultiVector>("W-Scaling Vector");
 
     if (wScale == Teuchos::null)
