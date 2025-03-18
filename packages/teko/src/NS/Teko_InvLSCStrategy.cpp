@@ -128,7 +128,7 @@ InvLSCStrategy::InvLSCStrategy(const Teuchos::RCP<InverseFactory>& invFactF,
 /////////////////////////////////////////////////////////////////////////////
 
 void InvLSCStrategy::buildState(BlockedLinearOp& A, BlockPreconditionerState& state) const {
-  Teko_DEBUG_SCOPE("InvLSCStrategy::buildState", 10);
+  Teko_DEBUG_MSG("InvLSCStrategy::buildState", 10);
 
   LSCPrecondState* lscState = dynamic_cast<LSCPrecondState*>(&state);
   TEUCHOS_ASSERT(lscState != 0);
@@ -139,7 +139,7 @@ void InvLSCStrategy::buildState(BlockedLinearOp& A, BlockPreconditionerState& st
 
     // construct operators
     {
-      Teko_DEBUG_SCOPE("LSC::buildState constructing operators", 1);
+      Teko_DEBUG_MSG("LSC::buildState constructing operators", 1);
       Teko_DEBUG_EXPR(timer.start(true));
 
       initializeState(A, lscState);
@@ -150,7 +150,7 @@ void InvLSCStrategy::buildState(BlockedLinearOp& A, BlockPreconditionerState& st
 
     // Build the inverses
     {
-      Teko_DEBUG_SCOPE("LSC::buildState calculating inverses", 1);
+      Teko_DEBUG_MSG("LSC::buildState calculating inverses", 1);
       Teko_DEBUG_EXPR(timer.start(true));
 
       computeInverses(A, lscState);
@@ -225,7 +225,16 @@ void InvLSCStrategy::initializeState(const BlockedLinearOp& A, LSCPrecondState* 
     Teko_DEBUG_MSG(
         "LSC::initializeState Build Scaling <F> type \"" << getDiagonalName(scaleType_) << "\"", 1);
     state->invMass_ = getInvDiagonalOp(F, scaleType_);
-  } else if (state->invMass_ == Teuchos::null) {
+  } 
+  else if(scaleType_ == NotDiag){
+    Teko::ModifiableLinearOp& invMass = state->getModifiableOp("invMass");
+    if (invMass == Teuchos::null)
+        invMass = buildInverse(*invFactoryF_, massMatrix_);
+
+    //invMass = toLinearOp(invMass);    
+    state->invMass_ = invMass;
+  }
+  else if (state->invMass_ == Teuchos::null) {
     Teko_DEBUG_MSG(
         "LSC::initializeState Build Scaling <mass> type \"" << getDiagonalName(scaleType_) << "\"",
         1);
@@ -235,6 +244,7 @@ void InvLSCStrategy::initializeState(const BlockedLinearOp& A, LSCPrecondState* 
 
   // compute BQBt
   state->BQBt_ = explicitMultiply(B, state->invMass_, Bt, state->BQBt_);
+  //state->BQBt_ = toLinearOp(state->BQBt_);
   Teko_DEBUG_MSG("Computed BQBt", 10);
 
   // if there is no H-Scaling
@@ -263,12 +273,13 @@ void InvLSCStrategy::initializeState(const BlockedLinearOp& A, LSCPrecondState* 
   LinearOp H = hScaling_;
   if (H == Teuchos::null && not isSymmetric_) H = state->invMass_;
 
-  Teko_DEBUG_MSG("Setup the scaling operator", 10);
 
   // setup the scaling operator
   if (H == Teuchos::null)
     state->BHBt_ = state->BQBt_;
   else {
+    Teko_DEBUG_MSG("Setup the scaling operator", 10);
+
     RCP<Teuchos::Time> time =
         Teuchos::TimeMonitor::getNewTimer("InvLSCStrategy::initializeState Build BHBt");
     Teuchos::TimeMonitor timer(*time);
@@ -437,9 +448,11 @@ void InvLSCStrategy::computeInverses(const BlockedLinearOp& A, LSCPrecondState* 
   const LinearOp BQBt     = state->getInverse("BQBtmC");
   InverseLinearOp invBQBt = state->getInverse("invBQBtmC");
   if (invBQBt == Teuchos::null) {
+    Teko_DEBUG_MSG("LSC:: invBQBt == Teuchos::null buildInverses Building inv(BQBtmC)", 1);
     invBQBt = buildInverse(*invFactoryS_, BQBt);
     state->addInverse("invBQBtmC", invBQBt);
   } else {
+    Teko_DEBUG_MSG("LSC::rebuildInverses inv(BQBtmC)", 1);
     rebuildInverse(*invFactoryS_, BQBt, invBQBt);
   }
   Teko_DEBUG_EXPR(invTimer.stop());
@@ -493,7 +506,7 @@ void InvLSCStrategy::initializeFromParameterList(const Teuchos::ParameterList& p
     eigSolveParam_ = pl.get<int>("Eigen Solver Iterations");
   if (pl.isParameter("Scaling Type")) {
     scaleType_ = getDiagonalType(pl.get<std::string>("Scaling Type"));
-    TEUCHOS_TEST_FOR_EXCEPT(scaleType_ == NotDiag);
+    //TEUCHOS_TEST_FOR_EXCEPT(scaleType_ == NotDiag);
   }
   if (pl.isParameter("Assume Stable Discretization"))
     assumeStable_ = pl.get<bool>("Assume Stable Discretization");

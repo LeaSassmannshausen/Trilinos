@@ -121,6 +121,11 @@ Teuchos::RCP<Teuchos::ParameterList> LU2x2PreconditionerFactory::getRequestedPar
  */
 bool LU2x2PreconditionerFactory::updateRequestedParameters(const Teuchos::ParameterList& pl) {
   Teko_DEBUG_SCOPE("LU2x2PreconditionerFactory::updateRequestedParameters", 0);
+  bool useLDU     = false;
+  if (pl.isParameter("Use LDU")) useLDU = pl.get<bool>("Use LDU");
+  setFullLDU(useLDU);
+  Teko_DEBUG_MSG("LU2x2PreconditionerFactory::updateRequestedParameters value " << useLDU << "\"" , 0);
+
   return invOpsStrategy_->updateRequestedParameters(pl);
 }
 

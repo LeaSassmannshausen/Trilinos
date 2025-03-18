@@ -59,6 +59,8 @@ LSCPreconditionerFactory::LSCPreconditionerFactory() : isSymmetric_(true) {}
 LinearOp LSCPreconditionerFactory::buildPreconditionerOperator(
     BlockedLinearOp& blockOp, BlockPreconditionerState& state) const {
   Teko_DEBUG_SCOPE("LSCPreconditionerFactory::buildPreconditionerOperator", 10);
+  Teko_DEBUG_MSG("----- LSCPreconditionerFactory::buildPreconditionerOperator", 10);
+
   Teko_DEBUG_EXPR(Teuchos::Time timer(""));
   Teko_DEBUG_EXPR(Teuchos::Time totalTimer(""));
   Teko_DEBUG_EXPR(totalTimer.start());
@@ -71,9 +73,13 @@ LinearOp LSCPreconditionerFactory::buildPreconditionerOperator(
   if (not isSymmetric_) Bt = scale(-1.0, adjoint(B));
 
   // build what is neccessary for the state object
+  Teko_DEBUG_MSG("LSCPreconditionerFactory::buildPreconditionerOperator - buildState", 10);
+
   Teko_DEBUG_EXPR(timer.start(true));
   invOpsStrategy_->buildState(blockOp, state);
   Teko_DEBUG_EXPR(timer.stop());
+  Teko_DEBUG_MSG("LSCPreconditionerFactory::buildPreconditionerOperator - buildState ... done ", 10);
+
   Teko_DEBUG_MSG("LSCPrecFact::buildPO BuildStateTime = " << timer.totalElapsedTime(), 2);
 
   // extract operators from strategy
