@@ -809,7 +809,7 @@ applyJacobianInverseMultiVector(Teuchos::ParameterList& p,
                   getThyraNormType(denom_measure));
 
   // Initialize result to zero to remove possible NaNs
-  if(p.get("Zero Initital Guess",false))
+  if(!p.get("Zero Initital Guess",true))
     ::Thyra::assign(Teuchos::ptrFromRef(result),x_vec_->getThyraVector());
   else 
     ::Thyra::assign(Teuchos::ptrFromRef(result),0.);
