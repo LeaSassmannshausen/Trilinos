@@ -67,7 +67,6 @@ bool NOX::Direction::Newton::compute(NOX::Abstract::Vector& dir,
                      const NOX::Solver::Generic& solver)
 {
   NOX::Abstract::Group::ReturnType status;
-
   // Compute F at current solution.
   status = soln.computeF();
   if (status != NOX::Abstract::Group::Ok)

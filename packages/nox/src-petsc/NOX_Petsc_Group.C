@@ -262,6 +262,8 @@ Group::computeGradient()
 Abstract::Group::ReturnType
 Group::computeNewton(Teuchos::ParameterList& p)
 {
+  std::cout << " -- PETSC Group::computeNewton  --" << std::endl;
+
   if (isNewton())
     return Abstract::Group::Ok;
 

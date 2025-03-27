@@ -130,7 +130,12 @@ LinearOp PresLaplaceLSCStrategy::getInvMass(const BlockedLinearOp& /* A */,
 
 LinearOp PresLaplaceLSCStrategy::getHScaling(const BlockedLinearOp& A,
                                              BlockPreconditionerState& state) const {
-  return getInvMass(A, state);
+  // return getInvMass(A, state);
+  LSCPrecondState* lscState = dynamic_cast<LSCPrecondState*>(&state);
+  TEUCHOS_ASSERT(lscState != 0);
+  TEUCHOS_ASSERT(lscState->isInitialized())
+  return lscState->invMass_;
+
 }
 
 //! Initialize the state object using this blocked linear operator
@@ -171,6 +176,7 @@ void PresLaplaceLSCStrategy::initializeState(const BlockedLinearOp& A,
                    1);
     state->invMass_ = getInvDiagonalOp(massMatrix, scaleType_);
   }
+
   // else "invMass_" should be set and there is no reason to rebuild it
 
   // if this is a stable discretization...we are done!
@@ -315,9 +321,6 @@ void PresLaplaceLSCStrategy::initializeFromParameterList(const Teuchos::Paramete
   rh->preRequest<Teko::LinearOp>(Teko::RequestMesg("Pressure Laplace Operator"));
   Teko::LinearOp laplace = rh->request<Teko::LinearOp>(Teko::RequestMesg("Pressure Laplace Operator"));
   setLaplaceMatrix(laplace);
-
-
-
 }
 
 //! For assiting in construction of the preconditioner

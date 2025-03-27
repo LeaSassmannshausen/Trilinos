@@ -94,6 +94,7 @@ Teuchos::RCP<NOX::Direction::Generic> NOX::Direction::
 buildDirection(const Teuchos::RCP<NOX::GlobalData>& gd,
         Teuchos::ParameterList& params)
 {
+
   NOX::Direction::Factory factory;
   return factory.buildDirection(gd, params);
 }

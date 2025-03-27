@@ -47,6 +47,7 @@ buildSolver(const Teuchos::RCP<NOX::Abstract::Group>& grp,
   RCP<NOX::Solver::Generic> solver;
 
   std::string method = params->get("Nonlinear Solver", "Line Search Based");
+  std::ostringstream msg;
 
   if ((method == "Newton") || (method == "Line Search Based"))
     solver = rcp(new LineSearchBased(grp, tests, params));
@@ -86,6 +87,10 @@ NOX::Solver::buildSolver(const Teuchos::RCP<NOX::Abstract::Group>& grp,
              const Teuchos::RCP<Teuchos::ParameterList>& params)
 {
   NOX::Solver::Factory factory;
+
+  std::ostringstream msg;
+  msg << "Build Solver - " << "\" ################# ";
+
   return factory.buildSolver(grp, tests, params);
 }
 

@@ -144,6 +144,7 @@ NOX::StatusTest::StatusType NOX::Solver::LineSearchBased::step()
 
   // First check status
   if (status != NOX::StatusTest::Unconverged) {
+
     observer->runPostIterate(*this);
     printUpdate();
     return status;
@@ -156,6 +157,7 @@ NOX::StatusTest::StatusType NOX::Solver::LineSearchBased::step()
   // Compute the direction for the update vector at the current solution.
   bool ok;
   ok = directionPtr->compute(*dirPtr, soln, *this);
+
   if (!ok)
   {
     utilsPtr->out() << "NOX::Solver::LineSearchBased::iterate - unable to calculate direction" << std::endl;
@@ -193,6 +195,7 @@ NOX::StatusTest::StatusType NOX::Solver::LineSearchBased::step()
   }
 
   // Compute F for new current solution.
+  
   NOX::Abstract::Group::ReturnType rtype = soln.computeF();
   if (rtype != NOX::Abstract::Group::Ok)
   {
@@ -210,6 +213,7 @@ NOX::StatusTest::StatusType NOX::Solver::LineSearchBased::step()
 
   printUpdate();
 
+
   return status;
 }
 
@@ -224,8 +228,10 @@ NOX::StatusTest::StatusType NOX::Solver::LineSearchBased::solve()
   {
     try
     {
-      while (status == NOX::StatusTest::Unconverged)
+      while (status == NOX::StatusTest::Unconverged){
         step();
+      
+      }
     }
     catch ( std::exception & e )
     {

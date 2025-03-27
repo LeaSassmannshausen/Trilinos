@@ -809,7 +809,15 @@ applyJacobianInverseMultiVector(Teuchos::ParameterList& p,
                   getThyraNormType(denom_measure));
 
   // Initialize result to zero to remove possible NaNs
-  ::Thyra::assign(Teuchos::ptrFromRef(result), 0.0);
+  if(p.get("Zero Initital Guess",false))
+    ::Thyra::assign(Teuchos::ptrFromRef(result),x_vec_->getThyraVector());
+  else 
+    ::Thyra::assign(Teuchos::ptrFromRef(result),0.);
+
+  // Teuchos::RCP<Teuchos::FancyOStream> out = Teuchos::VerboseObjectBase::getDefaultOStream();
+  // result.describe(*out,Teuchos::VERB_EXTREME);
+  // input.describe(*out,Teuchos::VERB_EXTREME);
+  // x_vec_->getThyraVector().describe(*out,Teuchos::VERB_EXTREME);
 
   this->scaleResidualAndJacobian();
 
