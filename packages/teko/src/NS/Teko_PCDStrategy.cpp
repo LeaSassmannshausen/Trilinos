@@ -116,7 +116,6 @@ void PCDStrategy::initializeState(const Teko::BlockedLinearOp& A,
   if (massInverseType_ == NotDiag) {
     ModifiableLinearOp& invMass = state.getModifiableOp("invMass");
     Teko_DEBUG_SCOPE("Building inv(Mass)", 10);
-    std::cout << " Building inverse of mass with Inverse Factory of Schur Complement " << std::endl;
     if (invMass == Teuchos::null)
       invMass = buildInverse(*invFactoryS_, Qp);
     else
