@@ -53,7 +53,6 @@
 #include <stk_mesh/base/DumpMeshInfo.hpp>
 #include <stk_mesh/baseImpl/BucketRepository.hpp>  // for BucketRepository
 #include <stk_mesh/baseImpl/MeshImplUtils.hpp>
-#include <stk_mesh/baseImpl/elementGraph/ElemElemGraph.hpp>
 #include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_unit_test_utils/BulkDataTester.hpp>
 #include <stk_unit_test_utils/CommandLineArgs.hpp>
@@ -105,18 +104,6 @@ inline std::string getOption(const std::string& option, const std::string defaul
   }
   return returnValue;
 }
-
-// Write out vector of strings using proc id and label via an ostringstream
-//void writeMesh(int myProcId, std::string label, const std::vector<std::string> &meshStart)
-//{
-//    std::ostringstream msg;
-//    for (size_t i=0;i<meshStart.size();i++)
-//    {
-//        msg.str(std::string());
-//        msg << "P[" << myProcId << "] " << label << "\t" << meshStart[i] << std::endl;
-//        std::cerr << msg.str();
-//    }
-//}
 
 void getMeshLineByLine(const stk::unit_test_util::BulkDataTester &stkMeshBulkData, std::vector<std::string> &output)
 {

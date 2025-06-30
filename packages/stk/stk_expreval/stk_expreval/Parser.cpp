@@ -509,7 +509,7 @@ parseTernary(Eval & eval,
 
 Node *
 parseUnary(Eval & eval,
-           LexemVector::const_iterator from,
+           LexemVector::const_iterator /*from*/,
            LexemVector::const_iterator unary_it,
            LexemVector::const_iterator to)
 {
@@ -538,7 +538,7 @@ parseFunction(Eval & eval,
               LexemVector::const_iterator from,
               LexemVector::const_iterator lparen,
               LexemVector::const_iterator rparen,
-              LexemVector::const_iterator to)
+              LexemVector::const_iterator /*to*/)
 {
   using CFunctionIterPair = std::pair<CFunctionMap::iterator, CFunctionMap::iterator>;
 
@@ -571,7 +571,10 @@ parseFunction(Eval & eval,
       function->m_data.function.functionType = functionType;
       std::strncpy(function->m_data.function.functionName,
                    function_name.c_str(),
-                   function_name.length() < Node::MAXIMUM_FUNCTION_NAME_LENGTH-1 ? function_name.length() : Node::MAXIMUM_FUNCTION_NAME_LENGTH-1);
+                   std::min(function_name.length()+1, std::string::size_type(Node::MAXIMUM_FUNCTION_NAME_LENGTH))
+                  );
+      function->m_data.function.functionName[Node::MAXIMUM_FUNCTION_NAME_LENGTH-1] = '\0';
+
       break;
     }
   }
@@ -589,7 +592,7 @@ parseIndex(Eval & eval,
            LexemVector::const_iterator from,
            LexemVector::const_iterator lbrack,
            LexemVector::const_iterator rbrack,
-           LexemVector::const_iterator to)
+           LexemVector::const_iterator /*to*/)
 {
   if ((*from).getToken() != TOKEN_IDENTIFIER) {
     throw std::runtime_error("syntax error parsing array");

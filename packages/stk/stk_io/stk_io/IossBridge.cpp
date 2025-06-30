@@ -112,7 +112,7 @@ namespace stk {
                           const stk::mesh::Part &part);
 
     stk::mesh::EntityRank get_entity_rank(const Ioss::GroupingEntity *entity,
-                                          const stk::mesh::MetaData &meta)
+                                          const stk::mesh::MetaData & /*meta*/)
     {
       switch (entity->type()) {
       case Ioss::NODEBLOCK:
@@ -146,6 +146,12 @@ namespace stk {
         {
           const Ioss::SideBlock *sblk = dynamic_cast<const Ioss::SideBlock*>(entity);
           assert(sblk != nullptr);
+
+          bool useShellAllFaceSides = sblk->get_database()->get_region()->property_exists("ENABLE_ALL_FACE_SIDES_SHELL");
+          if (sblk->parent_element_topology()->is_shell() && useShellAllFaceSides) {
+            return stk::topology::FACE_RANK;
+          }
+
           int rank = sblk->topology()->parametric_dimension();
           if (sblk->topology()->shape() == Ioss::ElementShape::UNKNOWN) {
             rank = sblk->owner()->max_parametric_dimension();
@@ -181,20 +187,9 @@ void STKIORequire(bool cond)
 
 namespace {
 
-  static const std::string invalid("invalid");
   static const std::string scalar("scalar");
   static const std::string vector_2d("vector_2d");
   static const std::string vector_3d("vector_3d");
-  static const std::string full_tensor_36("full_tensor_36");
-  static const std::string full_tensor_32("full_tensor_32");
-  static const std::string full_tensor_22("full_tensor_22");
-  static const std::string full_tensor_16("full_tensor_16");
-  static const std::string full_tensor_12("full_tensor_12");
-  static const std::string sym_tensor_33("sym_tensor_33");
-  static const std::string sym_tensor_31("sym_tensor_31");
-  static const std::string sym_tensor_21("sym_tensor_21");
-  static const std::string matrix_22("matrix_22");
-  static const std::string matrix_33("matrix_33");
 
   const std::string base_stk_part_name = "_base_stk_part_name";
 
@@ -1269,10 +1264,42 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
         return stk::topology::BEGIN_TOPOLOGY;
     }
 
-    stk::topology map_ioss_topology_to_stk(const Ioss::ElementTopology *topology,
-                                           unsigned meshSpatialDimension)
+    stk::topology map_ioss_to_all_face_sides_shell(const Ioss::ElementTopology* topology)
     {
+      auto name = topology->name();
+
+      if (name == "edge2" || name == "edge3d2") {
+        return stk::topology::SHELL_SIDE_BEAM_2;
+      } else if (name == "edge3" || name == "edge3d3") {
+        return stk::topology::SHELL_SIDE_BEAM_3;
+      } else if (name == "trishell3") {
+        return stk::topology::SHELL_TRI_3_ALL_FACE_SIDES;
+      } else if (name == "trishell4") {
+        return stk::topology::SHELL_TRI_4_ALL_FACE_SIDES;
+      } else if (name == "trishell6") {
+        return stk::topology::SHELL_TRI_6_ALL_FACE_SIDES;
+      } else if (name == "shell4") {
+        return stk::topology::SHELL_QUAD_4_ALL_FACE_SIDES;
+      } else if (name == "shell8") {
+        return stk::topology::SHELL_QUAD_8_ALL_FACE_SIDES;
+      } else if (name == "shell9") {
+        return stk::topology::SHELL_QUAD_9_ALL_FACE_SIDES;
+      } else {
+        return stk::topology::INVALID_TOPOLOGY;
+      }
+    }
+
+    stk::topology map_ioss_topology_to_stk(const Ioss::ElementTopology *topology,
+                                           unsigned meshSpatialDimension, bool useShellAllFaceSides)
+    {
+      if (useShellAllFaceSides) {
+        auto topo = map_ioss_to_all_face_sides_shell(topology);
+        if (topo != stk::topology::INVALID_TOPOLOGY)
+          return topo;
+      }
+
       stk::topology beginTopo = get_start_topology(topology, meshSpatialDimension);
+
       for (stk::topology topo=beginTopo; topo < stk::topology::END_TOPOLOGY; ++topo) {
         if (topology->is_alias(topo.name()))
         {
@@ -1293,13 +1320,27 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
       return stk::topology::INVALID_TOPOLOGY;
     }
 
+    std::string map_all_face_sides_shell_to_ioss(stk::topology topo)
+    {
+      switch (topo) {
+        case stk::topology::SHELL_SIDE_BEAM_2 : return "edge3d2";
+        case stk::topology::SHELL_SIDE_BEAM_3 : return "edge3d3";
+        case stk::topology::SHELL_TRI_3_ALL_FACE_SIDES : return "trishell3";
+        case stk::topology::SHELL_TRI_4_ALL_FACE_SIDES : return "trishell4";
+        case stk::topology::SHELL_TRI_6_ALL_FACE_SIDES : return "trishell6";
+        case stk::topology::SHELL_QUAD_4_ALL_FACE_SIDES : return "shell4";
+        case stk::topology::SHELL_QUAD_8_ALL_FACE_SIDES : return "shell8";
+        case stk::topology::SHELL_QUAD_9_ALL_FACE_SIDES : return "shell9";
+        default : return topo.name();
+      }
+    }
+
     std::string map_stk_topology_to_ioss(stk::topology topo)
     {
       std::string name = topo.name();
 
       // FIXME SHELL SIDE TOPOLOGY
-      if (topo == stk::topology::SHELL_SIDE_BEAM_2) { name = "edge3d2"; }
-      if (topo == stk::topology::SHELL_SIDE_BEAM_3) { name = "edge3d3"; }
+      name = map_all_face_sides_shell_to_ioss(topo);
 
       Ioss::ElementTopology *iossTopo = Ioss::ElementTopology::factory(name, true);
       return iossTopo != nullptr ? iossTopo->name() : "invalid";
@@ -1331,25 +1372,30 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
       }
     }
 
-    void declare_stk_aliases(stk::mesh::Part& part, Ioss::GroupingEntity *ge, stk::mesh::MetaData &meta)
+    void declare_stk_aliases(Ioss::Region &region, stk::mesh::MetaData &meta, Ioss::EntityType entityType)
     {
-      meta.add_part_alias(part, part.name());
+      const Ioss::AliasMap& ioss_alias_map = region.get_alias_map(entityType);
+      for(const auto& alias : ioss_alias_map) {
+        stk::mesh::Part* part = meta.get_part(alias.second);
+        if (part != nullptr) {
+          meta.add_part_alias(*part, part->name());
 
-      if(nullptr != ge && ge->get_database() != nullptr) {
-        Ioss::Region* region = ge->get_database()->get_region();
-
-        if(ge->property_exists("db_name")) {
-          std::string canonName = ge->get_property("db_name").get_string();
-          meta.add_part_alias(part, canonName);
-        }
-
-        const Ioss::AliasMap& ioss_alias_map = region->get_alias_map(ge->type());
-        for(auto&& alias : ioss_alias_map) {
-          if(stk::equal_case(alias.second, part.name())) {
-            meta.add_part_alias(part, alias.first);
-          }
+          meta.add_part_alias(*part, alias.first);
         }
       }
+    }
+
+    void declare_stk_aliases(Ioss::Region &region, stk::mesh::MetaData &meta)
+    {
+      //There should be a line here for each entity-type processed in
+      //StkMeshIoBroker::create_input_mesh.
+      declare_stk_aliases(region, meta, Ioss::NODEBLOCK);
+      declare_stk_aliases(region, meta, Ioss::ELEMENTBLOCK);
+      declare_stk_aliases(region, meta, Ioss::SIDESET);
+      declare_stk_aliases(region, meta, Ioss::FACEBLOCK);
+      declare_stk_aliases(region, meta, Ioss::EDGEBLOCK);
+      declare_stk_aliases(region, meta, Ioss::NODESET);
+      declare_stk_aliases(region, meta, Ioss::ASSEMBLY);
     }
 
     stk::mesh::Part& declare_stk_part(Ioss::GroupingEntity* entity, stk::mesh::MetaData& meta)
@@ -1362,29 +1408,42 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
       }
     }
 
-    void internal_part_processing(Ioss::GroupingEntity *entity, stk::mesh::MetaData &meta, TopologyErrorHandler handler)
+    void internal_part_processing(Ioss::GroupingEntity *entity, stk::mesh::MetaData &meta, TopologyErrorHandler /*handler*/, bool createEmptyOmittedParts)
     {
-      if (include_entity(entity)) {
+      if (createEmptyOmittedParts || include_entity(entity)) {
         stk::mesh::Part & part = declare_stk_part(entity, meta);
-        declare_stk_aliases(part, entity, meta);
+        if(entity->property_exists("db_name")) {
+          std::string canonName = entity->get_property("db_name").get_string();
+          meta.add_part_alias(part, canonName);
+        }
         if (entity->property_exists("id")) {
           meta.set_part_id(part, entity->get_property("id").get_int());
         }
-        set_io_part_attribute(entity, part);
+
+        if(include_entity(entity)) {
+          set_io_part_attribute(entity, part);
+        }
       }
     }
 
-    void internal_part_processing(Ioss::EntityBlock *entity, stk::mesh::MetaData &meta, TopologyErrorHandler handler)
+    void internal_part_processing(Ioss::EntityBlock *entity, stk::mesh::MetaData &meta, TopologyErrorHandler handler, bool createEmptyOmittedParts)
     {
-      if (include_entity(entity)) {
+      bool includeEntity = include_entity(entity);
+      if (createEmptyOmittedParts || includeEntity) {
         mesh::EntityRank type = get_entity_rank(entity, meta);
         stk::mesh::Part * part = nullptr;
         part = &meta.declare_part(entity->name(), type);
-        declare_stk_aliases(*part, entity, meta);
+        if(entity->property_exists("db_name")) {
+          std::string canonName = entity->get_property("db_name").get_string();
+          meta.add_part_alias(*part, canonName);
+        }
         if (entity->property_exists("id")) {
             meta.set_part_id(*part, entity->get_property("id").get_int());
         }
-        set_io_part_attribute(entity, *part);
+
+        if(includeEntity) {
+          set_io_part_attribute(entity, *part);
+        }
 
         const Ioss::ElementTopology *topology = entity->topology();
         // Check spatial dimension of the element topology here so we can
@@ -1412,7 +1471,8 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
           set_original_topology_type_from_ioss(entity, *part);
         }
 
-        stk::topology stkTopology = map_ioss_topology_to_stk(topology, meta.spatial_dimension());
+        auto useShellAllFaceSides = entity->get_database()->get_region()->property_exists("ENABLE_ALL_FACE_SIDES_SHELL");
+        stk::topology stkTopology = map_ioss_topology_to_stk(topology, meta.spatial_dimension(), useShellAllFaceSides);
         if (stkTopology != stk::topology::INVALID_TOPOLOGY) {
           if (stkTopology.rank() != part->primary_entity_rank() && entity->entity_count() == 0) {
             std::ostringstream os;
@@ -1425,7 +1485,10 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
         } else {
           handler(*part);
         }
-        stk::io::define_io_fields(entity, Ioss::Field::ATTRIBUTE, *part, type);
+
+        if(includeEntity) {
+          stk::io::define_io_fields(entity, Ioss::Field::ATTRIBUTE, *part, type);
+        }
       }
     }
 
@@ -1460,7 +1523,7 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
         }
     }
 
-    bool is_valid_nodeset_field(const stk::mesh::Part &part,
+    bool is_valid_nodeset_field(const stk::mesh::Part & /*part*/,
                                        const stk::mesh::EntityRank partType,
                                        Ioss::GroupingEntity *entity,
                                        FieldAndName &namedField,
@@ -1614,7 +1677,7 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
     }
 
     void getNamedFields(const stk::mesh::MetaData &meta,
-                        Ioss::GroupingEntity *ioEntity,
+                        Ioss::GroupingEntity * /*ioEntity*/,
                         const Ioss::Field::RoleType filterRole,
                         std::vector<FieldAndName> &namedFields)
     {
@@ -1784,7 +1847,8 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
       }
     }
 
-    const std::string get_suffix_for_field_at_state(enum stk::mesh::FieldState fieldState, std::vector<std::string>* multiStateSuffixes)
+    const std::string get_suffix_for_field_at_state(enum stk::mesh::FieldState fieldState,
+                                                    const std::vector<std::string>* multiStateSuffixes)
     {
       if(nullptr != multiStateSuffixes) {
           STK_ThrowRequireMsg((multiStateSuffixes->size() >= fieldState),
@@ -1819,26 +1883,27 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
     }
 
     std::string get_stated_field_name(const std::string &fieldBaseName, stk::mesh::FieldState stateIdentifier,
-                                      std::vector<std::string>* multiStateSuffixes)
+                                      const std::vector<std::string>* multiStateSuffixes)
     {
       std::string field_name_with_suffix = fieldBaseName + get_suffix_for_field_at_state(stateIdentifier, multiStateSuffixes);
       return field_name_with_suffix;
     }
 
-    bool field_state_exists_on_io_entity(const std::string& dbName, const stk::mesh::FieldBase* field, stk::mesh::FieldState stateIdentifier,
-                                         Ioss::GroupingEntity *ioEntity, std::vector<std::string>* multiStateSuffixes)
+    bool field_state_exists_on_io_entity(const std::string& dbName, const stk::mesh::FieldBase* /*field*/, stk::mesh::FieldState stateIdentifier,
+                                         Ioss::GroupingEntity *ioEntity, const std::vector<std::string>* multiStateSuffixes)
     {
         std::string fieldNameWithSuffix = get_stated_field_name(dbName, stateIdentifier, multiStateSuffixes);
         return ioEntity->field_exists(fieldNameWithSuffix);
     }
 
-    bool all_field_states_exist_on_io_entity(const std::string& dbName, const stk::mesh::FieldBase* field, Ioss::GroupingEntity *ioEntity,
-                                             std::vector<stk::mesh::FieldState> &missingStates, std::vector<std::string>* inputMultiStateSuffixes)
+    bool all_field_states_exist_on_io_entity(const std::string& dbName, const stk::mesh::FieldBase* field,
+                                             Ioss::GroupingEntity *ioEntity, std::vector<stk::mesh::FieldState> &missingStates,
+                                             const std::vector<std::string>* inputMultiStateSuffixes)
     {
         bool allStatesExist = true;
         size_t stateCount = field->number_of_states();
 
-        std::vector<std::string>* multiStateSuffixes = stateCount > 2 ? inputMultiStateSuffixes : nullptr;
+        const std::vector<std::string>* multiStateSuffixes = stateCount > 2 ? inputMultiStateSuffixes : nullptr;
 
         if(nullptr != multiStateSuffixes) {
             STK_ThrowRequire(multiStateSuffixes->size() >= stateCount);
@@ -1875,7 +1940,7 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
             stk::mesh::FieldState stateIdentifier = static_cast<stk::mesh::FieldState>(state);
             bool fieldExists = field_state_exists_on_io_entity(name, field, stateIdentifier, ioEntity, multiStateSuffixes);
             if (!ignoreMissingFields) {
-              const sierra::String s = multiStateSuffixes != nullptr ? (*multiStateSuffixes)[state] : std::to_string(state);
+              const std::string s = multiStateSuffixes != nullptr ? (*multiStateSuffixes)[state] : std::to_string(state);
               STK_ThrowRequireMsg(fieldExists, "Field " << field->name() << s << " does not exist in input database");
             }
             if (fieldExists) {
@@ -2096,6 +2161,35 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
       return !omitted;
     }
 
+      int64_t get_side_offset(const Ioss::ElementTopology* sideTopo,
+                              const Ioss::ElementTopology* parentTopo)
+      {
+        int64_t sideOffset = 0;
+        if ((  sideTopo != nullptr) && (  sideTopo->name() != "unknown") &&
+	    (parentTopo != nullptr) && (parentTopo->name() != "unknown")) {
+          int sideTopoDim = sideTopo->parametric_dimension();
+          int elemTopoDim = parentTopo->parametric_dimension();
+          int elemSpatDim = parentTopo->spatial_dimension();
+
+          if (sideTopoDim + 1 < elemSpatDim && sideTopoDim < elemTopoDim) {
+            sideOffset = parentTopo->number_faces();
+          }
+        }
+        return sideOffset;
+      }
+
+      int64_t get_side_offset(const Ioss::SideBlock* sb)
+      {
+	if(nullptr != sb) {
+	  const Ioss::ElementTopology *sideTopo   = sb->topology();
+	  const Ioss::ElementTopology *parentTopo = sb->parent_element_topology();
+	  return get_side_offset(sideTopo, parentTopo);
+	}
+
+	return 0;	
+      }
+      
+
     namespace {
 
     stk::mesh::EntityRank get_output_rank(stk::io::OutputParams& params)
@@ -2118,8 +2212,6 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
       stk::mesh::EntityRank rank = get_output_rank(params);
       //--------------------------------
       // Create the special universal node block:
-      mesh::Selector sharedSelector = params.has_shared_selector() ? *(params.get_shared_selector())
-                                                                   : meta.globally_shared_part();
 
       mesh::Selector allSelector = meta.globally_shared_part() | meta.locally_owned_part();
       if (params.get_subset_selector(    )) allSelector &= *params.get_subset_selector();
@@ -2129,7 +2221,6 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
       if (params.get_subset_selector(    )) ownSelector &= *params.get_subset_selector();
       if (params.get_output_selector(rank)) ownSelector &= *params.get_output_selector(rank);
 
-      int64_t allNodes = count_selected_nodes(params, allSelector);
       int64_t ownNodes = count_selected_nodes(params, ownSelector);
 
       const std::string name("nodeblock_1");
@@ -2137,6 +2228,7 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
       Ioss::NodeBlock * nb = params.io_region().get_node_block(name);
       if(nb == nullptr)
       {
+          int64_t allNodes = count_selected_nodes(params, allSelector);
           nb = new Ioss::NodeBlock(params.io_region().get_database(),
                                    name, allNodes, spatialDim);
           params.io_region().add( nb );
@@ -2162,9 +2254,6 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
       mesh::MetaData & meta = mesh::MetaData::get(part);
       Ioss::Region & ioRegion = params.io_region();
 
-      mesh::Selector sharedSelector = params.has_shared_selector() ? *(params.get_shared_selector())
-                                                                   : meta.globally_shared_part();
-
       mesh::Selector allSelector = (meta.globally_shared_part() | meta.locally_owned_part()) & part;
       if (params.get_subset_selector(    )) allSelector &= *params.get_subset_selector();
       if (params.get_output_selector(rank)) allSelector &= *params.get_output_selector(rank);
@@ -2173,12 +2262,12 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
       if (params.get_subset_selector(    )) ownSelector &= *params.get_subset_selector();
       if (params.get_output_selector(rank)) ownSelector &= *params.get_output_selector(rank);
 
-      int64_t allNodes = count_selected_nodes(params, allSelector);
       int64_t ownNodes = count_selected_nodes(params, ownSelector);
 
       Ioss::NodeSet *ns = ioRegion.get_nodeset(name);
       if(ns == nullptr)
       {
+          int64_t allNodes = count_selected_nodes(params, allSelector);
           ns = new Ioss::NodeSet( ioRegion.get_database(), name, allNodes);
           ioRegion.add(ns);
 
@@ -2208,24 +2297,8 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
       ioss_add_fields(part, stk::topology::NODE_RANK, ns, Ioss::Field::ATTRIBUTE);
     }
 
-      int64_t get_side_offset(const Ioss::ElementTopology* sideTopo,
-                              const Ioss::ElementTopology* parentTopo)
-      {
-        int64_t sideOffset = 0;
-        if ((sideTopo != nullptr) && (parentTopo != nullptr)) {
-          int sideTopoDim = sideTopo->parametric_dimension();
-          int elemTopoDim = parentTopo->parametric_dimension();
-          int elemSpatDim = parentTopo->spatial_dimension();
-
-          if (sideTopoDim + 1 < elemSpatDim && sideTopoDim < elemTopoDim) {
-            sideOffset = parentTopo->number_faces();
-          }
-        }
-        return sideOffset;
-      }
-
       std::tuple<std::string, const Ioss::ElementTopology *, stk::topology>
-      get_touching_element_block_topology_from_side_block_by_tokenization(stk::io::OutputParams &params, const stk::mesh::Part& part)
+      get_touching_element_block_topology_from_side_block_by_tokenization(stk::io::OutputParams &params, const stk::mesh::Part& part, Ioss::SideSet *sset)
       {
         const stk::mesh::BulkData &bulk = params.bulk_data();
 
@@ -2261,9 +2334,22 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
             }
           }
 
+	  const stk::mesh::MetaData& meta = params.bulk_data().mesh_meta_data();
+	  std::vector<const stk::mesh::Part*> touchingParts = meta.get_blocks_touching_surface(&part);
+	
+	  if(touchingParts.size() == 1u) {
+	    stk::topology stkTouchingTopology = touchingParts[0]->topology();
+	    std::string touchingTopoName = map_stk_topology_to_ioss(stkTouchingTopology);
+	    const Ioss::ElementTopology *touchingTopo = Ioss::ElementTopology::factory(touchingTopoName, true);
+	    if(touchingTopo != elementTopo) {
+	      elementTopo = nullptr;	      
+	    }
+	  }
+	  
           if (elementTopo != nullptr) {
             elementTopoName = elementTopo->name();
-            stkElementTopology = map_ioss_topology_to_stk(elementTopo, bulk.mesh_meta_data().spatial_dimension());
+            bool useShellAllFaceSides = sset->get_database()->get_region()->property_exists("ENABLE_ALL_FACE_SIDES_SHELL");
+            stkElementTopology = map_ioss_topology_to_stk(elementTopo, bulk.mesh_meta_data().spatial_dimension(), useShellAllFaceSides);
           }
         }
 
@@ -2271,16 +2357,16 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
       }
 
       std::tuple<std::string, const Ioss::ElementTopology *, stk::topology>
-      get_touching_element_block_topology_from_side_block(stk::io::OutputParams &params, const stk::mesh::Part& part)
+      get_touching_element_block_topology_from_side_block(stk::io::OutputParams &params, const stk::mesh::Part& part, Ioss::SideSet *sset)
       {
-        return get_touching_element_block_topology_from_side_block_by_tokenization(params, part);
+        return get_touching_element_block_topology_from_side_block_by_tokenization(params, part, sset);
       }
 
       void define_side_block(stk::io::OutputParams &params,
                              stk::mesh::Selector selector,
                              stk::mesh::Part &part,
                              Ioss::SideSet *sset,
-                             int spatialDimension,
+                             int /*spatialDimension*/,
                              bool createNodeset)
       {
         stk::mesh::EntityRank type = part.primary_entity_rank();
@@ -2295,7 +2381,7 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
         stk::topology stkElementTopology = stk::topology::INVALID_TOPOLOGY;
 
         std::tie(elementTopoName, elementTopo, stkElementTopology) =
-            get_touching_element_block_topology_from_side_block(params, part);
+            get_touching_element_block_topology_from_side_block(params, part, sset);
 
         const stk::mesh::BulkData &bulk = params.bulk_data();
 
@@ -2320,6 +2406,13 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
         Ioss::SideBlock *sideBlock = sset->get_side_block(name);
         if(sideBlock == nullptr)
         {
+	  if("unknown" == ioTopo) {
+	    // Special case of heterogenous sideset encapsulated in one side block
+	    // There is no side topology so we cannot specify an element topology
+	    // due to internal IOSS code that gives wrong SideBlock offset
+	    elementTopoName = "unknown";
+	  }
+	  
             sideBlock = new Ioss::SideBlock(sset->get_database(), name, ioTopo, elementTopoName, sideCount);
             sset->add(sideBlock);
         }
@@ -3944,7 +4037,7 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
 
     struct DefineOutputFunctor
     {
-      void operator()(stk::io::OutputParams& params, stk::mesh::Part &part, stk::mesh::EntityRank rank, Ioss::GroupingEntity *ge, Ioss::Field::RoleType role)
+      void operator()(stk::io::OutputParams& /*params*/, stk::mesh::Part &part, stk::mesh::EntityRank rank, Ioss::GroupingEntity *ge, Ioss::Field::RoleType role)
       {  stk::io::ioss_add_fields(part, rank, ge, role); }
     };
 
@@ -4034,12 +4127,19 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
 
     Ioss::DatabaseIO *create_database_for_subdomain(const std::string &baseFilename,
                                                     int indexSubdomain,
-                                                    int numSubdomains)
+                                                    int numSubdomains,
+                                                    bool use64Bit)
     {
         std::string parallelFilename{construct_filename_for_serial_or_parallel(baseFilename, numSubdomains, indexSubdomain)};
+        Ioss::PropertyManager properties;
+
+        if (use64Bit) {
+            properties.add(Ioss::Property("INTEGER_SIZE_DB", 8));
+            properties.add(Ioss::Property("INTEGER_SIZE_API", 8));
+        }
 
         std::string dbtype("exodusII");
-        Ioss::DatabaseIO *dbo = Ioss::IOFactory::create(dbtype, parallelFilename, Ioss::WRITE_RESULTS, MPI_COMM_SELF);
+        Ioss::DatabaseIO *dbo = Ioss::IOFactory::create(dbtype, parallelFilename, Ioss::WRITE_RESULTS, MPI_COMM_SELF, properties);
 
         return dbo;
     }
@@ -4333,7 +4433,6 @@ const stk::mesh::FieldBase *declare_stk_field_internal(stk::mesh::MetaData &meta
 
         filter_nodes_by_local_connectivity(bulk, params.get_subset_selector(), nodes);
     }
-
 
   }//namespace io
 }//namespace stk

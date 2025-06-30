@@ -39,7 +39,7 @@
 #include <stk_balance/internal/Balancer.hpp>
 #include <stk_balance/mesh/BalanceMesh.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
-#include <stk_util/environment/EnvData.hpp>
+#include <stk_util/parallel/OutputStreams.hpp>
 #include "stk_balance/io/BalanceIO.hpp"
 #include <vector>
 #include <string>
@@ -49,7 +49,7 @@ namespace {
 class IdAndTimeFieldValueSetter : public stk::unit_test_util::FieldValueSetter
 {
 public:
-    virtual void populate_field(stk::mesh::BulkData &bulk, stk::mesh::FieldBase* field, const unsigned step,
+    virtual void populate_field(stk::mesh::BulkData &bulk, stk::mesh::FieldBase* field, const unsigned /*step*/,
                                 const double time) const override
 {
     stk::mesh::EntityRank fieldRank = field->entity_rank();
@@ -77,12 +77,12 @@ class BalanceFromField : public MeshFixtureRebalance
 {
 public:
   BalanceFromField() {
-    stk::EnvData::instance().m_outputP0 = &stk::EnvData::instance().m_outputNull;
+    stk::set_outputP0(&stk::outputNull());
     testing::internal::CaptureStderr();
   }
 
   ~BalanceFromField() override {
-    stk::EnvData::instance().m_outputP0 = &std::cout;
+    stk::reset_default_output_streams();
     testing::internal::GetCapturedStderr();
   }
 
@@ -141,6 +141,8 @@ TEST_F(BalanceFromField, 6elems2procs_readLastTimeStepFromFile)
       EXPECT_DOUBLE_EQ(*fieldWeight, expectedFieldWeight);
     }
   }
+
+  clean_up_temporary_files();
 }
 
 TEST_F(BalanceFromField, 6elems2procs_checkGeometricDecomp)
@@ -165,6 +167,8 @@ TEST_F(BalanceFromField, 6elems2procs_checkGeometricDecomp)
   else {
     EXPECT_EQ(counts[stk::topology::ELEM_RANK], 2u);
   }
+
+  clean_up_temporary_files();
 }
 
 TEST_F(BalanceFromField, 6elems2procs_checkGraphDecomp)
@@ -189,6 +193,8 @@ TEST_F(BalanceFromField, 6elems2procs_checkGraphDecomp)
   else {
     EXPECT_EQ(counts[stk::topology::ELEM_RANK], 4u);
   }
+
+  clean_up_temporary_files();
 }
 
 }

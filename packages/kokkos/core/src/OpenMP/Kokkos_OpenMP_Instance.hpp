@@ -47,8 +47,6 @@ namespace Impl {
 
 class OpenMPInternal;
 
-inline int g_openmp_hardware_max_threads = 1;
-
 struct OpenMPTraits {
   static constexpr int MAX_THREAD_COUNT = 512;
 };
@@ -64,7 +62,9 @@ class OpenMPInternal {
     }
   }
 
-  ~OpenMPInternal() { clear_thread_data(); }
+  OpenMPInternal()                                 = delete;
+  OpenMPInternal(const OpenMPInternal&)            = delete;
+  OpenMPInternal& operator=(const OpenMPInternal&) = delete;
 
   static int get_current_max_threads() noexcept;
 
@@ -85,6 +85,8 @@ class OpenMPInternal {
   void finalize();
 
   void clear_thread_data();
+
+  static int max_hardware_threads() noexcept;
 
   int thread_pool_size() const { return m_pool_size; }
 
@@ -136,7 +138,7 @@ template <typename T>
 inline std::vector<OpenMP> create_OpenMP_instances(
     OpenMP const& main_instance, std::vector<T> const& weights) {
   static_assert(
-      std::is_arithmetic<T>::value,
+      std::is_arithmetic_v<T>,
       "Kokkos Error: partitioning arguments must be integers or floats");
   if (weights.size() == 0) {
     Kokkos::abort("Kokkos::abort: Partition weights vector is empty.");

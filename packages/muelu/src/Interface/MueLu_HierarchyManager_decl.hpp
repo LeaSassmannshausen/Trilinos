@@ -76,6 +76,12 @@ class HierarchyManager : public HierarchyFactory<Scalar, LocalOrdinal, GlobalOrd
   //! Setup Hierarchy object
   virtual void SetupHierarchy(Hierarchy& H) const;
 
+  //! Set the number of desired levels.
+  void SetNumDesiredLevel(int numDesiredLevel) { numDesiredLevel_ = numDesiredLevel; }
+
+  //! Get the number of desired levels.
+  int GetNumDesiredLevel() { return numDesiredLevel_; }
+
   //@}
 
   typedef std::map<std::string, RCP<const FactoryBase>> FactoryMap;
@@ -122,11 +128,12 @@ class HierarchyManager : public HierarchyFactory<Scalar, LocalOrdinal, GlobalOrd
   // Items here get handled manually
   Teuchos::Array<int> nullspaceToPrint_;
   Teuchos::Array<int> coordinatesToPrint_;
+  Teuchos::Array<int> materialToPrint_;
   Teuchos::Array<int> aggregatesToPrint_;
   Teuchos::Array<int> elementToNodeMapsToPrint_;
 
-  // Data we'll need to save, not necessarily print
-  Teuchos::Array<std::string> dataToSave_;
+  // Data we'll need to keep, either to dump to disk or to use post-setup
+  Teuchos::Array<std::string> dataToKeep_;
 
   // Matrices we'll need to print
   std::map<std::string, Teuchos::Array<int>> matricesToPrint_;

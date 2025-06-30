@@ -51,11 +51,26 @@ namespace Galeri {
     template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Map, typename Matrix, typename MultiVector>
     Teuchos::RCP<Matrix> Laplace1DProblem<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix,MultiVector>::BuildMatrix() {
       GlobalOrdinal nx = this->list_.get("nx", (GlobalOrdinal) -1);
+      bool keepBCs = false;
 
       if (nx == -1)
         nx = this->Map_->getGlobalNumElements();
 
-      this->A_ = TriDiag<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, 2.0, -1.0, -1.0);
+      // The Kokkos code path does not work for Epetra.
+      // Once Epetra has been removed this logic should be simplified.
+#if defined(HAVE_GALERI_KOKKOS) && defined(HAVE_GALERI_KOKKOSKERNELS)
+      using Node = typename Map::node_type;
+      using tpetra_map = Tpetra::Map<LocalOrdinal, GlobalOrdinal, Node>;
+      if constexpr (std::is_same_v<Map, tpetra_map>) {
+        this->A_ = TriDiagKokkos<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, 2.0, -1.0, -1.0, this->DirichletBC_, keepBCs, "Laplace1D");
+      } else if (this->Map_->lib() == ::Xpetra::UseTpetra) {
+        this->A_ = TriDiagKokkos<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, 2.0, -1.0, -1.0, this->DirichletBC_, keepBCs, "Laplace1D");
+      }
+      else
+#endif
+      {
+        this->A_ = TriDiag<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, 2.0, -1.0, -1.0);
+      }
       this->A_->setObjectLabel(this->getObjectLabel());
       return this->A_;
     }
@@ -77,7 +92,7 @@ namespace Galeri {
         nx = this->Map_->getGlobalNumElements();
       }
 
-      Utils::CreateCartesianCoordinates<typename RealValuedMultiVector::scalar_type, LocalOrdinal, GlobalOrdinal, Map, RealValuedMultiVector>("1D", this->Map_, this->list_);
+      this->Coords_ = Utils::CreateCartesianCoordinates<typename RealValuedMultiVector::scalar_type, LocalOrdinal, GlobalOrdinal, Map, RealValuedMultiVector>("1D", this->Map_, this->list_);
 
       return this->Coords_;
 
@@ -87,8 +102,11 @@ namespace Galeri {
     template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Map, typename Matrix, typename MultiVector>
     class Laplace2DProblem : public ScalarProblem<Map,Matrix,MultiVector> {
     public:
+      using RealValuedMultiVector = typename Problem<Map, Matrix, MultiVector>::RealValuedMultiVector;
+
       Laplace2DProblem(Teuchos::ParameterList& list, const Teuchos::RCP<const Map>& map) : ScalarProblem<Map,Matrix,MultiVector>(list, map) { }
       Teuchos::RCP<Matrix> BuildMatrix();
+      Teuchos::RCP<RealValuedMultiVector> BuildCoords();
     };
 
     template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Map, typename Matrix, typename MultiVector>
@@ -128,12 +146,35 @@ namespace Galeri {
       Scalar south  = (Scalar) -one / (stretchy*stretchy);
       Scalar center = -(east + west + north + south);
 
-      this->A_ = Cross2D<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, ny, center, west, east, south, north, this->DirichletBC_, keepBCs);
+      // The Kokkos code path does not work for Epetra.
+      // Once Epetra has been removed this logic should be simplified.
+#if defined(HAVE_GALERI_KOKKOS) && defined(HAVE_GALERI_KOKKOSKERNELS)
+      using Node = typename Map::node_type;
+      using tpetra_map = Tpetra::Map<LocalOrdinal, GlobalOrdinal, Node>;
+      if constexpr (std::is_same_v<Map, tpetra_map>) {
+        this->A_ = Cross2DKokkos<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, ny, center, west, east, south, north, this->DirichletBC_, keepBCs, "Laplace2D");
+      } else if (this->Map_->lib() == ::Xpetra::UseTpetra) {
+        this->A_ = Cross2DKokkos<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, ny, center, west, east, south, north, this->DirichletBC_, keepBCs, "Laplace2D");
+      }
+      else
+#endif
+      {
+        this->A_ = Cross2D<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, ny, center, west, east, south, north, this->DirichletBC_, keepBCs);
+      }
       this->A_->setObjectLabel(this->getObjectLabel());
       return this->A_;
     }
 
-    // =============================================  Laplace2D  =============================================
+    template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Map, typename Matrix, typename MultiVector>
+    Teuchos::RCP<typename Problem<Map,Matrix,MultiVector>::RealValuedMultiVector> Laplace2DProblem<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix,MultiVector>::BuildCoords() {
+
+      Teuchos::ParameterList list = this->list_;
+      this->Coords_ = Utils::CreateCartesianCoordinates<typename RealValuedMultiVector::scalar_type, LocalOrdinal, GlobalOrdinal, Map, RealValuedMultiVector>("2D", this->Map_, this->list_);
+      return this->Coords_;
+
+    }
+
+    // =============================================  AnisotropicDiffusion2DProblem  =============================================
     template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Map, typename Matrix, typename MultiVector>
     class AnisotropicDiffusion2DProblem : public ScalarProblem<Map,Matrix,MultiVector> {
     public:
@@ -262,8 +303,11 @@ namespace Galeri {
     template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Map, typename Matrix, typename MultiVector>
     class Laplace3DProblem : public ScalarProblem<Map,Matrix,MultiVector> {
     public:
+      using RealValuedMultiVector = typename Problem<Map,Matrix,MultiVector>::RealValuedMultiVector;
+
       Laplace3DProblem(Teuchos::ParameterList& list, const Teuchos::RCP<const Map>& map) : ScalarProblem<Map,Matrix,MultiVector>(list, map) { }
       Teuchos::RCP<Matrix> BuildMatrix();
+      Teuchos::RCP<RealValuedMultiVector> BuildCoords();
     };
 
     template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Map, typename Matrix, typename MultiVector>
@@ -312,9 +356,34 @@ namespace Galeri {
       Scalar down   = (Scalar) -one / (stretchz*stretchz);
       Scalar center = -(right + left + front + back + up + down);
 
-      this->A_ = Cross3D<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, ny, nz, center, left, right, front, back, down, up, this->DirichletBC_, keepBCs);
+      // The Kokkos code path does not work for Epetra.
+      // Once Epetra has been removed this logic should be simplified.
+#if defined(HAVE_GALERI_KOKKOS) && defined(HAVE_GALERI_KOKKOSKERNELS)
+      using Node = typename Map::node_type;
+      using tpetra_map = Tpetra::Map<LocalOrdinal, GlobalOrdinal, Node>;
+      if constexpr (std::is_same_v<Map, tpetra_map>) {
+        this->A_ = Cross3DKokkos<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, ny, nz, center, left, right, front, back, down, up, this->DirichletBC_, keepBCs, "Laplace3D");
+      } else if (this->Map_->lib() == ::Xpetra::UseTpetra) {
+        this->A_ = Cross3DKokkos<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, ny, nz, center, left, right, front, back, down, up, this->DirichletBC_, keepBCs, "Laplace3D");
+      }
+      else
+#endif
+      {
+        this->A_ = Cross3D<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, ny, nz, center, left, right, front, back, down, up, this->DirichletBC_, keepBCs);
+      }
+
       this->A_->setObjectLabel(this->getObjectLabel());
       return this->A_;
+    }
+
+    template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Map, typename Matrix, typename MultiVector>
+    Teuchos::RCP<typename Problem<Map,Matrix,MultiVector>::RealValuedMultiVector> Laplace3DProblem<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix,MultiVector>::BuildCoords() {
+
+      Teuchos::ParameterList list = this->list_;
+      this->Coords_ = Utils::CreateCartesianCoordinates<typename RealValuedMultiVector::scalar_type, LocalOrdinal, GlobalOrdinal, Map, RealValuedMultiVector>("3D", this->Map_, this->list_);
+
+      return this->Coords_;
+
     }
 
     // =============================================  Star2D  =============================================
@@ -413,8 +482,11 @@ namespace Galeri {
     template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Map, typename Matrix, typename MultiVector>
     class Brick3DProblem : public ScalarProblem<Map,Matrix,MultiVector> {
     public:
+      using RealValuedMultiVector = typename Problem<Map,Matrix,MultiVector>::RealValuedMultiVector;
+
       Brick3DProblem(Teuchos::ParameterList& list, const Teuchos::RCP<const Map>& map) : ScalarProblem<Map,Matrix,MultiVector>(list, map) { }
       Teuchos::RCP<Matrix> BuildMatrix();
+      Teuchos::RCP<RealValuedMultiVector> BuildCoords();
     };
 
     template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Map, typename Matrix, typename MultiVector>
@@ -452,9 +524,33 @@ namespace Galeri {
 
       bool keepBCs = this->list_.get("keepBCs", false);
 
-      this->A_ = Brick3D<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, ny, nz, 26.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, this->DirichletBC_, keepBCs);
+      // The Kokkos code path does not work for Epetra.
+      // Once Epetra has been removed this logic should be simplified.
+#if defined(HAVE_GALERI_KOKKOS) && defined(HAVE_GALERI_KOKKOSKERNELS)
+      using Node = typename Map::node_type;
+      using tpetra_map = Tpetra::Map<LocalOrdinal, GlobalOrdinal, Node>;
+      if constexpr (std::is_same_v<Map, tpetra_map>) {
+        this->A_ = Brick3DKokkos<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, ny, nz, 26.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, this->DirichletBC_, keepBCs, "Brick3D");
+      } else if (this->Map_->lib() == ::Xpetra::UseTpetra) {
+        this->A_ = Brick3DKokkos<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, ny, nz, 26.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, this->DirichletBC_, keepBCs, "Brick3D");
+      }
+      else
+#endif
+      {
+        this->A_ = Brick3D<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, ny, nz, 26.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, this->DirichletBC_, keepBCs);
+      }
       this->A_->setObjectLabel(this->getObjectLabel());
       return this->A_;
+    }
+
+    template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Map, typename Matrix, typename MultiVector>
+    Teuchos::RCP<typename Problem<Map,Matrix,MultiVector>::RealValuedMultiVector> Brick3DProblem<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix,MultiVector>::BuildCoords() {
+
+      Teuchos::ParameterList list = this->list_;
+      this->Coords_ = Utils::CreateCartesianCoordinates<typename RealValuedMultiVector::scalar_type, LocalOrdinal, GlobalOrdinal, Map, RealValuedMultiVector>("3D", this->Map_, this->list_);
+
+      return this->Coords_;
+
     }
 
     // =============================================  Identity  =============================================
@@ -471,7 +567,27 @@ namespace Galeri {
     template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Map, typename Matrix, typename MultiVector>
     Teuchos::RCP<Matrix> IdentityProblem<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix,MultiVector>::BuildMatrix() {
       Scalar a = this->list_.get("a", 1.0);
-      this->A_ = Identity<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, a);
+
+      GlobalOrdinal nx = this->list_.get("nx", (GlobalOrdinal) -1);
+
+      if (nx == -1)
+        nx = this->Map_->getGlobalNumElements();
+
+      // The Kokkos code path does not work for Epetra.
+      // Once Epetra has been removed this logic should be simplified.
+#if defined(HAVE_GALERI_KOKKOS) && defined(HAVE_GALERI_KOKKOSKERNELS)
+      using Node = typename Map::node_type;
+      using tpetra_map = Tpetra::Map<LocalOrdinal, GlobalOrdinal, Node>;
+      if constexpr (std::is_same_v<Map, tpetra_map>) {
+        this->A_ = ScaledIdentityKokkos<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, a, "Identity");
+      } else if (this->Map_->lib() == ::Xpetra::UseTpetra) {
+        this->A_ = ScaledIdentityKokkos<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, a, "Identity");
+      }
+      else
+#endif
+      {
+        this->A_ = Identity<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, a);
+      }
       this->A_->setObjectLabel(this->getObjectLabel());
       return this->A_;
     }
@@ -500,11 +616,132 @@ namespace Galeri {
         nx = this->Map_->getGlobalNumElements();
       }
 
-      Utils::CreateCartesianCoordinates<typename RealValuedMultiVector::scalar_type, LocalOrdinal, GlobalOrdinal, Map, RealValuedMultiVector>("1D", this->Map_, this->list_);
+      this->Coords_ = Utils::CreateCartesianCoordinates<typename RealValuedMultiVector::scalar_type, LocalOrdinal, GlobalOrdinal, Map, RealValuedMultiVector>("1D", this->Map_, this->list_);
 
       return this->Coords_;
 
     }
+
+    // =============================================  Recirc2D  =============================================
+    template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Map, typename Matrix, typename MultiVector>
+    class Recirc2DProblem : public ScalarProblem<Map,Matrix,MultiVector> {
+    public:
+      Recirc2DProblem(Teuchos::ParameterList& list, const Teuchos::RCP<const Map>& map) : ScalarProblem<Map,Matrix,MultiVector>(list, map) { }
+      Teuchos::RCP<Matrix> BuildMatrix();
+    };
+
+    template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Map, typename Matrix, typename MultiVector>
+    Teuchos::RCP<Matrix> Recirc2DProblem<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix,MultiVector>::BuildMatrix() {
+      Teuchos::ParameterList list = this->list_;
+      GlobalOrdinal nx = -1;
+      GlobalOrdinal ny = -1;
+
+      //TODO FIXME need to check that all parameters are provided, otherwise error out
+      if (list.isParameter("nx")) {
+        if (list.isType<int>("nx"))
+          nx = Teuchos::as<GlobalOrdinal>(list.get<int>("nx"));
+        else
+          nx = list.get<GlobalOrdinal>("nx");
+      }
+      if (list.isParameter("ny")) {
+        if (list.isType<int>("ny"))
+          ny = Teuchos::as<GlobalOrdinal>(list.get<int>("ny"));
+        else
+          ny = list.get<GlobalOrdinal>("ny");
+      }
+
+      double lx=1.;
+      if (list.isParameter("lx")) {
+        lx = list.get<double>("lx");
+      }
+      double ly=1.;
+      if (list.isParameter("ly")) {
+        ly = list.get<double>("ly");
+      }
+
+      double conv=1.;
+      if (list.isParameter("convection")) {
+        conv = list.get<double>("convection");
+      }
+
+      double diff=1.;
+      if (list.isParameter("diffusion")) {
+        diff = list.get<double>("diffusion");
+      }
+
+      auto &map = this->Map_;
+      LocalOrdinal  numMyElements = map->getLocalNumElements();
+      Teuchos::ArrayView<const GlobalOrdinal> myGlobalElements = map->getLocalElementList();
+
+      auto A = MultiVectorTraits<Map,MultiVector>::Build(map, 1);
+      auto B = MultiVectorTraits<Map,MultiVector>::Build(map, 1);
+      auto C = MultiVectorTraits<Map,MultiVector>::Build(map, 1);
+      auto D = MultiVectorTraits<Map,MultiVector>::Build(map, 1);
+      auto E = MultiVectorTraits<Map,MultiVector>::Build(map, 1);
+
+      double zero= Teuchos::ScalarTraits<double>::zero();
+
+      A->putScalar(zero);
+      B->putScalar(zero);
+      C->putScalar(zero);
+      D->putScalar(zero);
+      E->putScalar(zero);
+
+      auto Adata = A->getDataNonConst(0);
+      auto Bdata = B->getDataNonConst(0);
+      auto Cdata = C->getDataNonConst(0);
+      auto Ddata = D->getDataNonConst(0);
+      auto Edata = E->getDataNonConst(0);
+
+      double hx = lx / (nx + 1);
+      double hy = ly / (ny + 1);
+
+      for (int i = 0 ; i < numMyElements ; i++) {
+        int ix, iy;
+        ix = (myGlobalElements[i]) % nx;
+        iy = (myGlobalElements[i] - ix) / nx;
+        double x = hx * (ix + 1);
+        double y = hy * (iy + 1);
+        double ConvX =  conv * 4 * x * (x - 1.) * (1. - 2 * y) / hx;
+        double ConvY = -conv * 4 * y * (y - 1.) * (1. - 2 * x) / hy;
+
+        // convection part
+
+        if (ConvX < zero)
+        {
+          Cdata[i] += ConvX;
+          Adata[i] -= ConvX;
+        }
+        else
+        {
+          Bdata[i] -= ConvX;
+          Adata[i] += ConvX;
+        }
+
+        if (ConvY < zero)
+        {
+          Edata[i] += ConvY;
+          Adata[i] -= ConvY;
+        }
+        else
+        {
+          Ddata[i] -= ConvY;
+          Adata[i] += ConvY;
+        }
+
+        // add diffusion part
+        Adata[i] += diff * 2. / (hx * hx) + diff * 2. / (hy * hy);
+        Bdata[i] -= diff / (hx * hx);
+        Cdata[i] -= diff / (hx * hx);
+        Ddata[i] -= diff / (hy * hy);
+        Edata[i] -= diff / (hy * hy);
+      }
+      Adata = Bdata = Cdata = Ddata = Edata = Teuchos::null;
+
+      this->A_ = Cross2D<Scalar,LocalOrdinal,GlobalOrdinal,Map,Matrix>(this->Map_, nx, ny, A, B, C, D, E);
+      this->A_->setObjectLabel(this->getObjectLabel());
+      return this->A_;
+    } //Recirc2DProblem
 
   } // namespace Xpetra
 

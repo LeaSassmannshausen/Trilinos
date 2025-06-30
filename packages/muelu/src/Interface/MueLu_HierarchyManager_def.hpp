@@ -198,15 +198,16 @@ void MueLu::HierarchyManager<Scalar, LocalOrdinal, GlobalOrdinal, Node>::SetupHi
   // Vectors, aggregates and other things that need special case handling
   ExportDataSetKeepFlags(H, nullspaceToPrint_, "Nullspace");
   ExportDataSetKeepFlags(H, coordinatesToPrint_, "Coordinates");
+  ExportDataSetKeepFlags(H, materialToPrint_, "Material");
   // NOTE: Aggregates use the next level's Factory
   ExportDataSetKeepFlagsNextLevel(H, aggregatesToPrint_, "Aggregates");
 #ifdef HAVE_MUELU_INTREPID2
   ExportDataSetKeepFlags(H, elementToNodeMapsToPrint_, "pcoarsen: element to node map");
 #endif
 
-  // Data to save only (these do not have a level, so we do all levels)
-  for (int i = 0; i < dataToSave_.size(); i++)
-    ExportDataSetKeepFlagsAll(H, dataToSave_[i]);
+  // Data to keep only (these do not have a level, so we do all levels)
+  for (int i = 0; i < dataToKeep_.size(); i++)
+    ExportDataSetKeepFlagsAll(H, dataToKeep_[i]);
 
   int levelID      = 0;
   int lastLevelID  = numDesiredLevel_ - 1;
@@ -251,6 +252,7 @@ void MueLu::HierarchyManager<Scalar, LocalOrdinal, GlobalOrdinal, Node>::SetupHi
   // Vectors, aggregates and all things we need to print manually
   WriteData<MultiVector>(H, nullspaceToPrint_, "Nullspace");
   WriteData<MultiVector>(H, coordinatesToPrint_, "Coordinates");
+  WriteData<MultiVector>(H, materialToPrint_, "Material");
   WriteDataAggregates(H, aggregatesToPrint_, "Aggregates");
 
 #ifdef HAVE_MUELU_INTREPID2

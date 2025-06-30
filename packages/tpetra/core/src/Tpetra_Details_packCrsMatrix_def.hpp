@@ -209,10 +209,12 @@ public:
 
   //! Host function for getting the error.
   int getError () const {
-    typedef typename device_type::execution_space execution_space;
     auto error_h = Kokkos::create_mirror_view (error_);
     // DEEP_COPY REVIEW - DEVICE-TO-HOSTMIRROR
-    Kokkos::deep_copy (execution_space(), error_h, error_);
+    // Note: In the UVM case, this would otherwise be a no-op
+    // and thus not fence, so the value might not be correct on return
+    // In the non-UVM case, create_mirror_view will block for the allocation
+    Kokkos::deep_copy (error_h, error_);
     return error_h ();
   }
 
@@ -887,7 +889,7 @@ packCrsMatrix (const CrsMatrix<ST, LO, GO, NT>& sourceMatrix,
   Kokkos::View<char*, host_dev_type> exports_h (exports.getRawPtr (),
                                                 exports.size ());
   // DEEP_COPY REVIEW - DEVICE-TO-HOST
-  Kokkos::deep_copy (device_exec_space(), exports_h, exports_dv.d_view);
+  Kokkos::deep_copy (device_exec_space(), exports_h, exports_dv.view_device());
 }
 
 template<typename ST, typename LO, typename GO, typename NT>

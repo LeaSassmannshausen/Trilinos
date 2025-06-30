@@ -110,8 +110,7 @@ template <typename ValueType, typename DeviceType> class NumericToolsFactory;
                                              _gid_colidx, _sid_ptr, _sid_colidx, _blk_colidx, _stree_parent,           \
                                              _stree_ptr, _stree_children, _stree_level, _stree_roots);                 \
     numeric_tools_levelset_name *N = dynamic_cast<numeric_tools_levelset_name *>(object);                              \
-    N->initialize(_device_level_cut, _device_factor_thres, _device_solve_thres, _verbose);                             \
-    N->createStream(_nstreams, _verbose);                                                                              \
+    N->initialize(_device_level_cut, _device_factor_thres, _device_solve_thres, _nstreams, _verbose);                  \
   } while (false)
 
 ///
@@ -131,7 +130,7 @@ public:
 
   TACHO_NUMERIC_TOOLS_FACTORY_BASE_USING;
   TACHO_NUMERIC_TOOLS_FACTORY_BASE_MEMBER;
-  // TACHO_NUMERIC_TOOLS_FACTORY_LEVELSET_MEMBER;
+  TACHO_NUMERIC_TOOLS_FACTORY_LEVELSET_MEMBER;
 
   void setBaseMember(const ordinal_type method,
                      // input matrix A
@@ -152,11 +151,37 @@ public:
   void setLevelSetMember(const ordinal_type variant, const ordinal_type device_level_cut,
                          const ordinal_type device_factor_thres, const ordinal_type device_solve_thres,
                          const ordinal_type nstreams) {
-    // TACHO_NUMERIC_TOOLS_FACTORY_SET_LEVELSET_MEMBER;
+    TACHO_NUMERIC_TOOLS_FACTORY_SET_LEVELSET_MEMBER;
   }
 
   void createObject(numeric_tools_base_type *&object) {
-    KOKKOS_IF_ON_HOST((TACHO_NUMERIC_TOOLS_FACTORY_SERIAL_BODY;))
+    KOKKOS_IF_ON_HOST((
+    switch (_variant) {
+    case -1: {
+      // sequential code
+      TACHO_NUMERIC_TOOLS_FACTORY_SERIAL_BODY;
+      break;
+    }
+    case 0: {
+      TACHO_NUMERIC_TOOLS_FACTORY_LEVELSET_BODY(numeric_tools_levelset_var0_type);
+      break;
+    }
+    case 1: {
+      TACHO_NUMERIC_TOOLS_FACTORY_LEVELSET_BODY(numeric_tools_levelset_var1_type);
+      break;
+    }
+    case 2: {
+      TACHO_NUMERIC_TOOLS_FACTORY_LEVELSET_BODY(numeric_tools_levelset_var2_type);
+      break;
+    }
+    case 3: {
+      TACHO_NUMERIC_TOOLS_FACTORY_LEVELSET_BODY(numeric_tools_levelset_var3_type);
+      break;
+    }
+    default: {
+      TACHO_TEST_FOR_EXCEPTION(true, std::logic_error, "Invalid variant input");
+    }
+    }))
   }
 };
 #endif
@@ -175,10 +200,7 @@ public:
 
   TACHO_NUMERIC_TOOLS_FACTORY_BASE_USING;
   TACHO_NUMERIC_TOOLS_FACTORY_BASE_MEMBER;
-  #define TACHO_LEVELSET_ON_HOST
-  #if defined TACHO_LEVELSET_ON_HOST
   TACHO_NUMERIC_TOOLS_FACTORY_LEVELSET_MEMBER;
-  #endif
 
   void setBaseMember(const ordinal_type method,
                      // input matrix A
@@ -199,15 +221,17 @@ public:
   void setLevelSetMember(const ordinal_type variant, const ordinal_type device_level_cut,
                          const ordinal_type device_factor_thres, const ordinal_type device_solve_thres,
                          const ordinal_type nstreams) {
-    #if defined TACHO_LEVELSET_ON_HOST
     TACHO_NUMERIC_TOOLS_FACTORY_SET_LEVELSET_MEMBER;
-    #endif
   }
 
   void createObject(numeric_tools_base_type *&object) {
-#if defined TACHO_LEVELSET_ON_HOST
     KOKKOS_IF_ON_HOST((
     switch (_variant) {
+    case -1: {
+      // sequential code
+      TACHO_NUMERIC_TOOLS_FACTORY_SERIAL_BODY;
+      break;
+    }
     case 0: {
       TACHO_NUMERIC_TOOLS_FACTORY_LEVELSET_BODY(numeric_tools_levelset_var0_type);
       break;
@@ -220,13 +244,14 @@ public:
       TACHO_NUMERIC_TOOLS_FACTORY_LEVELSET_BODY(numeric_tools_levelset_var2_type);
       break;
     }
+    case 3: {
+      TACHO_NUMERIC_TOOLS_FACTORY_LEVELSET_BODY(numeric_tools_levelset_var3_type);
+      break;
+    }
     default: {
       TACHO_TEST_FOR_EXCEPTION(true, std::logic_error, "Invalid variant input");
     }
     }))
-#else
-    KOKKOS_IF_ON_HOST((TACHO_NUMERIC_TOOLS_FACTORY_SERIAL_BODY;))
-#endif
   }
 };
 #endif

@@ -653,12 +653,14 @@ void run_imported_surface_to_surface_test_pll_local_with_views(const std::string
   Kokkos::deep_copy(diceBoxes, diceBoxesHost);
   Kokkos::deep_copy(toolBoxes, toolBoxesHost);
 
+  std::shared_ptr<stk::search::SearchData> searchData;
   for (unsigned run = 0; run < NUM_RUNS; ++run) {
 
     batchTimer.start_batch_timer();
     for (int i = 0; i < numIterations; ++i) {
       Kokkos::View<IdentIntersection*, ExecSpace> searchResults;
-      stk::search::local_coarse_search(diceBoxes, toolBoxes, searchMethod, searchResults, ExecSpace{});
+      constexpr bool sortResults = false;
+      searchData = stk::search::local_coarse_search(diceBoxes, toolBoxes, searchMethod, searchResults, ExecSpace{}, sortResults, searchData);
     }
     batchTimer.stop_batch_timer();
   }
@@ -668,10 +670,11 @@ void run_imported_surface_to_surface_test_pll_local_with_views(const std::string
 
 using MemSpace = stk::ngp::ExecSpace::memory_space;
 
+#ifdef STK_HAS_ARBORX
 template<typename BoxIdentType>
 void run_imported_surface_to_surface_test_local_with_views_rawArborX(const std::string& boxFileBaseName,
                                                            const int numIterations,
-                                                           stk::search::SearchMethod searchMethod)
+                                                           stk::search::SearchMethod /*searchMethod*/)
 {
   using BoxType = typename BoxIdentType::box_type;
   using IdentType = typename BoxIdentType::second_type;
@@ -715,7 +718,7 @@ void run_imported_surface_to_surface_test_local_with_views_rawArborX(const std::
   for (unsigned run = 0; run < NUM_RUNS; ++run) {
     batchTimer.start_batch_timer();
     ExecSpace execSpace{};
-    for (int i = 0; i < numIterations; ++i) {
+    for (int iter = 0; iter < numIterations; ++iter) {
       Kokkos::Profiling::pushRegion("Raw ArborX");
       Kokkos::View<int *, MemSpace> indices("ArborX::indices", 0);
       Kokkos::View<int *, MemSpace> offsets("ArborX::offsets", 0);
@@ -755,6 +758,7 @@ TEST(StkSearch_SurfaceToSurface, a001_intent_strong_link_floatBox_local_with_vie
   const int numIterations = 20;
   run_imported_surface_to_surface_test_pll_local_with_views<FloatBoxIdent>(boxFileBaseName, numIterations, stk::search::ARBORX);
 }
+#endif // STK_HAS_ARBORX
 
 TEST(StkSearch_SurfaceToSurface, a001_intent_strong_link_floatBox_local_with_views_MORTON_LBVH)
 {
@@ -786,6 +790,7 @@ TEST(StkSearch_SurfaceToSurface, ecsl_floatBox_local_MORTON_LBVH)
   run_imported_surface_to_surface_test_local<FloatBoxIdentVector>(boxFileBaseName, numIterations, stk::search::MORTON_LBVH);
 }
 
+#ifdef STK_HAS_ARBORX
 TEST(StkSearch_SurfaceToSurface, ecsl_floatBox_local_ARBORX)
 {
   std::string boxFileBaseName = stk::unit_test_util::get_option("-m", "none-specified");
@@ -795,6 +800,7 @@ TEST(StkSearch_SurfaceToSurface, ecsl_floatBox_local_ARBORX)
   const int numIterations = 4;
   run_imported_surface_to_surface_test_local<FloatBoxIdentVector>(boxFileBaseName, numIterations, stk::search::ARBORX);
 }
+#endif
 
 TEST(StkSearch_SurfaceToSurface, ecsl_floatBox_local_with_views_MORTON_LBVH)
 {
@@ -806,6 +812,7 @@ TEST(StkSearch_SurfaceToSurface, ecsl_floatBox_local_with_views_MORTON_LBVH)
   run_imported_surface_to_surface_test_local_with_views<FloatBoxIdent>(boxFileBaseName, numIterations, stk::search::MORTON_LBVH);
 }
 
+#ifdef STK_HAS_ARBORX
 TEST(StkSearch_SurfaceToSurface, ecsl_floatBox_local_with_views_ARBORX)
 {
   std::string boxFileBaseName = stk::unit_test_util::get_option("-m", "none-specified");
@@ -815,6 +822,7 @@ TEST(StkSearch_SurfaceToSurface, ecsl_floatBox_local_with_views_ARBORX)
   const int numIterations = 4;
   run_imported_surface_to_surface_test_local_with_views<FloatBoxIdent>(boxFileBaseName, numIterations, stk::search::ARBORX);
 }
+#endif
 
 } // namespace
 

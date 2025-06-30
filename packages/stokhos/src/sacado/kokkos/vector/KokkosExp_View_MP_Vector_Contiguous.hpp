@@ -111,24 +111,24 @@ inline auto create_mirror(
     if constexpr ( ! std::is_same_v<typename ViewTraits<T, P...>::array_layout, LayoutStride>) {
       return src.layout();
     } else {
-      LayoutStride layout;
+      LayoutStride layout2;
 
       for (int idx = 0; idx <= 7; ++idx) {
-        layout.dimension[idx] = src.extent(idx);
-        layout.stride   [idx] = src.stride(idx);
+        layout2.dimension[idx] = src.extent(idx);
+        layout2.stride   [idx] = src.stride(idx);
       }
 
-      return layout;
+      return layout2;
     }
   }();
 
   layout.dimension[src_type::rank] = dimension_scalar(src);
-  
+
   const auto prop_copy = Impl::with_properties_if_unset(
     arg_prop, std::string(src.label()).append("_mirror"));
 
   if constexpr (Impl::ViewCtorProp<ViewCtorArgs...>::has_memory_space){
-    return typename Impl::MirrorType<typename Impl::ViewCtorProp<ViewCtorArgs...>::memory_space, T, P ...>::view_type(prop_copy, layout);
+    return typename Impl::MirrorViewType<typename Impl::ViewCtorProp<ViewCtorArgs...>::memory_space, T, P ...>::dest_view_type(prop_copy, layout);
   } else {
     return typename View<T, P...>::HostMirror(prop_copy, layout);
   }
@@ -326,7 +326,7 @@ void deep_copy(
 /* Specialize for deep copy of MP::Vector */
 template< class ExecSpace, class DT , class ... DP , class ST , class ... SP >
 inline
-void deep_copy( const ExecSpace &,
+void deep_copy( const ExecSpace & exec,
                 const View<DT,DP...> & dst ,
                 const View<ST,SP...> & src
   , typename std::enable_if<(
@@ -359,7 +359,7 @@ void deep_copy( const ExecSpace &,
   //   typename View<ST,SP...>::array_type( src ) );
 
   Kokkos::deep_copy(
-    ExecSpace() ,
+    exec ,
     typename FlatArrayType< View<DT,DP...> >::type( dst ) ,
     typename FlatArrayType< View<ST,SP...> >::type( src ) );
 }

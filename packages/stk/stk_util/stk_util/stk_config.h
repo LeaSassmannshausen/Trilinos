@@ -40,7 +40,6 @@
 #define STK_HAS_MPI
 #define STK_HAS_ARBORX
 #define STK_HAVE_BOOST
-#define STK_HAVE_KOKKOS
 #define STK_HAVE_INTREPID2
 #define STK_HAVE_STKMESH
 #define STK_16BIT_CONNECTIVITY_ORDINAL
@@ -49,6 +48,8 @@
 #define STK_HAS_SEACAS_IOSS
 #define STK_HAS_SEACAS_EXODUS
 #define STK_HAS_SEACAS_NEMESIS
+#define STK_HAVE_FP_EXCEPT
+#define STK_HAVE_FP_ERRNO
 
 #else
 // This file gets created by cmake during a Trilinos build
@@ -82,6 +83,10 @@
 #  if __has_feature(address_sanitizer)
 #    define STK_ASAN_IS_ON
 #  endif
+#endif
+
+#ifndef NDEBUG
+#define STK_FIELD_BOUNDS_CHECK
 #endif
 
 //----------------------------------------------------------------------

@@ -55,7 +55,6 @@ RCP<const ParameterList> NotayAggregationFactory<Scalar, LocalOrdinal, GlobalOrd
 #define SET_VALID_ENTRY(name) validParamList->setEntry(name, MasterList::getEntry(name))
   SET_VALID_ENTRY("aggregation: pairwise: size");
   SET_VALID_ENTRY("aggregation: pairwise: tie threshold");
-  SET_VALID_ENTRY("aggregation: compute aggregate qualities");
   SET_VALID_ENTRY("aggregation: Dirichlet threshold");
   SET_VALID_ENTRY("aggregation: ordering");
 #undef SET_VALID_ENTRY
@@ -64,21 +63,15 @@ RCP<const ParameterList> NotayAggregationFactory<Scalar, LocalOrdinal, GlobalOrd
   validParamList->set<RCP<const FactoryBase>>("A", null, "Generating factory of the matrix");
   validParamList->set<RCP<const FactoryBase>>("Graph", null, "Generating factory of the graph");
   validParamList->set<RCP<const FactoryBase>>("DofsPerNode", null, "Generating factory for variable \'DofsPerNode\', usually the same as for \'Graph\'");
-  validParamList->set<RCP<const FactoryBase>>("AggregateQualities", null, "Generating factory for variable \'AggregateQualities\'");
 
   return validParamList;
 }
 
 template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
 void NotayAggregationFactory<Scalar, LocalOrdinal, GlobalOrdinal, Node>::DeclareInput(Level& currentLevel) const {
-  const ParameterList& pL = GetParameterList();
-
   Input(currentLevel, "A");
   Input(currentLevel, "Graph");
   Input(currentLevel, "DofsPerNode");
-  if (pL.get<bool>("aggregation: compute aggregate qualities")) {
-    Input(currentLevel, "AggregateQualities");
-  }
 }
 
 template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
@@ -871,11 +864,11 @@ void NotayAggregationFactory<Scalar, LocalOrdinal, GlobalOrdinal, Node>::
   values_type valuesC;
 
   // Symbolic multiplication
-  KokkosSparse::Experimental::spgemm_symbolic(&kh, A.numRows(),
-                                              B.numRows(), B.numCols(),
-                                              A.graph.row_map, A.graph.entries, false,
-                                              B.graph.row_map, B.graph.entries, false,
-                                              rowPtrC);
+  KokkosSparse::spgemm_symbolic(&kh, A.numRows(),
+                                B.numRows(), B.numCols(),
+                                A.graph.row_map, A.graph.entries, false,
+                                B.graph.row_map, B.graph.entries, false,
+                                rowPtrC);
 
   // allocate column indices and values of AP
   size_t nnzC = kh.get_spgemm_handle()->get_c_nnz();
@@ -885,11 +878,11 @@ void NotayAggregationFactory<Scalar, LocalOrdinal, GlobalOrdinal, Node>::
   }
 
   // Numeric multiplication
-  KokkosSparse::Experimental::spgemm_numeric(&kh, A.numRows(),
-                                             B.numRows(), B.numCols(),
-                                             A.graph.row_map, A.graph.entries, A.values, false,
-                                             B.graph.row_map, B.graph.entries, B.values, false,
-                                             rowPtrC, colIndC, valuesC);
+  KokkosSparse::spgemm_numeric(&kh, A.numRows(),
+                               B.numRows(), B.numCols(),
+                               A.graph.row_map, A.graph.entries, A.values, false,
+                               B.graph.row_map, B.graph.entries, B.values, false,
+                               rowPtrC, colIndC, valuesC);
   kh.destroy_spgemm_handle();
 
   C = local_matrix_type(matrixLabel, A.numRows(), B.numCols(), nnzC, valuesC, rowPtrC, colIndC);

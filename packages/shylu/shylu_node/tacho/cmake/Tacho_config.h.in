@@ -25,8 +25,14 @@
 /* Define if want to build with CHOLMOD enabled */
 #cmakedefine TACHO_HAVE_SUITESPARSE
 
+/* Define if want to build with TrilinosSS enabled */
+#cmakedefine TACHO_HAVE_TRILINOS_SS
+
 /* Define if want to build with VTune enabled */
 #cmakedefine TACHO_HAVE_VTUNE
+
+/* Define if want to build with Teuchos enabled */
+#cmakedefine TACHO_HAVE_TEUCHOS
 
 #ifndef F77_BLAS_MANGLE
 # define F77_BLAS_MANGLE@F77_BLAS_MANGLE@

@@ -353,7 +353,7 @@
       <name>coarse: type</name>
       <comment-ML>needs special treatment in ML</comment-ML>
       <type>string</type>
-      <default>"SuperLU"</default>
+      <default>"KLU"</default>
       <description>Coarse solver. Possible values: see Table~\ref{tab:coarse_solvers}.</description>
     </parameter>
 
@@ -375,6 +375,15 @@
   </smoothing_and_coarse>
 
   <aggregation>
+
+    <parameter>
+      <name>aggregation: backend</name>
+      <type>string</type>
+      <default>"default"</default>
+      <description>Aggregation scheme. Possible values: "default", "host", "kokkos"</description>
+      <visible>false</visible>
+      <comment-ML>parameter not existing in ML</comment-ML>
+    </parameter>
 
     <parameter>
       <name>aggregation: type</name>
@@ -419,12 +428,43 @@
     -->
 
     <parameter>
+      <name>aggregation: symmetrize graph after dropping</name>
+      <type>bool</type>
+      <default>false</default>
+      <description>Symmetrize the graph used for aggregation.</description>
+      <comment-ML>parameter not existing in ML</comment-ML>
+    </parameter>
+
+    <parameter>
+      <name>aggregation: use blocking</name>
+      <type>bool</type>
+      <default>false</default>
+      <description>Drop connections between different blocks. Blocks are given by a vector "BlockNumber" of scalar type LocalOrdinal that is passed via the "user data" list.</description>
+      <comment-ML>parameter not existing in ML</comment-ML>
+    </parameter>
+
+    <parameter>
       <name>aggregation: drop scheme</name>
       <type>string</type>
       <default>"classical"</default>
       <description>Connectivity dropping scheme for a graph used in
-      aggregation. Possible values: "classical", "distance laplacian",
-      "unsupported vector smoothing"</description>
+      aggregation. Possible values: "point-wise" and "cut-drop". "signed classical sa", "classical", "distance laplacian", "signed classical", "block diagonal", "block diagonal classical", "block diagonal distance laplacian", "block diagonal signed classical", "block diagonal colored signed classical", "signed classical distance laplacian", "signed classical sa distance laplacian" are also allowed, but discouraged. Instead, the corresponding combination of "aggregation: strength-of-connection: matrix", "aggregation: strength-of-connection: measure" and "aggregation: drop scheme" should be used.</description>
+      <comment-ML>parameter not existing in ML</comment-ML>
+    </parameter>
+
+    <parameter>
+      <name>aggregation: strength-of-connection: matrix</name>
+      <type>string</type>
+      <default>"A"</default>
+      <description>The matrix that is used for constructing the graph used for aggregation. Possible values: "A" (meaning the level matrix itself) and "distance laplacian".</description>
+      <comment-ML>parameter not existing in ML</comment-ML>
+    </parameter>
+
+    <parameter>
+      <name>aggregation: strength-of-connection: measure</name>
+      <type>string</type>
+      <default>"smoothed aggregation"</default>
+      <description>The strength measure used for constructing the graph. Possible values: "smoothed aggregation", "signed smoothed aggregation", "signed ruge-stueben", "unscaled".</description>
       <comment-ML>parameter not existing in ML</comment-ML>
     </parameter>
 
@@ -501,6 +541,14 @@
       <default>"default"</default>
       <description>Type of sub-algorithm for "distance laplacian" dropping. Possible values: "default", "unscaled cut", "scaled cut".</description>
       <visible>false</visible>
+      <comment-ML>parameter not existing in ML</comment-ML>
+    </parameter>
+
+    <parameter>
+      <name>aggregation: distance laplacian metric</name>
+      <type>string</type>
+      <default>unweighted</default>
+      <description>Metric used to compute the distance Laplacian. Possible values: "unweighted", "material"</description>
       <comment-ML>parameter not existing in ML</comment-ML>
     </parameter>
 
@@ -873,6 +921,22 @@
       <type>bool</type>
       <default>false</default>
       <description>Whether to output a random colormap in a separate XML file.</description>
+      <comment-ML>parameter not existing in ML</comment-ML>
+    </parameter>
+
+    <parameter>
+      <name>aggregation: output file: aggregate qualities</name>
+      <type>bool</type>
+      <default>false</default>
+      <description>Whether to plot the aggregate quality.</description>
+      <comment-ML>parameter not existing in ML</comment-ML>
+    </parameter>
+
+    <parameter>
+      <name>aggregation: output file: material</name>
+      <type>bool</type>
+      <default>false</default>
+      <description>Whether to plot the material.</description>
       <comment-ML>parameter not existing in ML</comment-ML>
     </parameter>
 
@@ -1506,6 +1570,15 @@ Only used when tentative: calculate qr is set to false.</description>
     </parameter>
 
     <parameter>
+      <name>matrix: compute analysis</name>
+      <type>bool</type>
+      <default>false</default>
+      <description>Perform matrix analysis. Checks several matrix properties and prints statistics.</description>
+      <visible>false</visible>
+      <comment-ML>not supported by ML</comment-ML>
+    </parameter>
+
+    <parameter>
       <name>emin: iterative method</name>
       <type>string</type>
       <default>"cg"</default>
@@ -1785,7 +1858,7 @@ Only used when tentative: calculate qr is set to false.</description>
       <visible>false</visible>
     </parameter>
 
-    
+
   </rebalancing>
 
   <rap>
@@ -1944,6 +2017,18 @@ optimized neighbor discovery for Importer construction.</description>
       <comment-ML>not supported by ML</comment-ML>
     </parameter>
   </amgx>
+
+  <tuning>
+    <parameter>
+      <name>kokkos tuning: muelu parameter mapping</name>
+      <type>\parameterlist</type>
+      <description>Sublist for Kokkos Tuning of MueLu Parameters</description>
+      <visible>false</visible>
+      <comment-ML>not supported by ML</comment-ML>
+    </parameter>
+  </tuning>
+
+
 
   <debug>
 

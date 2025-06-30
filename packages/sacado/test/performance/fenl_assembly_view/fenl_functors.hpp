@@ -29,7 +29,7 @@
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Pair.hpp>
 #include <Kokkos_UnorderedMap.hpp>
-#include <Kokkos_StaticCrsGraph.hpp>
+#include <KokkosSparse_StaticCrsGraph.hpp>
 
 #include <Kokkos_Timer.hpp>
 
@@ -48,9 +48,9 @@ namespace FENL {
 template< typename ValueType , class Space >
 struct CrsMatrix {
 #ifdef KOKKOS_ENABLE_DEPRECATED_CODE // Don't remove this until Kokkos has removed the deprecated code path probably around September 2018
-  typedef Kokkos::StaticCrsGraph< unsigned , Space , void , unsigned >  StaticCrsGraphType ;
+  typedef KokkosSparse::StaticCrsGraph< unsigned , Space , void , unsigned >  StaticCrsGraphType ;
 #else
-  typedef Kokkos::StaticCrsGraph< unsigned , Space , void , void , unsigned >  StaticCrsGraphType ;
+  typedef KokkosSparse::StaticCrsGraph< unsigned , Space , void , void , unsigned >  StaticCrsGraphType ;
 #endif
   typedef View< ValueType * , Space > coeff_type ;
 
@@ -250,10 +250,10 @@ public:
           if ( result.success() ) {
 
             // If row node is owned then increment count
-            if ( row_node < row_count.extent(0) ) { atomic_increment( & row_count( row_node ) ); }
+            if ( row_node < row_count.extent(0) ) { atomic_inc( & row_count( row_node ) ); }
 
             // If column node is owned and not equal to row node then increment count
-            if ( col_node < row_count.extent(0) && col_node != row_node ) { atomic_increment( & row_count( col_node ) ); }
+            if ( col_node < row_count.extent(0) && col_node != row_node ) { atomic_inc( & row_count( col_node ) ); }
           }
           else if ( result.failed() ) {
             ++count ;

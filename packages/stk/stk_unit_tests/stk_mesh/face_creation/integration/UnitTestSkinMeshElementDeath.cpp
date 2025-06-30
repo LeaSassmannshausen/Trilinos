@@ -5,6 +5,7 @@
 #include <stk_io/IossBridge.hpp>        // for put_io_part_attribute
 #include <stk_mesh/base/BulkData.hpp>   // for BulkData
 #include <stk_mesh/baseImpl/elementGraph/ElemElemGraph.hpp>  // for process_killed_elements, etc
+#include <stk_mesh/baseImpl/elementGraph/ProcessKilledElements.hpp>
 #include <stk_mesh/base/GetEntities.hpp>  // for get_selected_entities
 #include <stk_mesh/base/MetaData.hpp>   // for MetaData
 #include <stk_topology/topology.hpp>    // for topology, etc
@@ -29,7 +30,7 @@ class BulkDataTester : public stk::mesh::BulkData
 {
 public:
   BulkDataTester(stk::mesh::MetaData &mesh_meta_data, MPI_Comm comm) :
-    stk::mesh::BulkData(std::shared_ptr<stk::mesh::MetaData>(&mesh_meta_data, [](auto pointerWeWontDelete){}), comm)
+    stk::mesh::BulkData(std::shared_ptr<stk::mesh::MetaData>(&mesh_meta_data, [](auto /*pointerWeWontDelete*/){}), comm)
   {
   }
 

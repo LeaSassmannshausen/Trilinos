@@ -84,12 +84,12 @@ class StkIoSideset : public stk::io::unit_test::IOMeshFixture
 protected:
   using VecField = stk::mesh::Field<double>;
 
-  void set_face_field_data(VecField& ssField, stk::mesh::Entity face)
+  void set_face_field_data(VecField& ssFieldArg, stk::mesh::Entity face)
   {
     const stk::mesh::Entity* faceNodes = get_bulk().begin_nodes(face);
     unsigned numFaceNodes = get_bulk().num_nodes(face);
-    EXPECT_EQ(numFaceNodes, stk::mesh::field_scalars_per_entity(ssField, face));
-    double* fieldData = stk::mesh::field_data(ssField, face);
+    EXPECT_EQ(numFaceNodes, stk::mesh::field_scalars_per_entity(ssFieldArg, face));
+    double* fieldData = stk::mesh::field_data(ssFieldArg, face);
     for (unsigned n=0; n<numFaceNodes; ++n) {
       fieldData[n] = static_cast<double>(get_bulk().identifier(faceNodes[n]));
     }
@@ -100,23 +100,23 @@ protected:
                                           unsigned expectedNumFaces)
   {
     const stk::mesh::MetaData& meta = bulk.mesh_meta_data();
-    stk::mesh::Part* surface1 = meta.get_part("surface_1");
-    ASSERT_TRUE(surface1 != nullptr);
+    stk::mesh::Part* surface1Extracted = meta.get_part("surface_1");
+    ASSERT_TRUE(surface1Extracted != nullptr);
 
-    stk::mesh::FieldBase* ssField = meta.get_field(meta.side_rank(), ssFieldName);
-    ASSERT_TRUE(ssField != nullptr);
+    stk::mesh::FieldBase* ssFieldExtracted = meta.get_field(meta.side_rank(), ssFieldName);
+    ASSERT_TRUE(ssFieldExtracted != nullptr);
 
-    stk::mesh::Selector selector(*ssField & meta.locally_owned_part());
+    stk::mesh::Selector selector(*ssFieldExtracted & meta.locally_owned_part());
     stk::mesh::EntityVector faces;
     stk::mesh::get_entities(bulk, meta.side_rank(), selector, faces);
     EXPECT_EQ(expectedNumFaces, faces.size());
 
     for(stk::mesh::Entity face : faces) {
       unsigned numFaceNodes = bulk.num_nodes(face);
-      unsigned numScalars = stk::mesh::field_scalars_per_entity(*ssField, face);
+      unsigned numScalars = stk::mesh::field_scalars_per_entity(*ssFieldExtracted, face);
       ASSERT_TRUE(numFaceNodes <= numScalars);
       const stk::mesh::Entity* faceNodes = bulk.begin_nodes(face);
-      const double* fieldData = static_cast<const double*>(stk::mesh::field_data(*ssField, face));
+      const double* fieldData = static_cast<const double*>(stk::mesh::field_data(*ssFieldExtracted, face));
       for(unsigned n=0; n<numFaceNodes; ++n) {
         EXPECT_NEAR(fieldData[n], static_cast<double>(bulk.identifier(faceNodes[n])), 1.e-6);
       }
@@ -167,7 +167,7 @@ protected:
     }
   }
 
-  void set_coords(stk::mesh::BulkData& bulk, VecField& coordField,
+  void set_coords(stk::mesh::BulkData& bulk, VecField& coordFieldArg,
                   const stk::mesh::EntityIdVector& nodeIds,
                   const std::vector<double>& coords)
   {
@@ -177,7 +177,7 @@ protected:
     for(stk::mesh::EntityId id : nodeIds) {
       stk::mesh::Entity node = bulk.get_entity(stk::topology::NODE_RANK, id);
       ASSERT_TRUE(bulk.is_valid(node));
-      double* coordData = stk::mesh::field_data(coordField, node);
+      double* coordData = stk::mesh::field_data(coordFieldArg, node);
       for(unsigned d=0; d<spatialDim; ++d) {
         coordData[d] = coords[offset++];
       }
@@ -340,7 +340,7 @@ TEST_F(StkIoSideset, field_TriAndQuadSides_restart)
   test_write_then_read(isRestart);
 }
 
-TEST(StkIo, read_write_and_compare_exo_files_with_sidesets)
+TEST(StkIo, read_write_and_compare_exo_files_with_sidesets_externalFile)
 {
     std::vector<std::string> filesToTest = {
                                             "AA.e", "ADeDB.e", "ADeLB.e", "ADReA.e", "AefA.e",  "AL.e",
@@ -359,7 +359,7 @@ TEST(StkIo, read_write_and_compare_exo_files_with_sidesets)
     }
 }
 
-TEST(StkIo, read_write_and_compare_exo_files_with_sidesets_because_PMR_for_coincident_not_implemented_yet)
+TEST(StkIo, read_write_and_compare_exo_files_with_sidesets_because_PMR_for_coincident_not_implemented_yet_externalFile)
 {
     std::vector<std::string> filesToTest = { "ALefRA.e" };
 
@@ -496,7 +496,7 @@ void test_create_and_write_new_sideset(stk::ParallelMachine pm,
   test_create_and_write_new_sideset(bulk, parts, newSideSet, outputFileName);
 }
 
-TEST(StkIo, create_and_write_new_sideset)
+TEST(StkIo, create_and_write_new_sideset_externalFile)
 {
   stk::ParallelMachine pm = MPI_COMM_WORLD;
 
@@ -559,7 +559,7 @@ void test_read_and_modify_sideset(stk::ParallelMachine pm,
     test_output_sideset(bulk, outputFileName, stk::unit_test_util::sideset::READ_SERIAL_AND_DECOMPOSE);
 }
 
-TEST(StkIo, modify_sideset)
+TEST(StkIo, modify_sideset_externalFile)
 {
   stk::ParallelMachine pm = MPI_COMM_WORLD;
 
@@ -573,7 +573,32 @@ TEST(StkIo, modify_sideset)
   }
 }
 
-TEST(StkIo, parallel_transform_AA_to_ADA_to_ARA)
+TEST(StkIo, skinned_sideset_from_badly_named_element_block)
+{
+  stk::ParallelMachine pm = MPI_COMM_WORLD;
+
+  if(stk::parallel_machine_size(pm) > 1) GTEST_SKIP();
+
+  std::string meshDesc = "textmesh: 0,1,HEX_8,1,2,3,4,5,6,7,8, shell_a"
+                         "|coordinates: 0,0,0, 1,0,0, 1,1,0, 0,1,0, 0,0,1, 1,0,1, 1,1,1, 0,1,1"
+                         "|sideset:name=surface_skinned_shell_a; data=1,1";
+
+  const unsigned spatialDim = 3;
+  std::shared_ptr<stk::mesh::BulkData> bulk = build_mesh_no_simple_fields(spatialDim, pm, stk::mesh::BulkData::NO_AUTO_AURA);
+  EXPECT_NO_THROW(stk::io::fill_mesh(meshDesc, *bulk));
+
+  std::string fileName("missing_skinned_shell.g");
+  stk::io::write_mesh(fileName, *bulk);
+
+  std::shared_ptr<stk::mesh::BulkData> bulk2 = build_mesh_no_simple_fields(spatialDim, pm, stk::mesh::BulkData::NO_AUTO_AURA);
+  stk::unit_test_util::sideset::read_exo_file(*bulk2, fileName, stk::unit_test_util::sideset::READ_SERIAL_AND_DECOMPOSE);
+  stk::unit_test_util::sideset::SideSetIdAndElemIdSidesVector expectedInputSideset{ {1, {{1, 0}}} };
+  stk::unit_test_util::sideset::compare_sidesets(fileName, *bulk2, expectedInputSideset);
+  
+  unlink(fileName.c_str());
+}
+
+TEST(StkIo, parallel_transform_AA_to_ADA_to_ARA_externalFile)
 {
   stk::ParallelMachine pm = MPI_COMM_WORLD;
 

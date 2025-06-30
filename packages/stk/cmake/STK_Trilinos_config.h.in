@@ -40,8 +40,6 @@
 
 #cmakedefine STK_HAVE_BOOST
 
-#cmakedefine STK_HAVE_KOKKOS
-
 #cmakedefine STK_HAVE_INTREPID2
 
 #cmakedefine STK_HAVE_STKMESH
@@ -53,6 +51,8 @@
 #cmakedefine STK_HAS_MPI
 
 #cmakedefine STK_HAS_ARBORX
+
+#cmakedefine STK_USE_DEVICE_MESH
 
 #cmakedefine STK_VOLATILE_SIMD
 
@@ -79,6 +79,9 @@
 #ifndef FORTRAN_TWO_UNDERSCORES
 #cmakedefine FORTRAN_TWO_UNDERSCORES
 #endif
+
+#cmakedefine STK_HAVE_FP_EXCEPT
+#cmakedefine STK_HAVE_FP_ERRNO
 
 #cmakedefine SIERRA_MIGRATION
 

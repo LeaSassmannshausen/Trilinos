@@ -104,6 +104,7 @@ enum class FunctionType {
   HAVERSINE_PULSE,
   POINT2D,
   POINT3D,
+  RELATIVE_ERROR,
 
   EXPONENTIAL_PDF,
   LOG_UNIFORM_PDF,
@@ -111,24 +112,12 @@ enum class FunctionType {
   WEIBULL_PDF,
   GAMMA_PDF,
 
-  RAND,
-  SRAND,
-  RANDOM,
   TS_RANDOM,
   TS_NORMAL,
-  TIME,
 
   UNDEFINED
 };
 
-constexpr bool is_function_supported_on_device(FunctionType type)
-{
-  return type != FunctionType::RAND &&
-         type != FunctionType::SRAND &&
-         type != FunctionType::RANDOM &&
-         type != FunctionType::TIME &&
-         type != FunctionType::UNDEFINED;
-}
 
 KOKKOS_INLINE_FUNCTION
 double cycloidal_ramp(double t, double t1, double t2)
@@ -422,6 +411,23 @@ double point_3(double x, double y, double z, double r, double w)
 {
   const double ri = std::sqrt(x*x + y*y + z*z);
   return 1.0 - cosine_ramp3(ri, r-0.5*w, r+0.5*w);
+}
+
+KOKKOS_INLINE_FUNCTION
+double relative_error3(double a, double b, double floor)
+{
+  double denom = std::fmax(std::fabs(a), std::fabs(b));
+  if (denom < floor) {
+    return 0.0;
+  } else {
+    return (b - a) / denom;
+  }
+}
+
+KOKKOS_INLINE_FUNCTION
+double relative_error2(double a, double b)
+{
+  return relative_error3(a, b, 1.0e-16);
 }
 
 KOKKOS_INLINE_FUNCTION

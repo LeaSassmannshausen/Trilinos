@@ -64,6 +64,14 @@ IF (HAVE_${PACKAGE_NAME_UC}_DEPRECATED_TESTS)
   MESSAGE(STATUS "MueLu: Enabling deprecated tests")
 ENDIF ()
 
+TRIBITS_ADD_OPTION_AND_DEFINE(
+  ${PACKAGE_NAME}_COALESCEDROP_ALLOW_OLD_PARAMETERS
+  HAVE_${PACKAGE_NAME_UC}_COALESCEDROP_ALLOW_OLD_PARAMETERS
+  "Whether MueLu allows old parameters as input for CoalesceDropFactory_kokkos. Default is ON (old parameters are allowed).  If OFF, use of old parameter values will lead to runtime errors."
+  YES
+)
+
+
 IF (${PACKAGE_NAME}_ENABLE_Epetra AND NOT ${PACKAGE_NAME}_ENABLE_EpetraExt)
   MESSAGE(FATAL_ERROR "You have enabled Epetra, but not EpetraExt. MueLu requires that either both are enabled, or both are disabled. Please either disable Epetra, or enable EpetraExt.")
 ENDIF()
@@ -404,17 +412,6 @@ ENDIF ()
 # C) Add the libraries, tests, and examples
 #
 
-# The build has to be in a very specific order because of the existence of Matlab interface:
-#   1. Build the majority of the code in src/   [except src/Interface; src/CMakeLists.txt is responsible for ignoring that]
-#   2. Build matlab factories                   [located in matlab/; matlab/bin is ignored in matlab/CMakeLists.txt]
-#   3. Build the interpreter                    [requires all factories]
-#   4. Build the adapters                       [required for Matlab]
-#   5. Build the rest of matlab code
-# This order required splitting of the src/ library into two: muelu and muelu-interface, as steps 1. and 3. are separated.
-# A simple diagram explains this:
-#                                               /  muelu
-# matlab/bin - muelu-adapters - muelu-interface      |
-#                                               \  matlab
 ADD_SUBDIRECTORY(src)
 
 if(TPL_ENABLE_MATLAB)
@@ -425,17 +422,12 @@ if(TPL_ENABLE_MATLAB)
   IF (NOT ${PROJECT_NAME}_ENABLE_EXPLICIT_INSTANTIATION)
     MESSAGE(FATAL_ERROR "Muemex interfaces require \"-D${PROJECT_NAME}_ENABLE_EXPLICIT_INSTANTIATION:BOOL=ON\".")
   ENDIF()
-
-  IF(NOT ${PACKAGE_NAME}_ENABLE_Epetra)
-    MESSAGE(FATAL_ERROR "Muemex interfaces require \"-D${PACKAGE_NAME}_ENABLE_Epetra:BOOL=ON\".")
-  ENDIF()
 ENDIF()
 
-if(TPL_ENABLE_MATLAB)
-  ADD_SUBDIRECTORY(matlab)
-ENDIF()
+# Not: adapters needs to come before matlab
 ADD_SUBDIRECTORY(adapters)
 if(TPL_ENABLE_MATLAB)
+  ADD_SUBDIRECTORY(matlab)
   ADD_SUBDIRECTORY(matlab/bin)
   ADD_SUBDIRECTORY(matlab/tests)
 ENDIF()
