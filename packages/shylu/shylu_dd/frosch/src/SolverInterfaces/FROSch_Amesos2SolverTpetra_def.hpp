@@ -115,7 +115,8 @@ namespace FROSch {
         TMultiVectorPtr bTmp;
 
         ParameterListPtr amesos2ParameterList = sublist(this->ParameterList_,"Amesos2");
-        if (amesos2ParameterList->isSublist(this->ParameterList_->get("Solver","Klu"))) amesos2ParameterList = sublist(amesos2ParameterList,this->ParameterList_->get("Solver","Klu"));
+        if (amesos2ParameterList->isSublist(this->ParameterList_->get("Solver","Klu"))) 
+            amesos2ParameterList = sublist(amesos2ParameterList,this->ParameterList_->get("Solver","Klu"));
         amesos2ParameterList->setName("Amesos2");
 
         Amesos2Solver_ = Amesos2::create<TCrsMatrix,TMultiVector>(this->ParameterList_->get("Solver","Klu"),tpetraMat,xTmp,bTmp);

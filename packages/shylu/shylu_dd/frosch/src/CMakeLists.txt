@@ -53,7 +53,7 @@ TRIBITS_INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 #TRIBITS_INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/packages/amesos2/src/KLU2/Source)
 #TRIBITS_INCLUDE_DIRECTORIES(${PROJECT_BINARY_DIR}/packages/amesos2/src)
 #TRIBITS_INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/packages/muelu/adapters/belos)
-
+ 
 APPEND_SET(HEADERS
   Adapters/Stratimikos_FROSch_decl.hpp
   Adapters/Stratimikos_FROSch_def.hpp

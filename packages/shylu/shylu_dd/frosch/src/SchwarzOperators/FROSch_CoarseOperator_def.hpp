@@ -560,7 +560,7 @@ namespace FROSch {
                     //cout << "---  isComputed = false; --- " << endl;
                 }
                 else{
-                numCoarseSolveEntries = CoarseSolver_->getCoarseMatrixNumEntries() ;
+                    numCoarseSolveEntries = CoarseSolver_->getCoarseMatrixNumEntries() ;
                 }  
                 bool k0EntryChange = false;
                 if(numCoarseSolveEntries > 0 && numCoarseSolveEntries != globalVec[1])
@@ -613,7 +613,7 @@ namespace FROSch {
         Xpetra::IO< SC,LO,GO,NO > xpetraWriter;
         if(this->ParameterList_->get("Write Coarse Matrix",false))
             xpetraWriter.Write("coarseMatrix",(*k0));
-        //xpetraWriter.Write("systemMatrix",(*this->K_));
+        // xpetraWriter.Write("systemMatrix",(*this->K_));
         if(this->ParameterList_->get("Write Phi",false))
             xpetraWriter.Write("phi",(*this->Phi_));
 

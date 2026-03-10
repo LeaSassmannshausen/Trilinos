@@ -399,7 +399,10 @@ namespace FROSch {
         {
           Xpetra::IO< SC,LO,GO,NO > xpetraWriter;
           xpetraWriter.Write("overlappingMatrix_"+std::to_string(this->MpiComm_->getRank()),(*OverlappingMatrix_));
-        }
+          xpetraWriter.Write("overlappingMap_"+std::to_string(this->MpiComm_->getRank()),(*OverlappingMap_));
+          RCP<FancyOStream> fancy = fancyOStream(rcpFromRef(cout));
+          OverlappingMap_->describe(*fancy,VERB_EXTREME);
+        }     
 
         this->IsComputed_ = true;
         return SubdomainSolver_->compute();

@@ -76,6 +76,17 @@ namespace FROSch {
             << setw(89) << "-----------------------------------------------------------------------------------------"
             << endl;
         }
+        
+        if (this->ParameterList_->isParameter("Repeated Map Vector")) {
+            if(this->Verbose_) 
+                std::cout << "FROSch::AlgebraicOverlappingOperator: Extracting different repeated map vector from parameter list..." << std::endl;
+                Teuchos::ArrayRCP<Teuchos::RCP<const Xpetra::Map<LO,GO,NO> > > repeatedMaps = ExtractVectorFromParameterList<Teuchos::RCP<const Xpetra::Map<LO,GO,NO> > >(*this->ParameterList_, "Repeated Map Vector");
+            if (!repeatedMaps.is_null()) {
+                if(this->Verbose_) 
+                    std::cout << "FROSch::AlgebraicOverlappingOperator: Replacing Repeated Map repeatedMap" << std::endl;
+                repeatedMap = repeatedMaps[0];
+            }
+        }
 
         if (repeatedMap.is_null()) repeatedMap = this->K_->getRangeMap();
         this->buildOverlappingMatrices(overlap,repeatedMap);
