@@ -15,6 +15,7 @@
 
 // default strategies
 #include "Teko_LU2x2DiagonalStrategy.hpp"
+#include "Teko_LU2x2TriangularStrategy.hpp"
 #include "NS/Teko_PCDStrategy.hpp"
 
 using Teuchos::rcp;
@@ -217,6 +218,10 @@ void LU2x2PreconditionerFactory::initializeStrategyBuilder() {
   // add various strategies to the factory
   clone = rcp(new AutoClone<NS::PCDStrategy>());
   strategyBuilder_.addClone("NS PCD Strategy", clone);
+
+  // add externally supplied Schur strategy
+  clone = rcp(new AutoClone<LU2x2TriangularStrategy>());
+  strategyBuilder_.addClone("Teko_LU2x2TriangularStrategy", clone);
 }
 
 }  // end namespace Teko
